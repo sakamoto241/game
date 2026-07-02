@@ -24,7 +24,7 @@
 | レンダリング | HTML5 Canvas2D（素の Canvas API） |
 | タイル | 16×16 px |
 | 解像度 | **二層構成**: ワールド 320×180 / UI 640×360。整数スケーリング + レターボックス |
-| アセット | 開発初期はプログラム描画のプレースホルダー。`public/assets/manifest.json` に登録するだけで画像・音声へ差し替え可能 |
+| アセット | コード製ピクセルアート（Kenney Tiny Dungeon/Town 風・16px・太アウトライン）を標準搭載。`public/assets/manifest.json` の `images` / `sheets`+`sprites`（タイルシート対応）に登録すると本物のPNGへ差し替わる |
 | 乱数 | `Math.random()` 全面禁止。シード付き `Rng`（用途別 fork）のみ使用 |
 | メインループ | 固定タイムステップ 60Hz + アキュムレータ（描画は可変） |
 | セーブ | バージョン付き JSON + マイグレーション。localStorage（クラウド対応を見据えてストレージ層を分離） |

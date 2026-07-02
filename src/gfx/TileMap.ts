@@ -112,8 +112,8 @@ export class TileMap {
         const def = defs[this.get(x, y)];
         if (!def) continue;
         assets.drawSprite(ctx, def.sprite, x * TILE, y * TILE, TILE, TILE);
-        // 市松模様の微妙な明暗でタイルの単調さを消す（プレースホルダー用の演出）
-        if ((x + y) % 2 === 0) {
+        // プレースホルダー（色付き矩形）のときだけ市松の明暗で単調さを消す
+        if (!assets.hasArt(def.sprite) && (x + y) % 2 === 0) {
           ctx.fillStyle = "rgba(0, 0, 0, 0.045)";
           ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
         }

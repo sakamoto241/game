@@ -23,6 +23,21 @@ export interface PlaceholderSpec {
 interface Manifest {
   images?: Record<string, string>;
   audio?: Record<string, string>;
+  /** スプライトシート定義: 名前 → { path, tile } */
+  sheets?: Record<string, { path: string; tile?: number }>;
+  /** シート内スプライト: ID → { sheet, col, row, w?, h? } */
+  sprites?: Record<
+    string,
+    { sheet: string; col: number; row: number; w?: number; h?: number }
+  >;
+}
+
+interface SheetSprite {
+  img: HTMLImageElement;
+  sx: number;
+  sy: number;
+  sw: number;
+  sh: number;
 }
 
 /** 未登録IDに使う「うるさい」プレースホルダー。アセット漏れを目立たせる */
@@ -30,6 +45,8 @@ const MISSING: PlaceholderSpec = { color: "#ff00ff", symbol: "?", symbolColor: "
 
 export class AssetManager {
   private images = new Map<string, HTMLImageElement>();
+  private sheetSprites = new Map<string, SheetSprite>();
+  private pixelArts = new Map<string, HTMLCanvasElement>();
   private placeholders = new Map<string, PlaceholderSpec>();
   private phCache = new Map<string, HTMLCanvasElement>();
   /** AudioManager が参照する音声ファイルのパス表 */
@@ -57,21 +74,73 @@ export class AssetManager {
         ),
       ),
     );
+    await this.loadSheets(manifest);
     for (const [id, path] of Object.entries(manifest.audio ?? {})) {
       this.audioPaths.set(id, path);
     }
   }
 
-  private loadImage(id: string, path: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => {
-        this.images.set(id, img);
-        resolve();
-      };
-      img.onerror = () => reject(new Error("load error"));
-      img.src = path;
-    });
+  /** manifest の sheets/sprites 定義からシート内スプライトを登録する */
+  private async loadSheets(manifest: Manifest): Promise<void> {
+    const sheets = manifest.sheets ?? {};
+    const sprites = manifest.sprites ?? {};
+    const loaded = new Map<string, { img: HTMLImageElement; tile: number }>();
+    await Promise.all(
+      Object.entries(sheets).map(async ([name, def]) => {
+        try {
+          const img = await loadImageElement(def.path);
+          loaded.set(name, { img, tile: def.tile ?? 16 });
+        } catch (e) {
+          console.warn(`[AssetManager] シート ${name} のロードに失敗: ${String(e)}`);
+        }
+      }),
+    );
+    for (const [id, s] of Object.entries(sprites)) {
+      const sheet = loaded.get(s.sheet);
+      if (!sheet) continue;
+      const t = sheet.tile;
+      this.sheetSprites.set(id, {
+        img: sheet.img,
+        sx: s.col * t,
+        sy: s.row * t,
+        sw: s.w ?? t,
+        sh: s.h ?? t,
+      });
+    }
+  }
+
+  private async loadImage(id: string, path: string): Promise<void> {
+    this.images.set(id, await loadImageElement(path));
+  }
+
+  /**
+   * コード製ピクセルアートを登録する。painter に 1px = 1ピクセルの
+   * コンテキストが渡される。flipX を指定すると左右反転して登録する
+   * （左右の向き分けに使う）。
+   */
+  definePixelArt(
+    id: string,
+    w: number,
+    h: number,
+    painter: (ctx: CanvasRenderingContext2D) => void,
+    flipX = false,
+  ): void {
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d")!;
+    ctx.imageSmoothingEnabled = false;
+    if (flipX) {
+      ctx.translate(w, 0);
+      ctx.scale(-1, 1);
+    }
+    painter(ctx);
+    this.pixelArts.set(id, canvas);
+  }
+
+  /** 本物の画像 or ピクセルアートを持っているか（プレースホルダーは含まない） */
+  hasArt(id: string): boolean {
+    return this.images.has(id) || this.sheetSprites.has(id) || this.pixelArts.has(id);
   }
 
   /** 画像がない間の代替描画を登録する */
@@ -83,7 +152,10 @@ export class AssetManager {
     return this.images.has(id);
   }
 
-  /** スプライトを描く。画像があれば画像、なければプレースホルダー */
+  /**
+   * スプライトを描く。優先順位:
+   * manifest の画像 > manifest のシート > コード製ピクセルアート > プレースホルダー
+   */
   drawSprite(
     ctx: CanvasRenderingContext2D,
     id: string,
@@ -97,6 +169,16 @@ export class AssetManager {
       ctx.drawImage(img, x, y, w, h);
       return;
     }
+    const sheet = this.sheetSprites.get(id);
+    if (sheet) {
+      ctx.drawImage(sheet.img, sheet.sx, sheet.sy, sheet.sw, sheet.sh, x, y, w, h);
+      return;
+    }
+    const px = this.pixelArts.get(id);
+    if (px) {
+      ctx.drawImage(px, x, y, w, h);
+      return;
+    }
     const key = `${id}@${w}x${h}`;
     let cached = this.phCache.get(key);
     if (!cached) {
@@ -105,6 +187,15 @@ export class AssetManager {
     }
     ctx.drawImage(cached, x, y);
   }
+}
+
+function loadImageElement(path: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("load error"));
+    img.src = path;
+  });
 }
 
 function renderPlaceholder(spec: PlaceholderSpec, w: number, h: number): HTMLCanvasElement {

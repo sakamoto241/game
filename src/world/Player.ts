@@ -1,6 +1,5 @@
 import type { AssetManager } from "../core/AssetManager";
 import type { Input } from "../core/Input";
-import { EQUIPMENT } from "../data/equipment";
 import { TILE, type TileDefs, type TileMap } from "../gfx/TileMap";
 import type { PartyMember } from "./PartyMember";
 
@@ -116,29 +115,28 @@ export class Player {
   }
 
   /**
-   * 描画。member を渡すと装備が見た目に反映される:
-   * 鎧 = 下部の帯 / 盾 = 左側のブロック / 武器 = 右上のグリップ。
-   * 本物のドット絵導入後はレイヤー別スプライト (hero.armor.steel 等) に置き換える。
+   * 描画。member を渡すと装備が見た目に反映される
+   * （武器・盾のミニスプライトを手元に重ねる。鎧は Phase 4 のレイヤー衣装で対応予定）。
    */
   render(ctx: CanvasRenderingContext2D, assets: AssetManager, member?: PartyMember): void {
     const x = Math.round(this.px);
     const y = Math.round(this.py);
     assets.drawSprite(ctx, `hero.${this.dir}`, x, y, TILE, TILE);
     if (!member) return;
-    const { weapon, shield, armor } = member.equip;
-    if (armor) {
-      ctx.fillStyle = EQUIPMENT[armor.id].color;
-      ctx.fillRect(x + 2, y + TILE - 4, TILE - 4, 3);
-    }
+    const { weapon, shield } = member.equip;
     if (shield) {
-      ctx.fillStyle = EQUIPMENT[shield.id].color;
-      ctx.fillRect(x, y + 5, 3, 7);
+      assets.drawSprite(ctx, "overlay.shield", x - 4, y + 4, 12, 12);
     }
     if (weapon) {
-      ctx.fillStyle = EQUIPMENT[weapon.id].color;
-      ctx.fillRect(x + TILE - 3, y + 1, 2, 8);
+      assets.drawSprite(ctx, weaponOverlayId(weapon.id), x + 7, y + 2, 13, 13);
     }
   }
+}
+
+function weaponOverlayId(id: string): string {
+  if (id === "club") return "overlay.club";
+  if (id === "axe") return "overlay.axe";
+  return "overlay.sword";
 }
 
 function lerp(a: number, b: number, t: number): number {
