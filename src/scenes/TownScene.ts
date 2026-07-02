@@ -1,47 +1,79 @@
 import { Camera } from "../core/Camera";
 import type { Renderer } from "../core/Renderer";
-import { UI_W, UI_H } from "../core/Renderer";
+import { UI_W, UI_H, WORLD_W, WORLD_H } from "../core/Renderer";
 import { Scene } from "../core/Scene";
-import { INN_PRICE, WEAPON_SHOP_COST } from "../data/balance";
-import { ITEMS } from "../data/items";
+import {
+  INN_PRICE,
+  INN_WAKE_HOUR,
+  MIN_PER_STEP,
+  PHASE_TINTS,
+  REVIVE_PRICE_PER_LEVEL,
+  TRADE_IN_RATE,
+  smithyCost,
+} from "../data/balance";
+import { CLASSES, type ClassId } from "../data/classes";
+import { COMPANIONS } from "../data/companions";
+import {
+  ARMOR_SHOP_STOCK,
+  EQUIPMENT,
+  SLOT_NAMES,
+  SMITHY_MAX_PLUS,
+  WEAPON_SHOP_STOCK,
+  equipName,
+  type EquipId,
+  type EquipSlot,
+} from "../data/equipment";
+import {
+  FACILITIES,
+  FACILITY_H,
+  FACILITY_IDS,
+  FACILITY_W,
+  facilityDoors,
+  isOpen,
+  type FacilityDef,
+} from "../data/facilities";
+import { ITEMS, ITEM_IDS, type ItemId } from "../data/items";
 import { T, TILE_DEFS, TOWN_LEGEND } from "../data/tiles";
 import { TOWN_MAP_ROWS } from "../data/maps";
-import { WEAPONS, SHOP_WEAPONS, type WeaponId } from "../data/weapons";
 import { TILE, TileMap } from "../gfx/TileMap";
 import { ListMenu } from "../ui/ListMenu";
 import { drawBanner, drawMessage, drawToast } from "../ui/Windows";
 import { PauseMenu } from "../ui/PauseMenu";
+import { Follower } from "../world/Follower";
 import type { GameState } from "../world/GameState";
+import { PartyMember } from "../world/PartyMember";
 import { Player } from "../world/Player";
 import { DungeonScene } from "./DungeonScene";
 
-export const DEFAULT_SPAWN = { x: 12, y: 9 };
+export const DEFAULT_SPAWN = { x: 18, y: 9 };
 /** 宿屋の扉の前 */
-export const INN_SPAWN = { x: 12, y: 6 };
+export const INN_SPAWN = { x: 18, y: 5 };
 /** ポータルの上（portalArmed ラッチで即再発動を防ぐ） */
-export const PORTAL_SPAWN = { x: 12, y: 18 };
+export const PORTAL_SPAWN = { x: 18, y: 21 };
 
-/** 武器屋の建設位置（屋根2段 + 扉の段） */
-const SHOP_PLOT = { x0: 3, x1: 8, roofY0: 3, roofY1: 4, doorY: 5 };
-const SIGN_POS = { x: 5, y: 7 };
-
-type Dialog =
-  | { kind: "message"; lines: string[] }
-  | { kind: "menu"; id: "inn" | "shop" | "build"; menu: ListMenu }
-  | null;
+/** シーン内メニューのスタック要素 */
+interface OpenMenu {
+  menu: ListMenu;
+  onSelect: (value: string) => void;
+  /** メニュー下に出す1行の補足 */
+  info?: string;
+}
 
 /**
- * 街「アルバの村」。宿屋・建築予定地・武器屋(建設後)・ポータル。
- * 街に入るたびにオートセーブする。
+ * 街「アルバの村」。
+ * 施設は facilities.ts の定義から実行時にスタンプされる（建物 or 看板）。
+ * 昼夜で見た目が変わり、店には営業時間がある。街に入るたびにオートセーブ。
  */
 export class TownScene extends Scene {
   readonly name = "Town";
 
   private map!: TileMap;
   private player!: Player;
+  private followers: Follower[] = [];
   private cam = new Camera();
   private bannerTimer = 2.6;
-  private dialog: Dialog = null;
+  private message: string[] | null = null;
+  private menuStack: OpenMenu[] = [];
   private pauseMenu: PauseMenu | null = null;
   private toastTimer = 0;
   private portalArmed = false;
@@ -60,29 +92,42 @@ export class TownScene extends Scene {
     this.map = TileMap.fromStrings(TOWN_MAP_ROWS, TOWN_LEGEND);
     this.applyTownState();
     this.player = new Player(this.spawn.x, this.spawn.y);
+    this.followers = this.state.party
+      .slice(1)
+      .map((m) => new Follower(m, this.spawn.x, this.spawn.y));
     this.portalArmed = this.map.get(this.spawn.x, this.spawn.y) !== T.PORTAL;
     this.game.audio.playBgm("town");
     if (this.introMessage) {
-      this.dialog = { kind: "message", lines: this.introMessage };
+      this.message = this.introMessage;
       this.introMessage = undefined;
     }
     this.state.save(this.game);
     this.toastTimer = 1.8;
   }
 
-  /** 街の発展状態をマップに反映する */
+  /** 街の発展状態をマップに反映する（建物 or 建築予定地の看板） */
   private applyTownState(): void {
-    if (this.state.town.weaponShop) {
-      const p = SHOP_PLOT;
-      for (let x = p.x0; x <= p.x1; x++) {
-        this.map.set(x, p.roofY0, T.ROOF);
-        this.map.set(x, p.roofY1, T.ROOF);
-        this.map.set(x, p.doorY, T.WALL);
+    for (const id of FACILITY_IDS) {
+      const def = FACILITIES[id];
+      if (this.state.built[id]) {
+        this.stampBuilding(def);
+      } else {
+        this.map.set(def.sign.x, def.sign.y, T.SIGN);
       }
-      this.map.set(5, p.doorY, T.SHOP_DOOR);
-      this.map.set(6, p.doorY, T.SHOP_DOOR);
-      this.map.set(SIGN_POS.x, SIGN_POS.y, T.GRASS);
     }
+  }
+
+  private stampBuilding(def: FacilityDef): void {
+    const { x, y } = def.plot;
+    for (let dx = 0; dx < FACILITY_W; dx++) {
+      this.map.set(x + dx, y, def.roofTile);
+      this.map.set(x + dx, y + 1, def.roofTile);
+      this.map.set(x + dx, y + 2, T.WALL);
+    }
+    for (const door of facilityDoors(def)) {
+      this.map.set(door.x, door.y, T.SHOP_DOOR);
+    }
+    this.map.set(def.sign.x, def.sign.y, T.GRASS);
   }
 
   // =========================================================================
@@ -91,12 +136,23 @@ export class TownScene extends Scene {
   update(dt: number): void {
     if (this.bannerTimer > 0) this.bannerTimer -= dt;
     if (this.toastTimer > 0) this.toastTimer -= dt;
+    for (const f of this.followers) f.update(dt);
     if (this.leaving) return;
 
     const input = this.game.input;
 
-    if (this.dialog) {
-      this.updateDialog(dt);
+    if (this.message) {
+      if (input.pressed("confirm") || input.pressed("cancel")) {
+        this.message = null;
+      }
+      return;
+    }
+
+    const top = this.menuStack[this.menuStack.length - 1];
+    if (top) {
+      const ev = top.menu.update(input, dt);
+      if (ev?.type === "cancel") this.menuStack.pop();
+      else if (ev?.type === "select") top.onSelect(ev.item.value);
       return;
     }
 
@@ -111,13 +167,14 @@ export class TownScene extends Scene {
     }
 
     this.player.update(dt, input, this.map, TILE_DEFS);
+    this.syncFollowers();
     this.game.debug.set("Pos", `(${this.player.tileX}, ${this.player.tileY})`);
+    this.game.debug.set("Time", this.state.timeLabel());
 
-    const standingTile = this.map.get(this.player.tileX, this.player.tileY);
-
-    // ポータル（到着イベントで判定。スポーン直後の即再発動はラッチで防ぐ）
+    // ポータル（到着イベントで判定）
     const arrival = this.player.arrival;
     if (arrival) {
+      this.state.advanceTime(MIN_PER_STEP);
       if (this.map.get(arrival.x, arrival.y) !== T.PORTAL) {
         this.portalArmed = true;
       } else if (this.portalArmed) {
@@ -130,44 +187,76 @@ export class TownScene extends Scene {
 
     // しらべる
     if (input.pressed("confirm") && !this.player.isMoving) {
-      const facing = this.player.facingTile();
-      const target = this.map.get(facing.x, facing.y);
-      const here = standingTile;
-      if (target === T.DOOR || here === T.DOOR) this.openInn();
-      else if (target === T.SHOP_DOOR || here === T.SHOP_DOOR) this.openShop();
-      else if (target === T.SIGN) this.openBuildMenu();
+      this.interact();
     }
   }
 
-  private updateDialog(dt: number): void {
-    const input = this.game.input;
-    const dialog = this.dialog;
-    if (!dialog) return;
+  private syncFollowers(): void {
+    this.followers.forEach((f, i) => {
+      const target = this.player.trail[i];
+      if (target) f.setTarget(target.x, target.y);
+    });
+  }
 
-    if (dialog.kind === "message") {
-      if (input.pressed("confirm") || input.pressed("cancel")) {
-        this.dialog = null;
+  private interact(): void {
+    const facing = this.player.facingTile();
+    const spots = [facing, { x: this.player.tileX, y: this.player.tileY }];
+
+    for (const spot of spots) {
+      const tile = this.map.get(spot.x, spot.y);
+      if (tile === T.DOOR) {
+        this.openInn();
+        return;
       }
-      return;
+      if (tile === T.SHOP_DOOR) {
+        const facility = this.facilityAtDoor(spot.x, spot.y);
+        if (facility) this.openFacility(facility);
+        return;
+      }
+      if (tile === T.SIGN) {
+        const facility = this.facilityAtSign(spot.x, spot.y);
+        if (facility) this.openBuildMenu(facility);
+        return;
+      }
     }
+  }
 
-    const ev = dialog.menu.update(input, dt);
-    if (!ev) return;
-    if (ev.type === "cancel") {
-      this.dialog = null;
-      return;
+  private facilityAtDoor(x: number, y: number): FacilityDef | null {
+    for (const id of FACILITY_IDS) {
+      const def = FACILITIES[id];
+      if (!this.state.built[id]) continue;
+      if (facilityDoors(def).some((d) => d.x === x && d.y === y)) return def;
     }
-    switch (dialog.id) {
-      case "inn":
-        this.onInnSelect(ev.item.value);
-        break;
-      case "shop":
-        this.onShopSelect(ev.item.value as WeaponId | "quit");
-        break;
-      case "build":
-        this.onBuildSelect(ev.item.value);
-        break;
+    return null;
+  }
+
+  private facilityAtSign(x: number, y: number): FacilityDef | null {
+    for (const id of FACILITY_IDS) {
+      const def = FACILITIES[id];
+      if (!this.state.built[id] && def.sign.x === x && def.sign.y === y) return def;
     }
+    return null;
+  }
+
+  // =========================================================================
+  // メニュー基盤
+  // =========================================================================
+  private pushMenu(menu: ListMenu, onSelect: (value: string) => void, info?: string): void {
+    this.menuStack.push({ menu, onSelect, info });
+  }
+
+  private closeMenus(): void {
+    this.menuStack = [];
+  }
+
+  private showMessage(lines: string[]): void {
+    this.closeMenus();
+    this.message = lines;
+  }
+
+  private setTopInfo(info: string): void {
+    const top = this.menuStack[this.menuStack.length - 1];
+    if (top) top.info = info;
   }
 
   // =========================================================================
@@ -175,19 +264,18 @@ export class TownScene extends Scene {
   // =========================================================================
   private openInn(): void {
     this.game.audio.playSe("decide");
-    this.dialog = {
-      kind: "menu",
-      id: "inn",
-      menu: new ListMenu(
+    this.pushMenu(
+      new ListMenu(
         [
-          { label: "とまる（HP・MP かいふく）", value: "rest", note: `${INN_PRICE}G` },
+          { label: "とまる（あさまで やすむ）", value: "rest", note: `${INN_PRICE}G` },
           { label: `${ITEMS.yakusou.name}を かう`, value: "yakusou", note: `${ITEMS.yakusou.price}G` },
           { label: `${ITEMS.tsubasa.name}を かう`, value: "tsubasa", note: `${ITEMS.tsubasa.price}G` },
           { label: "やめる", value: "quit" },
         ],
         "やどや『ねむりのおおかみ亭』",
       ),
-    };
+      (value) => this.onInnSelect(value),
+    );
   }
 
   private onInnSelect(value: string): void {
@@ -198,14 +286,20 @@ export class TownScene extends Scene {
           return;
         }
         this.state.gold -= INN_PRICE;
-        this.state.hp = this.state.maxHp;
-        this.state.mp = this.state.maxMp;
+        for (const m of this.state.party) {
+          if (m.alive) m.fullRestore();
+        }
+        this.state.sleepUntilMorning(INN_WAKE_HOUR);
         this.state.save(this.game);
-        this.showMessage([
-          "ぐっすり ねむって つかれが とれた！",
-          "HPと MPが ぜんかいふくした！",
-        ]);
         this.game.audio.playSe("heal");
+        const lines = [
+          "ぐっすり ねむって あさに なった。",
+          "HPと MPが ぜんかいふくした！",
+        ];
+        if (this.state.koMembers().length > 0) {
+          lines.push("（たおれた なかまは きょうかいで よみがえらせよう）");
+        }
+        this.showMessage(lines);
         return;
       }
       case "yakusou":
@@ -218,130 +312,469 @@ export class TownScene extends Scene {
         this.state.gold -= item.price;
         this.state.addItem(item.id);
         this.state.save(this.game);
-        this.showMessage([`${item.name}を こうにゅうした！（x${this.state.itemCount(item.id)}）`]);
         this.game.audio.playSe("buy");
+        this.setTopInfo(`${item.name}を こうにゅう（x${this.state.itemCount(item.id)}）`);
         return;
       }
       default:
-        this.dialog = null;
+        this.closeMenus();
     }
   }
 
   // =========================================================================
-  // 武器屋
+  // 施設の振り分け
   // =========================================================================
-  private openShop(): void {
+  private openFacility(def: FacilityDef): void {
+    if (!isOpen(def, this.state.hour)) {
+      this.showMessage([
+        `${def.name}は しまっている。`,
+        `（えいぎょうは ${def.hours!.open}じ から ${def.hours!.close}じ まで）`,
+      ]);
+      return;
+    }
     this.game.audio.playSe("decide");
-    this.dialog = {
-      kind: "menu",
-      id: "shop",
-      menu: new ListMenu(
+    switch (def.id) {
+      case "weaponShop":
+        this.openEquipShop(def, WEAPON_SHOP_STOCK);
+        break;
+      case "armorShop":
+        this.openEquipShop(def, ARMOR_SHOP_STOCK);
+        break;
+      case "tavern":
+        this.openTavern(def);
+        break;
+      case "church":
+        this.openChurch(def);
+        break;
+      case "smithy":
+        this.openSmithy(def);
+        break;
+      case "market":
+        this.openMarket(def);
+        break;
+    }
+  }
+
+  // =========================================================================
+  // 装備ショップ（武器屋・防具屋）
+  // =========================================================================
+  private openEquipShop(def: FacilityDef, stock: EquipId[]): void {
+    this.pushMenu(
+      new ListMenu(
         [
-          ...SHOP_WEAPONS.map((id) => {
-            const w = WEAPONS[id];
-            const owned = this.weaponRank(this.state.weaponId) >= this.weaponRank(id);
-            return {
-              label: `${w.name}（こうげき +${w.atk}）`,
-              value: id,
-              note: owned ? "そうびちゅう" : `${w.price}G`,
-              disabled: owned,
-            };
+          ...stock.map((id) => {
+            const e = EQUIPMENT[id];
+            const stat = e.atk > 0 ? `こうげき+${e.atk}` : `しゅび+${e.def}`;
+            return { label: `${e.name}（${stat}）`, value: id, note: `${e.price}G` };
           }),
           { label: "やめる", value: "quit" },
         ],
-        "ぶきや『はがねのタカ』",
+        def.name,
       ),
-    };
+      (value) => {
+        if (value === "quit") {
+          this.closeMenus();
+          return;
+        }
+        this.chooseEquipTarget(value as EquipId);
+      },
+    );
   }
 
-  private weaponRank(id: WeaponId): number {
-    return SHOP_WEAPONS.indexOf(id); // none は -1
+  private chooseEquipTarget(equipId: EquipId): void {
+    const e = EQUIPMENT[equipId];
+    this.pushMenu(
+      new ListMenu(
+        this.state.party.map((m) => ({
+          label: m.name,
+          value: m.id,
+          note: `${SLOT_NAMES[e.slot]}: ${equipName(m.equip[e.slot])}`,
+        })),
+        "だれに そうびする？",
+      ),
+      (memberId) => this.buyAndEquip(equipId, memberId),
+    );
   }
 
-  private onShopSelect(value: WeaponId | "quit"): void {
-    if (value === "quit") {
-      this.dialog = null;
+  private buyAndEquip(equipId: EquipId, memberId: string): void {
+    const e = EQUIPMENT[equipId];
+    const member = this.state.party.find((m) => m.id === memberId);
+    if (!member) return;
+    const old = member.equip[e.slot];
+    if (old?.id === equipId) {
+      this.showMessage(["「それは もう そうびしているぜ。」"]);
       return;
     }
-    const weapon = WEAPONS[value];
-    if (this.state.gold < weapon.price) {
+    const tradeIn = old ? Math.floor(EQUIPMENT[old.id].price * TRADE_IN_RATE) : 0;
+    if (this.state.gold + tradeIn < e.price) {
       this.showMessage(["「おかねが たりないぜ。 また きてくれ！」"]);
       return;
     }
-    this.state.gold -= weapon.price;
-    this.state.weaponId = weapon.id;
+    this.state.gold = this.state.gold - e.price + tradeIn;
+    member.equip[e.slot] = { id: equipId, plus: 0 };
     this.state.save(this.game);
     this.game.audio.playSe("buy");
+    const lines = [`${member.name}は ${e.name}を そうびした！`];
+    if (old) lines.push(`（${equipName(old)}を ${tradeIn}Gで したどり）`);
+    this.showMessage(lines);
+  }
+
+  // =========================================================================
+  // 酒場（勧誘・編成）
+  // =========================================================================
+  private openTavern(def: FacilityDef): void {
+    this.pushMenu(
+      new ListMenu(
+        [
+          { label: "なかまを さそう", value: "recruit" },
+          { label: "パーティを へんせい", value: "manage" },
+          { label: "やめる", value: "quit" },
+        ],
+        def.name,
+      ),
+      (value) => {
+        if (value === "quit") this.closeMenus();
+        else if (value === "recruit") this.openRecruitMenu();
+        else this.openPartyManageMenu();
+      },
+    );
+  }
+
+  private openRecruitMenu(): void {
+    const recruited = this.state.recruitedIds();
+    const candidates = COMPANIONS.filter((c) => !recruited.has(c.id));
+    if (candidates.length === 0) {
+      this.showMessage(["さかばに あたらしい かおは いないようだ。"]);
+      return;
+    }
+    this.pushMenu(
+      new ListMenu(
+        candidates.map((c) => ({
+          label: `${c.name}（${cName(c.classId)}）`,
+          value: c.id,
+          note: `${c.fee}G`,
+        })),
+        "だれを さそう？",
+      ),
+      (id) => this.recruit(id),
+    );
+  }
+
+  private recruit(companionId: string): void {
+    const def = COMPANIONS.find((c) => c.id === companionId);
+    if (!def) return;
+    if (!this.state.canRecruit()) {
+      this.showMessage([
+        "パーティが いっぱいだ！",
+        "（へんせいで だれかを やすませてから さそおう）",
+      ]);
+      return;
+    }
+    if (this.state.gold < def.fee) {
+      this.showMessage(["「しきんが たりないみたいだな。」"]);
+      return;
+    }
+    this.state.gold -= def.fee;
+    const level = Math.max(1, this.state.hero.level - 1);
+    this.state.party.push(PartyMember.fromCompanion(def, level));
+    this.state.save(this.game);
+    this.game.audio.playSe("levelup");
     this.showMessage([
-      `${weapon.name}を こうにゅうして そうびした！`,
-      `こうげき力が ${this.state.atk}に あがった！`,
+      `${def.name}が なかまに くわわった！`,
+      def.blurb,
     ]);
+    // 隊列に反映
+    this.followers = this.state.party
+      .slice(1)
+      .map((m) => new Follower(m, this.player.tileX, this.player.tileY));
+  }
+
+  private openPartyManageMenu(): void {
+    const items = [
+      ...this.state.party.slice(1).map((m) => ({
+        label: `${m.name}を やすませる`,
+        value: `out:${m.id}`,
+        note: `Lv${m.level}`,
+      })),
+      ...this.state.bench.map((m) => ({
+        label: `${m.name}を くわえる`,
+        value: `in:${m.id}`,
+        note: `Lv${m.level}`,
+        disabled: !this.state.canRecruit(),
+      })),
+    ];
+    if (items.length === 0) {
+      this.showMessage(["いれかえる なかまが いない。"]);
+      return;
+    }
+    this.pushMenu(new ListMenu(items, "パーティ へんせい"), (value) => {
+      const [op, id] = value.split(":");
+      if (op === "out") {
+        const idx = this.state.party.findIndex((m) => m.id === id);
+        if (idx > 0) {
+          const [m] = this.state.party.splice(idx, 1);
+          if (m) this.state.bench.push(m);
+        }
+      } else if (op === "in" && this.state.canRecruit()) {
+        const idx = this.state.bench.findIndex((m) => m.id === id);
+        if (idx >= 0) {
+          const [m] = this.state.bench.splice(idx, 1);
+          if (m) this.state.party.push(m);
+        }
+      }
+      this.state.save(this.game);
+      this.closeMenus();
+      this.followers = this.state.party
+        .slice(1)
+        .map((m) => new Follower(m, this.player.tileX, this.player.tileY));
+      this.openPartyManageMenu();
+    });
+  }
+
+  // =========================================================================
+  // 教会
+  // =========================================================================
+  private openChurch(def: FacilityDef): void {
+    this.pushMenu(
+      new ListMenu(
+        [
+          { label: "よみがえらせる", value: "revive" },
+          { label: "おいのりを する", value: "pray" },
+          { label: "やめる", value: "quit" },
+        ],
+        def.name,
+      ),
+      (value) => {
+        if (value === "quit") this.closeMenus();
+        else if (value === "pray") {
+          this.showMessage([
+            "しずかな いのりが きこえる……",
+            "こころが やすらいだ。",
+          ]);
+        } else this.openReviveMenu();
+      },
+    );
+  }
+
+  private openReviveMenu(): void {
+    const ko = this.state.koMembers();
+    if (ko.length === 0) {
+      this.showMessage(["「たおれた かたは いないようですね。 なによりです。」"]);
+      return;
+    }
+    this.pushMenu(
+      new ListMenu(
+        ko.map((m) => ({
+          label: m.name,
+          value: m.id,
+          note: `${m.level * REVIVE_PRICE_PER_LEVEL}G`,
+        })),
+        "だれを よみがえらせる？",
+      ),
+      (id) => {
+        const member = this.state.koMembers().find((m) => m.id === id);
+        if (!member) return;
+        const price = member.level * REVIVE_PRICE_PER_LEVEL;
+        if (this.state.gold < price) {
+          this.showMessage(["「おきふせが たりないようです……」"]);
+          return;
+        }
+        this.state.gold -= price;
+        member.revive();
+        this.state.save(this.game);
+        this.game.audio.playSe("heal");
+        this.showMessage([`${member.name}は いきかえった！`]);
+      },
+    );
+  }
+
+  // =========================================================================
+  // 鍛冶屋
+  // =========================================================================
+  private openSmithy(def: FacilityDef): void {
+    this.pushMenu(
+      new ListMenu(
+        [
+          ...this.state.party.map((m) => ({
+            label: m.name,
+            value: m.id,
+            note: `Lv${m.level}`,
+          })),
+          { label: "やめる", value: "quit" },
+        ],
+        `${def.name}（だれの そうびを きたえる？）`,
+      ),
+      (value) => {
+        if (value === "quit") {
+          this.closeMenus();
+          return;
+        }
+        this.openSmithySlotMenu(value);
+      },
+    );
+  }
+
+  private openSmithySlotMenu(memberId: string): void {
+    const member = this.state.party.find((m) => m.id === memberId);
+    if (!member) return;
+    const slots: EquipSlot[] = ["weapon", "shield", "armor"];
+    this.pushMenu(
+      new ListMenu(
+        slots.map((slot) => {
+          const inst = member.equip[slot];
+          if (!inst) {
+            return { label: `${SLOT_NAMES[slot]}: なし`, value: slot, disabled: true };
+          }
+          if (inst.plus >= SMITHY_MAX_PLUS) {
+            return {
+              label: `${equipName(inst)}`,
+              value: slot,
+              note: "きたえきった",
+              disabled: true,
+            };
+          }
+          const cost = smithyCost(inst.plus + 1);
+          return {
+            label: `${equipName(inst)} → +${inst.plus + 1}`,
+            value: slot,
+            note: `こうせき${cost.kouseki} + ${cost.gold}G`,
+          };
+        }),
+        `${member.name}の どれを きたえる？`,
+      ),
+      (slot) => this.forgeEquip(member, slot as EquipSlot),
+    );
+  }
+
+  private forgeEquip(member: PartyMember, slot: EquipSlot): void {
+    const inst = member.equip[slot];
+    if (!inst || inst.plus >= SMITHY_MAX_PLUS) return;
+    const cost = smithyCost(inst.plus + 1);
+    if (this.state.itemCount("kouseki") < cost.kouseki || this.state.gold < cost.gold) {
+      this.showMessage([
+        "「ざいりょうか かねが たりねえな。」",
+        `（ひつよう: こうせき${cost.kouseki}こ と ${cost.gold}G）`,
+      ]);
+      return;
+    }
+    this.state.removeItem("kouseki", cost.kouseki);
+    this.state.gold -= cost.gold;
+    inst.plus++;
+    this.state.save(this.game);
+    this.game.audio.playSe("build");
+    this.showMessage([
+      "カン カン カン……",
+      `${equipName(inst)}に きたえあげた！`,
+    ]);
+  }
+
+  // =========================================================================
+  // 市場
+  // =========================================================================
+  private openMarket(def: FacilityDef): void {
+    const items = this.buildSellMenuItems();
+    if (items.length === 0) {
+      this.showMessage(["うれる ものを もっていない。"]);
+      return;
+    }
+    this.pushMenu(
+      new ListMenu([...items, { label: "やめる", value: "quit" }], def.name),
+      (value) => {
+        if (value === "quit") {
+          this.closeMenus();
+          return;
+        }
+        this.sellItem(value as ItemId);
+      },
+    );
+  }
+
+  private buildSellMenuItems(): { label: string; value: string; note: string }[] {
+    return ITEM_IDS.filter(
+      (id) => ITEMS[id].sell > 0 && this.state.itemCount(id) > 0,
+    ).map((id) => ({
+      label: `${ITEMS[id].name}を うる`,
+      value: id,
+      note: `${ITEMS[id].sell}G x${this.state.itemCount(id)}`,
+    }));
+  }
+
+  private sellItem(id: ItemId): void {
+    if (this.state.itemCount(id) <= 0) return;
+    this.state.removeItem(id);
+    this.state.gold += ITEMS[id].sell;
+    this.game.audio.playSe("buy");
+    // メニューを作り直して継続販売できるようにする
+    const top = this.menuStack[this.menuStack.length - 1];
+    if (top) {
+      const items = this.buildSellMenuItems();
+      top.menu.items = [...items, { label: "やめる", value: "quit" }];
+      top.menu.index = Math.min(top.menu.index, top.menu.items.length - 1);
+      top.info = `${ITEMS[id].name}を うった！（+${ITEMS[id].sell}G / しょじ ${this.state.gold}G）`;
+    }
+    this.state.save(this.game);
   }
 
   // =========================================================================
   // 建築
   // =========================================================================
-  private openBuildMenu(): void {
+  private openBuildMenu(def: FacilityDef): void {
     this.game.audio.playSe("decide");
-    const cost = WEAPON_SHOP_COST;
-    this.dialog = {
-      kind: "menu",
-      id: "build",
-      menu: new ListMenu(
+    this.pushMenu(
+      new ListMenu(
         [
           {
-            label: "ぶきやを たてる",
+            label: `${def.name}を たてる`,
             value: "build",
-            note: `こうせき${cost.kouseki} + ${cost.gold}G`,
+            note: `こうせき${def.cost.kouseki} + ${def.cost.gold}G`,
           },
           { label: "やめる", value: "quit" },
         ],
-        `けんちくよていち（こうせき: ${this.state.itemCount("kouseki")}こ しょじ）`,
+        `けんちくよていち: ${def.desc}（こうせき ${this.state.itemCount("kouseki")}こ しょじ）`,
       ),
-    };
+      (value) => {
+        if (value !== "build") {
+          this.closeMenus();
+          return;
+        }
+        this.build(def);
+      },
+    );
   }
 
-  private onBuildSelect(value: string): void {
-    if (value !== "build") {
-      this.dialog = null;
-      return;
-    }
-    const cost = WEAPON_SHOP_COST;
-    if (this.state.itemCount("kouseki") < cost.kouseki || this.state.gold < cost.gold) {
+  private build(def: FacilityDef): void {
+    if (
+      this.state.itemCount("kouseki") < def.cost.kouseki ||
+      this.state.gold < def.cost.gold
+    ) {
       this.showMessage([
         "ざいりょうが たりない！",
-        `ひつよう: こうせき${cost.kouseki}こ と ${cost.gold}ゴールド`,
-        "（こうせきは ダンジョンの たからばこや がいこつへいから てにはいる）",
+        `ひつよう: こうせき${def.cost.kouseki}こ と ${def.cost.gold}ゴールド`,
       ]);
       return;
     }
-    // 建設予定地の上に立っていたら建てられない
-    const p = SHOP_PLOT;
+    const p = def.plot;
     if (
-      this.player.tileX >= p.x0 &&
-      this.player.tileX <= p.x1 &&
-      this.player.tileY >= p.roofY0 &&
-      this.player.tileY <= p.doorY
+      this.player.tileX >= p.x &&
+      this.player.tileX < p.x + FACILITY_W &&
+      this.player.tileY >= p.y &&
+      this.player.tileY < p.y + FACILITY_H
     ) {
       this.showMessage(["そこに たっていては たてられない！"]);
       return;
     }
-    this.state.removeItem("kouseki", cost.kouseki);
-    this.state.gold -= cost.gold;
-    this.state.town.weaponShop = true;
-    this.applyTownState();
+    this.state.removeItem("kouseki", def.cost.kouseki);
+    this.state.gold -= def.cost.gold;
+    this.state.built[def.id] = true;
+    this.stampBuilding(def);
     this.state.save(this.game);
     this.game.audio.playSe("build");
-    this.bannerTimer = 3; // 完成を祝って村名バナー再表示
+    this.bannerTimer = 3;
     this.showMessage([
       "トンテンカン トンテンカン……",
-      "ぶきや『はがねのタカ』が かんせいした！！",
+      `${def.name}が かんせいした！！`,
       "むらが すこし にぎやかに なった。",
     ]);
-  }
-
-  private showMessage(lines: string[]): void {
-    this.dialog = { kind: "message", lines };
   }
 
   // =========================================================================
@@ -355,8 +788,19 @@ export class TownScene extends Scene {
 
     this.cam.begin(ctx);
     this.map.render(ctx, this.cam, TILE_DEFS, this.game.assets);
-    this.player.render(ctx, this.game.assets);
+    // 隊列は後ろから描いて勇者を最前面に
+    for (let i = this.followers.length - 1; i >= 0; i--) {
+      this.followers[i]!.render(ctx, this.game.assets);
+    }
+    this.player.render(ctx, this.game.assets, this.state.hero);
     this.cam.end(ctx);
+
+    // 昼夜ティント
+    const tint = PHASE_TINTS[this.state.phase()];
+    if (tint) {
+      ctx.fillStyle = tint;
+      ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+    }
 
     this.renderUi(r.ui);
   }
@@ -372,29 +816,61 @@ export class TownScene extends Scene {
       return;
     }
 
-    const dialog = this.dialog;
-    if (dialog?.kind === "message") {
-      drawMessage(this.game, ctx, dialog.lines);
-    } else if (dialog?.kind === "menu") {
-      dialog.menu.render(ctx, text, 64, UI_H - dialog.menu.height() - 96, 320);
-    } else {
-      text.draw(ctx, "移動: 矢印/WASD   Z: しらべる   C: メニュー", UI_W - 12, UI_H - 20, {
-        size: 10,
-        align: "right",
-        color: "#cfc8e8",
-      });
+    if (this.message) {
+      drawMessage(this.game, ctx, this.message);
+      return;
     }
+
+    if (this.menuStack.length > 0) {
+      // スタックを重ねて描画（下の階層は左、上の階層は右にずらす）
+      this.menuStack.forEach((entry, i) => {
+        const x = 56 + i * 36;
+        const y = UI_H - entry.menu.height() - 96 - i * 14;
+        entry.menu.render(ctx, text, x, y, 360);
+        if (i === this.menuStack.length - 1 && entry.info) {
+          text.window(ctx, x, y + entry.menu.height() + 6, 360, 32);
+          text.draw(ctx, entry.info, x + 14, y + entry.menu.height() + 16, { size: 11 });
+        }
+      });
+      return;
+    }
+
+    text.draw(ctx, "移動: 矢印/WASD   Z: しらべる   C: メニュー", UI_W - 12, UI_H - 20, {
+      size: 10,
+      align: "right",
+      color: "#cfc8e8",
+    });
   }
 
   private renderHud(ctx: CanvasRenderingContext2D): void {
     const s = this.state;
     const text = this.game.text;
-    text.window(ctx, UI_W - 196, 10, 186, 46);
-    const hpColor =
-      s.hp <= s.maxHp * 0.25 ? "#ff8a8a" : s.hp <= s.maxHp * 0.5 ? "#ffd970" : "#f5f1e8";
-    text.draw(ctx, `HP ${s.hp}/${s.maxHp}`, UI_W - 182, 20, { size: 11, color: hpColor });
-    text.draw(ctx, `MP ${s.mp}/${s.maxMp}`, UI_W - 96, 20, { size: 11, color: "#a8c8f0" });
-    text.draw(ctx, `${s.gold} G`, UI_W - 182, 37, { size: 11, color: "#ffd970" });
-    text.draw(ctx, `Lv ${s.level}`, UI_W - 96, 37, { size: 11 });
+    const h = 36 + s.party.length * 16;
+    text.window(ctx, UI_W - 216, 10, 206, h);
+    text.draw(ctx, s.timeLabel(), UI_W - 202, 20, { size: 10, color: "#ffe9a0" });
+    s.party.forEach((m, i) => {
+      const y = 36 + i * 16;
+      const hpColor = !m.alive
+        ? "#7d7690"
+        : m.hp <= m.maxHp * 0.25
+          ? "#ff8a8a"
+          : "#f5f1e8";
+      text.draw(ctx, m.name, UI_W - 202, y, {
+        size: 10,
+        color: m.alive ? "#d8d2e8" : "#7d7690",
+      });
+      text.draw(ctx, `HP${m.hp}`, UI_W - 128, y, { size: 10, color: hpColor });
+      text.draw(ctx, `MP${m.mp}`, UI_W - 78, y, { size: 10, color: "#a8c8f0" });
+    });
+    text.draw(ctx, `${s.gold} G`, UI_W - 24, 20, {
+      size: 10,
+      align: "right",
+      color: "#ffd970",
+    });
   }
+}
+
+/** 職業名の短縮ヘルパー */
+function cName(id: ClassId): string {
+  return CLASSES[id].name;
 }

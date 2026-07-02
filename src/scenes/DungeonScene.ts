@@ -7,6 +7,9 @@ import {
   ENCOUNTER_RATE,
   GRACE_AFTER_BATTLE,
   GRACE_FLOOR_START,
+  MIN_PER_BATTLE,
+  MIN_PER_STEP,
+  enemyHpMult,
 } from "../data/balance";
 import { enemiesForFloor, bossDef, spawnEnemy } from "../data/enemies";
 import { ITEMS } from "../data/items";
@@ -15,6 +18,7 @@ import { TILE, TileMap } from "../gfx/TileMap";
 import { drawBanner, drawMessage } from "../ui/Windows";
 import { PauseMenu } from "../ui/PauseMenu";
 import { generateFloor } from "../world/DungeonGenerator";
+import { Follower } from "../world/Follower";
 import type { GameState } from "../world/GameState";
 import { Player } from "../world/Player";
 import { BattleScene, type BattleResult } from "./BattleScene";
@@ -30,6 +34,7 @@ export class DungeonScene extends Scene {
 
   private map!: TileMap;
   private player!: Player;
+  private followers: Follower[] = [];
   private cam = new Camera();
   private bannerTimer = 2.6;
   private message: string[] | null = null;
@@ -55,6 +60,9 @@ export class DungeonScene extends Scene {
     const plan = generateFloor(this.state.run!.seed, this.floor);
     this.map = plan.map;
     this.player = new Player(plan.entry.x, plan.entry.y);
+    this.followers = this.state.party
+      .slice(1)
+      .map((m) => new Follower(m, plan.entry.x, plan.entry.y));
     this.grace = GRACE_FLOOR_START;
     this.game.audio.playBgm("dungeon");
   }
@@ -67,6 +75,7 @@ export class DungeonScene extends Scene {
 
   update(dt: number): void {
     if (this.bannerTimer > 0) this.bannerTimer -= dt;
+    for (const f of this.followers) f.update(dt);
     if (this.leaving) return;
 
     // エンカウント演出 → 戦闘開始
@@ -102,10 +111,15 @@ export class DungeonScene extends Scene {
     }
 
     this.player.update(dt, input, this.map, TILE_DEFS);
+    this.followers.forEach((f, i) => {
+      const target = this.player.trail[i];
+      if (target) f.setTarget(target.x, target.y);
+    });
     this.game.debug.set("Pos", `B${this.floor}F (${this.player.tileX}, ${this.player.tileY})`);
 
     // タイル到着イベント（連続移動中も1歩ごとに発火する）
     if (this.player.arrival) {
+      this.state.advanceTime(MIN_PER_STEP);
       this.onArrive(this.player.arrival.x, this.player.arrival.y);
       return;
     }
@@ -159,6 +173,11 @@ export class DungeonScene extends Scene {
     const def = boss ? bossDef() : run.battleRng.pick(enemiesForFloor(this.floor));
     if (!def) return;
     const enemy = spawnEnemy(def, this.floor);
+    // パーティ人数に応じて敵のHPを底上げする
+    const mult = enemyHpMult(this.state.aliveMembers().length);
+    enemy.maxHp = Math.round(enemy.maxHp * mult);
+    enemy.hp = enemy.maxHp;
+    this.state.advanceTime(MIN_PER_BATTLE);
 
     this.encounterFx = 0.45;
     this.game.audio.playSe("encounter");
@@ -245,7 +264,10 @@ export class DungeonScene extends Scene {
 
     this.cam.begin(ctx);
     this.map.render(ctx, this.cam, TILE_DEFS, this.game.assets);
-    this.player.render(ctx, this.game.assets);
+    for (let i = this.followers.length - 1; i >= 0; i--) {
+      this.followers[i]!.render(ctx, this.game.assets);
+    }
+    this.player.render(ctx, this.game.assets, this.state.hero);
     this.cam.end(ctx);
 
     this.renderTorchlight(ctx);
@@ -298,16 +320,32 @@ export class DungeonScene extends Scene {
   private renderHud(ctx: CanvasRenderingContext2D): void {
     const s = this.state;
     const text = this.game.text;
-    text.window(ctx, UI_W - 196, 10, 186, 62);
-    text.draw(ctx, `B${this.floor}F / B${DUNGEON_MAX_FLOOR}F`, UI_W - 182, 20, {
-      size: 11,
+    const h = 36 + s.party.length * 16;
+    text.window(ctx, UI_W - 216, 10, 206, h);
+    text.draw(ctx, `B${this.floor}F / B${DUNGEON_MAX_FLOOR}F`, UI_W - 202, 20, {
+      size: 10,
       color: "#ffe9a0",
     });
-    const hpColor =
-      s.hp <= s.maxHp * 0.25 ? "#ff8a8a" : s.hp <= s.maxHp * 0.5 ? "#ffd970" : "#f5f1e8";
-    text.draw(ctx, `HP ${s.hp}/${s.maxHp}`, UI_W - 182, 37, { size: 11, color: hpColor });
-    text.draw(ctx, `MP ${s.mp}/${s.maxMp}`, UI_W - 96, 37, { size: 11, color: "#a8c8f0" });
-    text.draw(ctx, `${s.gold} G`, UI_W - 182, 53, { size: 11, color: "#ffd970" });
-    text.draw(ctx, `Lv ${s.level}`, UI_W - 96, 53, { size: 11 });
+    text.draw(ctx, `${s.gold} G`, UI_W - 24, 20, {
+      size: 10,
+      align: "right",
+      color: "#ffd970",
+    });
+    s.party.forEach((m, i) => {
+      const y = 36 + i * 16;
+      const hpColor = !m.alive
+        ? "#7d7690"
+        : m.hp <= m.maxHp * 0.25
+          ? "#ff8a8a"
+          : m.hp <= m.maxHp * 0.5
+            ? "#ffd970"
+            : "#f5f1e8";
+      text.draw(ctx, m.name, UI_W - 202, y, {
+        size: 10,
+        color: m.alive ? "#d8d2e8" : "#7d7690",
+      });
+      text.draw(ctx, `HP${m.hp}`, UI_W - 128, y, { size: 10, color: hpColor });
+      text.draw(ctx, `MP${m.mp}`, UI_W - 78, y, { size: 10, color: "#a8c8f0" });
+    });
   }
 }

@@ -8,7 +8,7 @@
  * このクラスの read/write を差し替えるだけで対応できるよう、
  * ストレージアクセスを private メソッドに閉じ込めてある。
  */
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 export interface SaveData {
   [key: string]: unknown;
@@ -64,9 +64,9 @@ export class SaveManager {
 
   /** 旧バージョンのセーブデータを現行形式へ段階的に変換する */
   private migrate(file: SaveFile): SaveFile {
-    // 例: if (file.version === 1) { ...変換... ; file.version = 2; }
-    if (file.version !== SAVE_VERSION) {
-      console.warn(`[SaveManager] 未知のセーブバージョン: ${file.version}`);
+    // v1 → v2 はデータ形状の違いで判別できるため GameState.load 側で変換する
+    if (file.version > SAVE_VERSION) {
+      console.warn(`[SaveManager] 未来のセーブバージョン: ${file.version}`);
     }
     return file;
   }

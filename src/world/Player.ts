@@ -1,6 +1,8 @@
 import type { AssetManager } from "../core/AssetManager";
 import type { Input } from "../core/Input";
+import { EQUIPMENT } from "../data/equipment";
 import { TILE, type TileDefs, type TileMap } from "../gfx/TileMap";
+import type { PartyMember } from "./PartyMember";
 
 export type Dir = "up" | "down" | "left" | "right";
 
@@ -35,6 +37,12 @@ export class Player {
    * エンカウント判定・階段・ポータルなどのタイルイベントはこれを見ること。
    */
   arrival: { x: number; y: number } | null = null;
+
+  /**
+   * 勇者が直前に空けたタイルの履歴（新しい順）。
+   * 仲間の隊列（Follower）が trail[i] を目標にする。
+   */
+  readonly trail: { x: number; y: number }[] = [];
 
   private fromX: number;
   private fromY: number;
@@ -82,6 +90,8 @@ export class Player {
         const nx = this.tileX + d.dx;
         const ny = this.tileY + d.dy;
         if (!map.isSolid(nx, ny, defs)) {
+          this.trail.unshift({ x: this.tileX, y: this.tileY });
+          if (this.trail.length > 8) this.trail.pop();
           this.fromX = this.tileX;
           this.fromY = this.tileY;
           this.tileX = nx;
@@ -105,8 +115,29 @@ export class Player {
     return null;
   }
 
-  render(ctx: CanvasRenderingContext2D, assets: AssetManager): void {
-    assets.drawSprite(ctx, `hero.${this.dir}`, Math.round(this.px), Math.round(this.py), TILE, TILE);
+  /**
+   * 描画。member を渡すと装備が見た目に反映される:
+   * 鎧 = 下部の帯 / 盾 = 左側のブロック / 武器 = 右上のグリップ。
+   * 本物のドット絵導入後はレイヤー別スプライト (hero.armor.steel 等) に置き換える。
+   */
+  render(ctx: CanvasRenderingContext2D, assets: AssetManager, member?: PartyMember): void {
+    const x = Math.round(this.px);
+    const y = Math.round(this.py);
+    assets.drawSprite(ctx, `hero.${this.dir}`, x, y, TILE, TILE);
+    if (!member) return;
+    const { weapon, shield, armor } = member.equip;
+    if (armor) {
+      ctx.fillStyle = EQUIPMENT[armor.id].color;
+      ctx.fillRect(x + 2, y + TILE - 4, TILE - 4, 3);
+    }
+    if (shield) {
+      ctx.fillStyle = EQUIPMENT[shield.id].color;
+      ctx.fillRect(x, y + 5, 3, 7);
+    }
+    if (weapon) {
+      ctx.fillStyle = EQUIPMENT[weapon.id].color;
+      ctx.fillRect(x + TILE - 3, y + 1, 2, 8);
+    }
   }
 }
 

@@ -1,5 +1,6 @@
 import type { AssetManager } from "../core/AssetManager";
 import type { TileDefs } from "../gfx/TileMap";
+import { CLASSES } from "./classes";
 
 /**
  * タイルID定義。マップデータとロジック（当たり判定・イベントトリガー）が参照する。
@@ -24,6 +25,11 @@ export const T = {
   BOSS: 15,
   SIGN: 16,
   SHOP_DOOR: 17,
+  ROOF_BLUE: 18,
+  ROOF_GREEN: 19,
+  ROOF_DARK: 20,
+  ROOF_GOLD: 21,
+  ROOF_WHITE: 22,
 } as const;
 
 export const TILE_DEFS: TileDefs = {
@@ -44,7 +50,12 @@ export const TILE_DEFS: TileDefs = {
   [T.CHEST_OPEN]: { name: "空の宝箱", solid: true, sprite: "tile.chestOpen" },
   [T.BOSS]: { name: "ぬしの祭壇", solid: false, sprite: "tile.boss" },
   [T.SIGN]: { name: "建築予定地", solid: true, sprite: "tile.sign" },
-  [T.SHOP_DOOR]: { name: "武器屋の扉", solid: false, sprite: "tile.shopDoor" },
+  [T.SHOP_DOOR]: { name: "店の扉", solid: false, sprite: "tile.shopDoor" },
+  [T.ROOF_BLUE]: { name: "青い屋根", solid: true, sprite: "tile.roofBlue" },
+  [T.ROOF_GREEN]: { name: "緑の屋根", solid: true, sprite: "tile.roofGreen" },
+  [T.ROOF_DARK]: { name: "黒い屋根", solid: true, sprite: "tile.roofDark" },
+  [T.ROOF_GOLD]: { name: "黄の屋根", solid: true, sprite: "tile.roofGold" },
+  [T.ROOF_WHITE]: { name: "白い屋根", solid: true, sprite: "tile.roofWhite" },
 };
 
 /** 街マップの文字 → タイルID */
@@ -142,12 +153,29 @@ export function registerPlaceholderArt(assets: AssetManager): void {
     symbol: "∩",
     symbolColor: "#3d2414",
   });
+  assets.definePlaceholder("tile.roofBlue", { color: "#3a5a9e" });
+  assets.definePlaceholder("tile.roofGreen", { color: "#3a7a4a" });
+  assets.definePlaceholder("tile.roofDark", { color: "#4a4652" });
+  assets.definePlaceholder("tile.roofGold", { color: "#b8923a" });
+  assets.definePlaceholder("tile.roofWhite", { color: "#b8bcd0" });
 
   // --- キャラクター（向きごとにID を分けておく = 将来の歩行アニメ差し替えに対応） ---
   assets.definePlaceholder("hero.up", { color: "#4a7dd4", symbol: "↑", symbolColor: "#dce8fa" });
   assets.definePlaceholder("hero.down", { color: "#4a7dd4", symbol: "↓", symbolColor: "#dce8fa" });
   assets.definePlaceholder("hero.left", { color: "#4a7dd4", symbol: "←", symbolColor: "#dce8fa" });
   assets.definePlaceholder("hero.right", { color: "#4a7dd4", symbol: "→", symbolColor: "#dce8fa" });
+
+  // --- 仲間キャラ（職業ごと・向きごと。歩行アニメ差し替えに対応する命名） ---
+  const arrows = { up: "↑", down: "↓", left: "←", right: "→" } as const;
+  for (const cls of Object.values(CLASSES)) {
+    for (const [dir, symbol] of Object.entries(arrows)) {
+      assets.definePlaceholder(`chara.${cls.id}.${dir}`, {
+        color: cls.color,
+        symbol,
+        symbolColor: "#f0ecdc",
+      });
+    }
+  }
 
   // --- 戦闘用の敵スプライト ---
   assets.definePlaceholder("battle.slime", { color: "#4aa3d8", symbol: "ス", symbolColor: "#1c4a68" });

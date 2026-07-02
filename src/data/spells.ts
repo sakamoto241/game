@@ -1,17 +1,20 @@
-/** 呪文定義。習得はレベル依存（データ駆動） */
-export type SpellId = "mera" | "hoimi";
+/**
+ * 呪文定義。誰がいつ覚えるかは classes.ts 側（職業ごとの習得表）で管理する。
+ */
+export type SpellId = "mera" | "gira" | "merami" | "hoimi" | "behoimi" | "sukara";
+
+export type SpellKind = "attack" | "heal" | "buffDef";
 
 export interface SpellDef {
   id: SpellId;
   name: string;
   desc: string;
   mp: number;
-  kind: "attack" | "heal";
-  /** 基本威力（attack は防御無視ダメージ、heal は回復量） */
+  kind: SpellKind;
+  /** attack/heal: 基本量。buffDef: 防御倍率の加算値 (0.5 = +50%) */
   power: number;
-  /** 乱数幅（±ではなく 0..variance を加算） */
+  /** 乱数幅（0..variance を加算） */
   variance: number;
-  learnLevel: number;
 }
 
 export const SPELLS: Record<SpellId, SpellDef> = {
@@ -23,7 +26,24 @@ export const SPELLS: Record<SpellId, SpellDef> = {
     kind: "attack",
     power: 10,
     variance: 5,
-    learnLevel: 1,
+  },
+  gira: {
+    id: "gira",
+    name: "ギラ",
+    desc: "しゃくねつの ほのおで こうげき",
+    mp: 4,
+    kind: "attack",
+    power: 17,
+    variance: 6,
+  },
+  merami: {
+    id: "merami",
+    name: "メラミ",
+    desc: "おおきな ひのたまで こうげき",
+    mp: 6,
+    kind: "attack",
+    power: 30,
+    variance: 8,
   },
   hoimi: {
     id: "hoimi",
@@ -33,8 +53,23 @@ export const SPELLS: Record<SpellId, SpellDef> = {
     kind: "heal",
     power: 28,
     variance: 8,
-    learnLevel: 3,
+  },
+  behoimi: {
+    id: "behoimi",
+    name: "ベホイミ",
+    desc: "HPを 60ほど かいふくする",
+    mp: 5,
+    kind: "heal",
+    power: 55,
+    variance: 12,
+  },
+  sukara: {
+    id: "sukara",
+    name: "スカラ",
+    desc: "みかたひとりの しゅびを あげる",
+    mp: 2,
+    kind: "buffDef",
+    power: 0.5,
+    variance: 0,
   },
 };
-
-export const SPELL_IDS = Object.keys(SPELLS) as SpellId[];
