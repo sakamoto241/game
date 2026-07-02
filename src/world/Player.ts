@@ -1,0 +1,106 @@
+import type { AssetManager } from "../core/AssetManager";
+import type { Input } from "../core/Input";
+import { TILE, type TileDefs, type TileMap } from "../gfx/TileMap";
+
+export type Dir = "up" | "down" | "left" | "right";
+
+const DIR_DELTA: Record<Dir, { dx: number; dy: number }> = {
+  up: { dx: 0, dy: -1 },
+  down: { dx: 0, dy: 1 },
+  left: { dx: -1, dy: 0 },
+  right: { dx: 1, dy: 0 },
+};
+
+/**
+ * プレイヤー（グリッド移動 + ピクセル補間）。
+ *
+ * ドラクエ・シレン流の「1タイルずつ移動、見た目は滑らか」方式。
+ * ロジックは常にタイル座標 (tileX, tileY) で完結するので、
+ * Phase 1 のターン制ダンジョン処理にそのまま接続できる。
+ */
+export class Player {
+  tileX: number;
+  tileY: number;
+  dir: Dir = "down";
+  /** 描画用ピクセル座標（左上） */
+  px: number;
+  py: number;
+
+  /** 移動速度（タイル/秒） */
+  speed = 6.5;
+
+  private fromX: number;
+  private fromY: number;
+  private progress = 0; // 0..1
+  private moving = false;
+
+  constructor(tileX: number, tileY: number) {
+    this.tileX = tileX;
+    this.tileY = tileY;
+    this.fromX = tileX;
+    this.fromY = tileY;
+    this.px = tileX * TILE;
+    this.py = tileY * TILE;
+  }
+
+  get isMoving(): boolean {
+    return this.moving;
+  }
+
+  /** 向いている先のタイル座標（「しらべる」の対象） */
+  facingTile(): { x: number; y: number } {
+    const d = DIR_DELTA[this.dir];
+    return { x: this.tileX + d.dx, y: this.tileY + d.dy };
+  }
+
+  update(dt: number, input: Input, map: TileMap, defs: TileDefs): void {
+    if (this.moving) {
+      this.progress += this.speed * dt;
+      if (this.progress >= 1) {
+        this.progress = 0;
+        this.moving = false;
+        this.fromX = this.tileX;
+        this.fromY = this.tileY;
+      }
+    }
+
+    // 移動完了した同じステップ内で次の入力を拾う → キー押しっぱなしで滑らかに歩き続ける
+    if (!this.moving) {
+      const dir = this.readDirection(input);
+      if (dir) {
+        this.dir = dir;
+        const d = DIR_DELTA[dir];
+        const nx = this.tileX + d.dx;
+        const ny = this.tileY + d.dy;
+        if (!map.isSolid(nx, ny, defs)) {
+          this.fromX = this.tileX;
+          this.fromY = this.tileY;
+          this.tileX = nx;
+          this.tileY = ny;
+          this.moving = true;
+        }
+      }
+    }
+
+    const t = this.moving ? this.progress : 1;
+    this.px = lerp(this.fromX, this.tileX, t) * TILE;
+    this.py = lerp(this.fromY, this.tileY, t) * TILE;
+  }
+
+  private readDirection(input: Input): Dir | null {
+    // 縦横同時押しは縦を優先（どちらかに決めておけば操作感が安定する）
+    if (input.down("up")) return "up";
+    if (input.down("down")) return "down";
+    if (input.down("left")) return "left";
+    if (input.down("right")) return "right";
+    return null;
+  }
+
+  render(ctx: CanvasRenderingContext2D, assets: AssetManager): void {
+    assets.drawSprite(ctx, `hero.${this.dir}`, Math.round(this.px), Math.round(this.py), TILE, TILE);
+  }
+}
+
+function lerp(a: number, b: number, t: number): number {
+  return a + (b - a) * t;
+}

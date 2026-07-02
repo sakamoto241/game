@@ -1,0 +1,5 @@
+{
+  "_comment": "アセット差し替え用マニフェスト。images にスプライトIDと画像パスを登録すると、プレースホルダーの代わりにその画像が描画される。例: \"tile.grass\": \"assets/images/tiles/grass.png\", \"hero.down\": \"assets/images/chars/hero_down.png\"",
+  "images": {},
+  "audio": {}
+}

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23141a33'/%3E%3Crect x='3' y='7' width='10' height='6' fill='%23b8a98c'/%3E%3Cpath d='M2 7l6-5 6 5z' fill='%23a24b3f'/%3E%3Crect x='7' y='9' width='2' height='4' fill='%237a4a2b'/%3E%3C/svg%3E"
+    />
+    <title>まちと迷宮 - Prototype</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #0b0b12;
+        overflow: hidden;
+      }
+      #app {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      canvas {
+        image-rendering: pixelated;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
