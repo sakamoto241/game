@@ -29,6 +29,13 @@ export class Player {
   /** 移動速度（タイル/秒） */
   speed = 6.5;
 
+  /**
+   * このステップで新しいタイルに到着した瞬間だけ座標が入る（毎 update 冒頭でクリア）。
+   * キー押しっぱなしの連続移動でも1タイルごとに必ず発火する。
+   * エンカウント判定・階段・ポータルなどのタイルイベントはこれを見ること。
+   */
+  arrival: { x: number; y: number } | null = null;
+
   private fromX: number;
   private fromY: number;
   private progress = 0; // 0..1
@@ -54,6 +61,7 @@ export class Player {
   }
 
   update(dt: number, input: Input, map: TileMap, defs: TileDefs): void {
+    this.arrival = null;
     if (this.moving) {
       this.progress += this.speed * dt;
       if (this.progress >= 1) {
@@ -61,6 +69,7 @@ export class Player {
         this.moving = false;
         this.fromX = this.tileX;
         this.fromY = this.tileY;
+        this.arrival = { x: this.tileX, y: this.tileY };
       }
     }
 

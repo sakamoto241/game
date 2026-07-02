@@ -1,6 +1,8 @@
 import { Scene } from "../core/Scene";
 import type { Renderer } from "../core/Renderer";
 import { WORLD_W, WORLD_H, UI_W, UI_H } from "../core/Renderer";
+import { ListMenu } from "../ui/ListMenu";
+import { GameState } from "../world/GameState";
 import { TownScene } from "./TownScene";
 
 interface Star {
@@ -10,14 +12,20 @@ interface Star {
   phase: number;
 }
 
+type Phase = "prompt" | "menu" | "confirmNew";
+
 /**
  * タイトル画面。夕暮れの空 + 街のシルエット（すべて矩形描画のプレースホルダー）。
+ * Z → 「つづきから / はじめから」メニュー。
  */
 export class TitleScene extends Scene {
   readonly name = "Title";
 
   private stars: Star[] = [];
   private time = 0;
+  private phase: Phase = "prompt";
+  private menu: ListMenu | null = null;
+  private confirmMenu: ListMenu | null = null;
 
   override onEnter(): void {
     const rng = this.game.rootRng.fork("title-stars");
@@ -35,10 +43,65 @@ export class TitleScene extends Scene {
 
   update(dt: number): void {
     this.time += dt;
-    if (this.game.input.pressed("confirm")) {
-      this.game.audio.playSe("decide");
-      this.game.scenes.replace(new TownScene());
+    const input = this.game.input;
+
+    switch (this.phase) {
+      case "prompt": {
+        if (input.pressed("confirm")) {
+          this.game.audio.playSe("decide");
+          const hasSave = GameState.hasSave(this.game);
+          this.menu = new ListMenu([
+            { label: "つづきから", value: "continue", disabled: !hasSave },
+            { label: "はじめから", value: "new" },
+          ]);
+          if (!hasSave) this.menu.index = 1;
+          this.phase = "menu";
+        }
+        break;
+      }
+      case "menu": {
+        const ev = this.menu?.update(input, dt);
+        if (!ev) break;
+        if (ev.type === "cancel") {
+          this.phase = "prompt";
+          break;
+        }
+        if (ev.item.value === "continue") {
+          const state = GameState.load(this.game);
+          if (state) this.startGame(state);
+          break;
+        }
+        // はじめから: セーブがあれば上書き確認
+        if (GameState.hasSave(this.game)) {
+          this.confirmMenu = new ListMenu(
+            [
+              { label: "やめておく", value: "no" },
+              { label: "はじめる（セーブは きえる）", value: "yes" },
+            ],
+            "ぼうけんの しょが きえますが よろしいですか？",
+          );
+          this.phase = "confirmNew";
+        } else {
+          this.startGame(GameState.fresh());
+        }
+        break;
+      }
+      case "confirmNew": {
+        const ev = this.confirmMenu?.update(input, dt);
+        if (!ev) break;
+        if (ev.type === "cancel" || ev.item.value === "no") {
+          this.phase = "menu";
+          break;
+        }
+        this.startGame(GameState.fresh());
+        break;
+      }
     }
+  }
+
+  private startGame(state: GameState): void {
+    this.game.audio.playSe("decide");
+    this.game.scenes.replace(new TownScene(state));
   }
 
   render(r: Renderer): void {
@@ -131,13 +194,19 @@ export class TitleScene extends Scene {
       color: "#b8b0d8",
     });
 
-    // 点滅するスタートプロンプト
-    if (Math.sin(this.time * 4.2) > -0.25) {
-      text.draw(ctx, "Z キーで はじめる", cx, 246, {
-        size: 16,
-        align: "center",
-        color: "#ffe9a0",
-      });
+    // 点滅するスタートプロンプト / セーブ選択メニュー
+    if (this.phase === "prompt") {
+      if (Math.sin(this.time * 4.2) > -0.25) {
+        text.draw(ctx, "Z キーで はじめる", cx, 246, {
+          size: 16,
+          align: "center",
+          color: "#ffe9a0",
+        });
+      }
+    } else if (this.phase === "menu") {
+      this.menu?.render(ctx, text, cx - 90, 216, 180);
+    } else if (this.phase === "confirmNew") {
+      this.confirmMenu?.render(ctx, text, cx - 170, 210, 340);
     }
 
     text.draw(ctx, "Phase 0 Prototype  v0.1.0", cx, UI_H - 22, {

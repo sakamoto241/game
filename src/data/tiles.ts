@@ -19,6 +19,11 @@ export const T = {
   FLOOR: 10,
   STAIRS: 11,
   EXIT: 12,
+  CHEST: 13,
+  CHEST_OPEN: 14,
+  BOSS: 15,
+  SIGN: 16,
+  SHOP_DOOR: 17,
 } as const;
 
 export const TILE_DEFS: TileDefs = {
@@ -35,6 +40,11 @@ export const TILE_DEFS: TileDefs = {
   [T.FLOOR]: { name: "洞窟の床", solid: false, sprite: "tile.floor" },
   [T.STAIRS]: { name: "下り階段", solid: false, sprite: "tile.stairs" },
   [T.EXIT]: { name: "出口", solid: false, sprite: "tile.exit" },
+  [T.CHEST]: { name: "宝箱", solid: true, sprite: "tile.chest" },
+  [T.CHEST_OPEN]: { name: "空の宝箱", solid: true, sprite: "tile.chestOpen" },
+  [T.BOSS]: { name: "ぬしの祭壇", solid: false, sprite: "tile.boss" },
+  [T.SIGN]: { name: "建築予定地", solid: true, sprite: "tile.sign" },
+  [T.SHOP_DOOR]: { name: "武器屋の扉", solid: false, sprite: "tile.shopDoor" },
 };
 
 /** 街マップの文字 → タイルID */
@@ -48,6 +58,7 @@ export const TOWN_LEGEND: Record<string, number> = {
   "#": T.WALL,
   D: T.DOOR,
   P: T.PORTAL,
+  B: T.SIGN,
 };
 
 /** ダンジョンマップの文字 → タイルID */
@@ -106,10 +117,41 @@ export function registerPlaceholderArt(assets: AssetManager): void {
     symbol: "△",
     symbolColor: "#7fd8c8",
   });
+  assets.definePlaceholder("tile.chest", {
+    color: "#8a6a34",
+    symbol: "$",
+    symbolColor: "#ffd970",
+  });
+  assets.definePlaceholder("tile.chestOpen", {
+    color: "#6e5a3a",
+    symbol: "$",
+    symbolColor: "#4a3d28",
+  });
+  assets.definePlaceholder("tile.boss", {
+    color: "#4a1f30",
+    symbol: "主",
+    symbolColor: "#e05a7a",
+  });
+  assets.definePlaceholder("tile.sign", {
+    color: "#9c7a4a",
+    symbol: "!",
+    symbolColor: "#fff2c0",
+  });
+  assets.definePlaceholder("tile.shopDoor", {
+    color: "#8a5a33",
+    symbol: "∩",
+    symbolColor: "#3d2414",
+  });
 
   // --- キャラクター（向きごとにID を分けておく = 将来の歩行アニメ差し替えに対応） ---
   assets.definePlaceholder("hero.up", { color: "#4a7dd4", symbol: "↑", symbolColor: "#dce8fa" });
   assets.definePlaceholder("hero.down", { color: "#4a7dd4", symbol: "↓", symbolColor: "#dce8fa" });
   assets.definePlaceholder("hero.left", { color: "#4a7dd4", symbol: "←", symbolColor: "#dce8fa" });
   assets.definePlaceholder("hero.right", { color: "#4a7dd4", symbol: "→", symbolColor: "#dce8fa" });
+
+  // --- 戦闘用の敵スプライト ---
+  assets.definePlaceholder("battle.slime", { color: "#4aa3d8", symbol: "ス", symbolColor: "#1c4a68" });
+  assets.definePlaceholder("battle.bat", { color: "#7a5aa8", symbol: "コ", symbolColor: "#2e1f4a" });
+  assets.definePlaceholder("battle.skeleton", { color: "#c8c2b0", symbol: "骨", symbolColor: "#55503f" });
+  assets.definePlaceholder("battle.nushi", { color: "#8a4a5a", symbol: "主", symbolColor: "#2e1018" });
 }

@@ -16,6 +16,8 @@ interface FadeTransition {
   t: number;
   duration: number;
   pending: Scene | null;
+  /** true ならスタック全体を破棄して pending に置き換える */
+  clearStack?: boolean;
 }
 
 export class SceneManager {
@@ -45,6 +47,32 @@ export class SceneManager {
     this.transition = { phase: "out", t: 0, duration: fadeSec, pending: scene };
   }
 
+  /**
+   * スタックを全て破棄してシーンを置き換える。
+   * 戦闘（push中）からの死亡帰還など「どこにいても街へ戻る」遷移に使う。
+   */
+  replaceAll(scene: Scene, fadeSec = 0.35): void {
+    if (this.transition) return;
+    scene.attach(this.game);
+    if (this.stack.length === 0 || fadeSec <= 0) {
+      this.clearAll();
+      this.stack.push(scene);
+      scene.onEnter();
+      this.notifyChange();
+      if (fadeSec > 0) {
+        this.transition = { phase: "in", t: 0, duration: fadeSec, pending: null };
+      }
+      return;
+    }
+    this.transition = {
+      phase: "out",
+      t: 0,
+      duration: fadeSec,
+      pending: scene,
+      clearStack: true,
+    };
+  }
+
   /** 現在のシーンの上に重ねる（フェードなし・即時） */
   push(scene: Scene): void {
     scene.attach(this.game);
@@ -67,6 +95,7 @@ export class SceneManager {
       tr.t += dt;
       if (tr.t >= tr.duration) {
         if (tr.phase === "out" && tr.pending) {
+          if (tr.clearStack) this.clearAll();
           this.applyReplace(tr.pending);
           this.transition = { phase: "in", t: 0, duration: tr.duration, pending: null };
         } else {
@@ -92,6 +121,12 @@ export class SceneManager {
       if (!this.stack[i]?.isOverlay) return i;
     }
     return 0;
+  }
+
+  private clearAll(): void {
+    while (this.stack.length > 0) {
+      this.stack.pop()?.onExit();
+    }
   }
 
   private applyReplace(scene: Scene): void {
