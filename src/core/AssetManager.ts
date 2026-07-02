@@ -37,6 +37,9 @@ export class AssetManager {
 
   /** manifest.json を読み込み、登録された画像を全てロードする */
   async loadManifest(url = "assets/manifest.json"): Promise<void> {
+    // file:// (単一HTML配布) では fetch が使えないためプレースホルダーのみで動く。
+    // 本物のアセットを単一ファイルに含める場合は manifest を data: URI で埋め込む予定。
+    if (window.location.protocol === "file:") return;
     let manifest: Manifest;
     try {
       const res = await fetch(url);
