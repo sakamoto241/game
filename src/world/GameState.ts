@@ -6,7 +6,13 @@ import {
   PARTY_MAX,
   dayPhase,
   PHASE_LABELS,
+  DAYS_PER_SEASON,
+  SEASON_ORDER,
+  SEASON_LABELS,
+  WEATHER_LABELS,
   type DayPhase,
+  type Season,
+  type Weather,
 } from "../data/balance";
 import type { FacilityId } from "../data/facilities";
 import { ITEMS, type ItemId } from "../data/items";
@@ -111,10 +117,35 @@ export class GameState {
     return dayPhase(this.minutes);
   }
 
+  /** 季節は日付から自動で巡る */
+  get season(): Season {
+    const idx = Math.floor((this.day - 1) / DAYS_PER_SEASON) % SEASON_ORDER.length;
+    return SEASON_ORDER[idx]!;
+  }
+
+  /**
+   * 天候は日付から決定論的に決まる（セーブ不要・同じ日は必ず同じ天気）。
+   * 冬は雪、それ以外の季節は雨。ときどき霧。
+   */
+  get weather(): Weather {
+    const roll = hashString(`weather:${this.day}`) % 100;
+    if (this.season === "winter") {
+      if (roll < 35) return "snow";
+    } else if (roll < 25) {
+      return "rain";
+    }
+    if (roll >= 88) return "fog";
+    return "sunny";
+  }
+
   timeLabel(): string {
     const h = String(this.hour).padStart(2, "0");
     const m = String(this.minutes % 60).padStart(2, "0");
     return `${this.day}にちめ ${h}:${m} ${PHASE_LABELS[this.phase()]}`;
+  }
+
+  seasonWeatherLabel(): string {
+    return `${SEASON_LABELS[this.season]}・${WEATHER_LABELS[this.weather]}`;
   }
 
   /** 宿屋で寝る: 翌朝 wakeHour 時になる */

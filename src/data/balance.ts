@@ -80,6 +80,57 @@ export const MIN_PER_BATTLE = 10;
 export const INN_WAKE_HOUR = 6;
 
 export type DayPhase = "morning" | "day" | "evening" | "night";
+export type Season = "spring" | "summer" | "autumn" | "winter";
+export type Weather = "sunny" | "rain" | "snow" | "fog";
+
+// --- 季節 ---
+/** 1季節の日数 */
+export const DAYS_PER_SEASON = 8;
+export const SEASON_ORDER: Season[] = ["spring", "summer", "autumn", "winter"];
+export const SEASON_LABELS: Record<Season, string> = {
+  spring: "はる",
+  summer: "なつ",
+  autumn: "あき",
+  winter: "ふゆ",
+};
+/** 季節の画面ティント（昼夜ティントと重ねる） */
+export const SEASON_TINTS: Record<Season, string | null> = {
+  spring: null,
+  summer: "rgba(255, 230, 120, 0.07)",
+  autumn: "rgba(226, 140, 50, 0.13)",
+  winter: "rgba(214, 230, 255, 0.22)",
+};
+
+// --- 天候 ---
+export const WEATHER_LABELS: Record<Weather, string> = {
+  sunny: "はれ",
+  rain: "あめ",
+  snow: "ゆき",
+  fog: "きり",
+};
+
+// --- 夜の危険 ---
+/** 夜間のエンカウント率倍率（地上の時刻がダンジョンにも影響する） */
+export const NIGHT_ENCOUNTER_MULT = 1.35;
+
+// --- 釣り ---
+export const ROD_PRICE = 80;
+/** 待ち時間（秒） */
+export const FISHING_WAIT = { min: 1.0, max: 2.8 };
+/** アタリから逃げられるまでの猶予（秒） */
+export const FISHING_BITE_WINDOW = 0.65;
+
+// --- 採掘 ---
+export const PICKAXE_PRICE = 150;
+/** 1つの鉱脈から得られるこうせき数 */
+export const MINE_ORE = { min: 1, max: 2 };
+/** ほうせきが混じる確率 */
+export const MINE_GEM_CHANCE = 0.1;
+
+// --- ミミック ---
+/** B3F以降で宝箱がミミックである確率 */
+export const MIMIC_CHANCE = 0.12;
+export const MIMIC_MIN_FLOOR = 3;
 
 export function dayPhase(minutes: number): DayPhase {
   const h = Math.floor(minutes / 60) % 24;

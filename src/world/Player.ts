@@ -67,7 +67,14 @@ export class Player {
     return { x: this.tileX + d.dx, y: this.tileY + d.dy };
   }
 
-  update(dt: number, input: Input, map: TileMap, defs: TileDefs): void {
+  update(
+    dt: number,
+    input: Input,
+    map: TileMap,
+    defs: TileDefs,
+    /** タイル以外の障害物（NPCなど）。true を返すと進めない */
+    blockedAt?: (x: number, y: number) => boolean,
+  ): void {
     this.arrival = null;
     if (this.moving) {
       this.progress += this.speed * dt;
@@ -88,7 +95,7 @@ export class Player {
         const d = DIR_DELTA[dir];
         const nx = this.tileX + d.dx;
         const ny = this.tileY + d.dy;
-        if (!map.isSolid(nx, ny, defs)) {
+        if (!map.isSolid(nx, ny, defs) && !blockedAt?.(nx, ny)) {
           this.trail.unshift({ x: this.tileX, y: this.tileY });
           if (this.trail.length > 8) this.trail.pop();
           this.fromX = this.tileX;

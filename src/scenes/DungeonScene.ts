@@ -7,11 +7,23 @@ import {
   ENCOUNTER_RATE,
   GRACE_AFTER_BATTLE,
   GRACE_FLOOR_START,
+  MIMIC_CHANCE,
+  MIMIC_MIN_FLOOR,
+  MINE_GEM_CHANCE,
+  MINE_ORE,
   MIN_PER_BATTLE,
   MIN_PER_STEP,
+  NIGHT_ENCOUNTER_MULT,
   enemyHpMult,
 } from "../data/balance";
-import { enemiesForFloor, bossDef, spawnEnemy } from "../data/enemies";
+import {
+  enemiesForFloor,
+  bossDef,
+  enemyById,
+  pickEnemy,
+  spawnEnemy,
+  type EnemyDef,
+} from "../data/enemies";
 import { ITEMS } from "../data/items";
 import { T, TILE_DEFS } from "../data/tiles";
 import { TILE, TileMap } from "../gfx/TileMap";
@@ -124,13 +136,38 @@ export class DungeonScene extends Scene {
       return;
     }
 
-    // しらべる（宝箱）
+    // しらべる（宝箱・こうみゃく）
     if (input.pressed("confirm") && !this.player.isMoving) {
       const facing = this.player.facingTile();
-      if (this.map.get(facing.x, facing.y) === T.CHEST) {
+      const tile = this.map.get(facing.x, facing.y);
+      if (tile === T.CHEST) {
         this.openChest(facing.x, facing.y);
+      } else if (tile === T.ORE) {
+        this.mineOre(facing.x, facing.y);
       }
     }
+  }
+
+  private mineOre(x: number, y: number): void {
+    const run = this.state.run;
+    if (!run) return;
+    if (this.state.itemCount("pickaxe") <= 0) {
+      this.message = this.game.text.wrap(
+        "きらきらと ひかる こうみゃくだ。つるはしが あれば ほれそうだ。（いちばで うっている）",
+        40,
+      );
+      return;
+    }
+    this.map.set(x, y, T.FLOOR);
+    this.game.audio.playSe("mine");
+    const ore = run.lootRng.int(MINE_ORE.min, MINE_ORE.max);
+    this.state.addItem("kouseki", ore);
+    const lines = ["カツン カツン……", `こうせき x${ore} を ほりだした！`];
+    if (run.lootRng.chance(MINE_GEM_CHANCE)) {
+      this.state.addItem("houseki");
+      lines.push("おまけに ほうせきまで でてきた！！");
+    }
+    this.message = lines;
   }
 
   private onArrive(x: number, y: number): void {
@@ -159,18 +196,28 @@ export class DungeonScene extends Scene {
       return;
     }
 
-    // ランダムエンカウント
+    // ランダムエンカウント（夜は地上の闇がダンジョンにも及び、遭遇が増える）
+    const rate =
+      ENCOUNTER_RATE * (this.state.phase() === "night" ? NIGHT_ENCOUNTER_MULT : 1);
     if (this.grace > 0) {
       this.grace--;
-    } else if (this.state.run && this.state.run.battleRng.chance(ENCOUNTER_RATE)) {
+    } else if (this.state.run && this.state.run.battleRng.chance(rate)) {
       this.startBattle(false);
     }
   }
 
-  private startBattle(boss: boolean): void {
+  private startBattle(boss: boolean, explicit?: EnemyDef): void {
     const run = this.state.run;
     if (!run) return;
-    const def = boss ? bossDef() : run.battleRng.pick(enemiesForFloor(this.floor));
+    const def =
+      explicit ??
+      (boss
+        ? bossDef()
+        : pickEnemy(
+            enemiesForFloor(this.floor),
+            this.state.phase() === "night",
+            run.battleRng.next(),
+          ));
     if (!def) return;
     const enemy = spawnEnemy(def, this.floor);
     // パーティ人数に応じて敵のHPを底上げする
@@ -221,6 +268,16 @@ export class DungeonScene extends Scene {
     if (!run) return;
     this.map.set(x, y, T.CHEST_OPEN);
     this.game.audio.playSe("chest");
+
+    // B3F以降はミミックが潜んでいることがある
+    if (this.floor >= MIMIC_MIN_FLOOR && run.lootRng.chance(MIMIC_CHANCE)) {
+      const mimic = enemyById("mimic");
+      if (mimic) {
+        this.message = ["たからばこが うごきだした！！"];
+        this.startBattle(false, mimic);
+        return;
+      }
+    }
 
     const roll = run.lootRng.next();
     if (roll < 0.45) {

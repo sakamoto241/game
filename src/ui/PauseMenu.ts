@@ -150,6 +150,9 @@ export class PauseMenu {
       case "valuable":
         this.info = "いちばで うれば おかねに なる。";
         return null;
+      case "tool":
+        this.info = "だいじな どうぐだ。つかう ばしょで Zキー。";
+        return null;
     }
   }
 

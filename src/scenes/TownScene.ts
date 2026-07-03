@@ -3,16 +3,21 @@ import type { Renderer } from "../core/Renderer";
 import { UI_W, UI_H, WORLD_W, WORLD_H } from "../core/Renderer";
 import { Scene } from "../core/Scene";
 import {
+  FISHING_BITE_WINDOW,
+  FISHING_WAIT,
   INN_PRICE,
   INN_WAKE_HOUR,
   MIN_PER_STEP,
   PHASE_TINTS,
   REVIVE_PRICE_PER_LEVEL,
+  SEASON_TINTS,
   TRADE_IN_RATE,
   smithyCost,
+  type DayPhase,
 } from "../data/balance";
 import { CLASSES, type ClassId } from "../data/classes";
 import { COMPANIONS } from "../data/companions";
+import { NPCS } from "../data/npcs";
 import {
   ARMOR_SHOP_STOCK,
   EQUIPMENT,
@@ -36,11 +41,13 @@ import { ITEMS, ITEM_IDS, type ItemId } from "../data/items";
 import { T, TILE_DEFS, TOWN_LEGEND } from "../data/tiles";
 import { TOWN_MAP_ROWS } from "../data/maps";
 import { TILE, TileMap } from "../gfx/TileMap";
+import { WeatherFX } from "../gfx/WeatherFX";
 import { ListMenu } from "../ui/ListMenu";
 import { drawBanner, drawMessage, drawToast } from "../ui/Windows";
 import { PauseMenu } from "../ui/PauseMenu";
 import { Follower } from "../world/Follower";
 import type { GameState } from "../world/GameState";
+import { Npc } from "../world/Npc";
 import { PartyMember } from "../world/PartyMember";
 import { Player } from "../world/Player";
 import { DungeonScene } from "./DungeonScene";
@@ -70,6 +77,10 @@ export class TownScene extends Scene {
   private map!: TileMap;
   private player!: Player;
   private followers: Follower[] = [];
+  private npcs: Npc[] = [];
+  private lastPhase: DayPhase | null = null;
+  private weatherFx = new WeatherFX();
+  private fishing: { phase: "wait" | "bite"; t: number } | null = null;
   private cam = new Camera();
   private bannerTimer = 2.6;
   private message: string[] | null = null;
@@ -96,6 +107,11 @@ export class TownScene extends Scene {
       .slice(1)
       .map((m) => new Follower(m, this.spawn.x, this.spawn.y));
     this.portalArmed = this.map.get(this.spawn.x, this.spawn.y) !== T.PORTAL;
+    // 村人: 施設が建つほど住民が増える
+    this.npcs = NPCS.filter((def) => !def.requires || this.state.built[def.requires]).map(
+      (def) => new Npc(def, this.game.rootRng.fork(`npc:${def.id}`)),
+    );
+    this.lastPhase = null; // 次の update で setPhase される
     this.game.audio.playBgm("town");
     if (this.introMessage) {
       this.message = this.introMessage;
@@ -137,6 +153,18 @@ export class TownScene extends Scene {
     if (this.bannerTimer > 0) this.bannerTimer -= dt;
     if (this.toastTimer > 0) this.toastTimer -= dt;
     for (const f of this.followers) f.update(dt);
+
+    // 天候・村人の生活（メニュー中も世界は動き続ける）
+    this.weatherFx.setWeather(this.state.weather);
+    this.weatherFx.update(dt);
+    const phase = this.state.phase();
+    if (phase !== this.lastPhase) {
+      this.lastPhase = phase;
+      for (const npc of this.npcs) npc.setPhase(phase);
+    }
+    const playerTile = { x: this.player?.tileX ?? 0, y: this.player?.tileY ?? 0 };
+    for (const npc of this.npcs) npc.update(dt, this.map, TILE_DEFS, playerTile);
+
     if (this.leaving) return;
 
     const input = this.game.input;
@@ -145,6 +173,12 @@ export class TownScene extends Scene {
       if (input.pressed("confirm") || input.pressed("cancel")) {
         this.message = null;
       }
+      return;
+    }
+
+    // 釣りの最中
+    if (this.fishing) {
+      this.updateFishing(dt);
       return;
     }
 
@@ -166,7 +200,9 @@ export class TownScene extends Scene {
       return;
     }
 
-    this.player.update(dt, input, this.map, TILE_DEFS);
+    this.player.update(dt, input, this.map, TILE_DEFS, (x, y) =>
+      this.npcs.some((n) => n.visible && n.tileX === x && n.tileY === y),
+    );
     this.syncFollowers();
     this.game.debug.set("Pos", `(${this.player.tileX}, ${this.player.tileY})`);
     this.game.debug.set("Time", this.state.timeLabel());
@@ -200,8 +236,19 @@ export class TownScene extends Scene {
 
   private interact(): void {
     const facing = this.player.facingTile();
-    const spots = [facing, { x: this.player.tileX, y: this.player.tileY }];
 
+    // 村人に話しかける
+    const npc = this.npcs.find(
+      (n) => n.visible && n.tileX === facing.x && n.tileY === facing.y,
+    );
+    if (npc) {
+      npc.faceToward(this.player.tileX, this.player.tileY);
+      this.game.audio.playSe("decide");
+      this.message = [`＊ ${npc.def.name}`, ...npc.def.dialog(this.state)];
+      return;
+    }
+
+    const spots = [facing, { x: this.player.tileX, y: this.player.tileY }];
     for (const spot of spots) {
       const tile = this.map.get(spot.x, spot.y);
       if (tile === T.DOOR) {
@@ -218,7 +265,81 @@ export class TownScene extends Scene {
         if (facility) this.openBuildMenu(facility);
         return;
       }
+      if (tile === T.WATER) {
+        this.tryStartFishing();
+        return;
+      }
     }
+  }
+
+  // =========================================================================
+  // 釣り
+  // =========================================================================
+  private tryStartFishing(): void {
+    if (this.state.itemCount("rod") <= 0) {
+      this.message = this.game.text.wrap(
+        "みずが きらきら ひかっている。つりざおが あれば つりが できそうだ。（いちばで うっている）",
+        40,
+      );
+      return;
+    }
+    this.game.audio.playSe("decide");
+    const rng = this.game.rootRng.fork(`fish:${this.state.day}:${this.state.minutes}`);
+    this.fishing = { phase: "wait", t: rng.float(FISHING_WAIT.min, FISHING_WAIT.max) };
+  }
+
+  private updateFishing(dt: number): void {
+    const fishing = this.fishing!;
+    const input = this.game.input;
+    fishing.t -= dt;
+
+    if (fishing.phase === "wait") {
+      if (input.pressed("confirm") || input.pressed("cancel")) {
+        this.fishing = null;
+        this.message = ["はやく あげすぎた…… さかなに にげられた。"];
+        return;
+      }
+      if (fishing.t <= 0) {
+        fishing.phase = "bite";
+        fishing.t = FISHING_BITE_WINDOW;
+        this.game.audio.playSe("bite");
+      }
+      return;
+    }
+
+    // アタリ！
+    if (input.pressed("confirm")) {
+      this.fishing = null;
+      this.catchFish();
+      return;
+    }
+    if (fishing.t <= 0) {
+      this.fishing = null;
+      this.message = ["いきおいよく ひいたのに…… にげられてしまった。"];
+    }
+  }
+
+  private catchFish(): void {
+    const rng = this.game.rootRng.fork(`catch:${this.state.day}:${this.state.minutes}`);
+    const rainy = this.state.weather === "rain";
+    const r = rng.next();
+    this.game.audio.playSe("catch");
+    // 雨の日はレアが釣れやすい
+    if (r < (rainy ? 0.12 : 0.04)) {
+      this.state.addItem("nushizakana");
+      this.message = ["つよい ひきだ……！！", "でんせつの『いけのぬし』を つりあげた！！"];
+    } else if (r < (rainy ? 0.22 : 0.12)) {
+      this.state.addItem("houseki");
+      this.message = ["なにかが かかった！", "……さかなじゃない。ほうせきだ！！"];
+    } else if (r < (rainy ? 0.58 : 0.44)) {
+      this.state.addItem("nijimasu");
+      this.message = ["ニジマスを つりあげた！"];
+    } else {
+      this.state.addItem("kozakana");
+      this.message = ["こざかなを つりあげた！"];
+    }
+    this.state.advanceTime(10);
+    this.state.save(this.game);
   }
 
   private facilityAtDoor(x: number, y: number): FacilityDef | null {
@@ -669,22 +790,75 @@ export class TownScene extends Scene {
   }
 
   // =========================================================================
-  // 市場
+  // 市場（売却 + 道具の購入）
   // =========================================================================
   private openMarket(def: FacilityDef): void {
+    this.pushMenu(
+      new ListMenu(
+        [
+          { label: "ふようひんを うる", value: "sell" },
+          { label: "どうぐを かう", value: "tools" },
+          { label: "やめる", value: "quit" },
+        ],
+        def.name,
+      ),
+      (value) => {
+        if (value === "quit") this.closeMenus();
+        else if (value === "sell") this.openSellMenu();
+        else this.openToolMenu();
+      },
+    );
+  }
+
+  private openSellMenu(): void {
     const items = this.buildSellMenuItems();
     if (items.length === 0) {
       this.showMessage(["うれる ものを もっていない。"]);
       return;
     }
     this.pushMenu(
-      new ListMenu([...items, { label: "やめる", value: "quit" }], def.name),
+      new ListMenu([...items, { label: "やめる", value: "quit" }], "なにを うる？"),
       (value) => {
         if (value === "quit") {
           this.closeMenus();
           return;
         }
         this.sellItem(value as ItemId);
+      },
+    );
+  }
+
+  private openToolMenu(): void {
+    const tools: ItemId[] = ["rod", "pickaxe"];
+    this.pushMenu(
+      new ListMenu(
+        tools.map((id) => {
+          const owned = this.state.itemCount(id) > 0;
+          return {
+            label: `${ITEMS[id].name}（${ITEMS[id].desc}）`,
+            value: id,
+            note: owned ? "もっている" : `${ITEMS[id].price}G`,
+            disabled: owned,
+          };
+        }),
+        "どうぐを かう",
+      ),
+      (value) => {
+        const item = ITEMS[value as ItemId];
+        if (this.state.gold < item.price) {
+          this.showMessage(["「おかねが たりないわよ。」"]);
+          return;
+        }
+        this.state.gold -= item.price;
+        this.state.addItem(item.id);
+        this.state.save(this.game);
+        this.game.audio.playSe("buy");
+        this.showMessage([
+          `${item.name}を こうにゅうした！`,
+          item.id === "rod"
+            ? "いけの みずべに むかって Zキーで つりが できる。"
+            : "ダンジョンの こうみゃくを Zキーで ほれる。",
+        ]);
       },
     );
   }
@@ -788,6 +962,7 @@ export class TownScene extends Scene {
 
     this.cam.begin(ctx);
     this.map.render(ctx, this.cam, TILE_DEFS, this.game.assets);
+    for (const npc of this.npcs) npc.render(ctx, this.game.assets);
     // 隊列は後ろから描いて勇者を最前面に
     for (let i = this.followers.length - 1; i >= 0; i--) {
       this.followers[i]!.render(ctx, this.game.assets);
@@ -795,12 +970,18 @@ export class TownScene extends Scene {
     this.player.render(ctx, this.game.assets, this.state.hero);
     this.cam.end(ctx);
 
-    // 昼夜ティント
+    // 季節 → 昼夜 の順にティントを重ね、その上に天候エフェクト
+    const seasonTint = SEASON_TINTS[this.state.season];
+    if (seasonTint) {
+      ctx.fillStyle = seasonTint;
+      ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+    }
     const tint = PHASE_TINTS[this.state.phase()];
     if (tint) {
       ctx.fillStyle = tint;
       ctx.fillRect(0, 0, WORLD_W, WORLD_H);
     }
+    this.weatherFx.render(ctx);
 
     this.renderUi(r.ui);
   }
@@ -813,6 +994,21 @@ export class TownScene extends Scene {
 
     if (this.pauseMenu) {
       this.pauseMenu.render(this.game, ctx);
+      return;
+    }
+
+    // 釣りの吹き出し（… / ！）
+    if (this.fishing) {
+      const sx = (this.cam.toScreenX(this.player.px) + TILE / 2) * 2;
+      const sy = this.cam.toScreenY(this.player.py) * 2 - 14;
+      const label = this.fishing.phase === "bite" ? "！" : "・・・";
+      text.window(ctx, sx - 24, sy - 18, 48, 30);
+      text.draw(ctx, label, sx, sy - 10, {
+        size: 14,
+        align: "center",
+        bold: true,
+        color: this.fishing.phase === "bite" ? "#ffd970" : "#f5f1e8",
+      });
       return;
     }
 
@@ -845,9 +1041,15 @@ export class TownScene extends Scene {
   private renderHud(ctx: CanvasRenderingContext2D): void {
     const s = this.state;
     const text = this.game.text;
-    const h = 36 + s.party.length * 16;
-    text.window(ctx, UI_W - 216, 10, 206, h);
-    text.draw(ctx, s.timeLabel(), UI_W - 202, 20, { size: 10, color: "#ffe9a0" });
+    const h = 52 + s.party.length * 16;
+    text.window(ctx, UI_W - 236, 10, 226, h);
+    text.draw(
+      ctx,
+      `${s.timeLabel()}  ${s.seasonWeatherLabel()}`,
+      UI_W - 222,
+      20,
+      { size: 10, color: "#ffe9a0" },
+    );
     s.party.forEach((m, i) => {
       const y = 36 + i * 16;
       const hpColor = !m.alive
@@ -855,14 +1057,14 @@ export class TownScene extends Scene {
         : m.hp <= m.maxHp * 0.25
           ? "#ff8a8a"
           : "#f5f1e8";
-      text.draw(ctx, m.name, UI_W - 202, y, {
+      text.draw(ctx, m.name, UI_W - 222, y, {
         size: 10,
         color: m.alive ? "#d8d2e8" : "#7d7690",
       });
-      text.draw(ctx, `HP${m.hp}`, UI_W - 128, y, { size: 10, color: hpColor });
-      text.draw(ctx, `MP${m.mp}`, UI_W - 78, y, { size: 10, color: "#a8c8f0" });
+      text.draw(ctx, `HP${m.hp}`, UI_W - 138, y, { size: 10, color: hpColor });
+      text.draw(ctx, `MP${m.mp}`, UI_W - 82, y, { size: 10, color: "#a8c8f0" });
     });
-    text.draw(ctx, `${s.gold} G`, UI_W - 24, 20, {
+    text.draw(ctx, `${s.gold} G`, UI_W - 24, 36 + s.party.length * 16, {
       size: 10,
       align: "right",
       color: "#ffd970",

@@ -45,8 +45,35 @@ export function generateFloor(runSeed: number, floor: number): FloorPlan {
   map.set(goal.x, goal.y, floor >= DUNGEON_MAX_FLOOR ? T.BOSS : T.STAIRS);
 
   placeChests(map, rooms, rng, entry, goal);
+  placeOreNodes(map, rooms, rng, entry, goal);
 
   return { map, entry };
+}
+
+/** こうみゃく（つるはしで採掘）。宝箱と同じく通路を塞がないことを保証する */
+function placeOreNodes(
+  map: TileMap,
+  rooms: Room[],
+  rng: Rng,
+  entry: { x: number; y: number },
+  goal: { x: number; y: number },
+): void {
+  const count = rng.int(1, 3);
+  let placed = 0;
+  for (let attempt = 0; attempt < 40 && placed < count; attempt++) {
+    const room = rng.pick(rooms);
+    if (!room) break;
+    const x = rng.int(room.x, room.x + room.w - 1);
+    const y = rng.int(room.y, room.y + room.h - 1);
+    if ((x === entry.x && y === entry.y) || (x === goal.x && y === goal.y)) continue;
+    if (map.get(x, y) !== T.FLOOR) continue;
+    map.set(x, y, T.ORE);
+    if (!isReachable(map, entry, goal)) {
+      map.set(x, y, T.FLOOR);
+      continue;
+    }
+    placed++;
+  }
 }
 
 /** 4近傍BFSで from から to へ歩いて到達できるか（宝箱は通行不可として扱う） */

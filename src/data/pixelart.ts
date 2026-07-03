@@ -1,5 +1,6 @@
 import type { AssetManager } from "../core/AssetManager";
 import { CLASSES, type ClassId } from "./classes";
+import { NPCS } from "./npcs";
 
 /**
  * コード製ピクセルアート（Kenney "Tiny Dungeon / Tiny Town" 風）。
@@ -503,6 +504,82 @@ const SKELETON = [
   "................",
 ];
 
+const RAT = [
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "...oo......oo...",
+  "..oBBo....oBBo..",
+  "..oBBBooooBBBo..",
+  ".oBBBBBBBBBBBBo.",
+  ".oBeBBBBBBBBBBoo",
+  ".oBBBooBBBBBBo.o",
+  "..oBBBBBBBBBo...",
+  "...oo.oo.oo.....",
+  "................",
+];
+
+const GHOST = [
+  "................",
+  "................",
+  "................",
+  ".....oooooo.....",
+  "....oXXXXXXo....",
+  "...oXXXXXXXXo...",
+  "...oXeXXXXeXo...",
+  "...oXXXXXXXXo...",
+  "...oXXXooXXXo...",
+  "...oXXXXXXXXo...",
+  "...oXXXXXXXXo...",
+  "...oXXXXXXXXo...",
+  "...oXoXXoXXoo...",
+  "....o.oo.oo.....",
+  "................",
+  "................",
+];
+
+const MIMIC = [
+  "................",
+  "................",
+  "................",
+  "...oooooooooo...",
+  "..oBBBBBBBBBBo..",
+  "..oBBBBBBBBBBo..",
+  "..oxXxXxXxXxxo..",
+  "..oxxxxxxxxxxo..",
+  "..oXxXxXxXxXxo..",
+  "..oBBBBBBBBBBo..",
+  "..oBeBBBBBBeBo..",
+  "..obBBBBBBBBbo..",
+  "..obbbbbbbbbbo..",
+  "...oooooooooo...",
+  "................",
+  "................",
+];
+
+const ORE_NODE = [
+  "................",
+  "................",
+  "................",
+  "....oooooo......",
+  "...okkkkkko.....",
+  "..okkYkkkkko....",
+  "..okkkkkTkkko...",
+  ".okkkkkkkkkkko..",
+  ".okkTkkkkkkkko..",
+  ".okkkkkkYkkkko..",
+  ".okmkkkkkkkmko..",
+  ".ommmkkkkmmmmo..",
+  "..oommmmmmmoo...",
+  "....ooooooo.....",
+  "................",
+  "................",
+];
+
 const NUSHI = [
   "................",
   ".oo..........oo.",
@@ -645,6 +722,7 @@ export function registerPixelArt(assets: AssetManager): void {
   def("tile.chest", layered(dungeonFloor, grid(CHEST)));
   def("tile.chestOpen", layered(dungeonFloor, grid(CHEST_OPEN)));
   def("tile.boss", layered(dungeonFloor, grid(BOSS_ALTAR)));
+  def("tile.ore", layered(dungeonFloor, grid(ORE_NODE)));
 
   // --- キャラクター（職業色はクラス定義から） ---
   const charaPainter = (classId: ClassId): Painter => {
@@ -668,11 +746,23 @@ export function registerPixelArt(assets: AssetManager): void {
     registerChara(assets, `chara.${cls.id}`, charaPainter(cls.id));
   }
 
+  // --- 村人（施設で増える住民。配色は npcs.ts から） ---
+  for (const npc of NPCS) {
+    registerChara(
+      assets,
+      `npc.${npc.id}`,
+      grid(CHARA_BASE, { H: npc.hair, B: npc.body, b: shade(npc.body) }),
+    );
+  }
+
   // --- モンスター ---
   def("battle.slime", grid(SLIME));
   def("battle.bat", grid(BAT));
   def("battle.skeleton", grid(SKELETON));
   def("battle.nushi", grid(NUSHI));
+  def("battle.rat", grid(RAT));
+  def("battle.ghost", grid(GHOST));
+  def("battle.mimic", grid(MIMIC));
 
   // --- 装備オーバーレイ ---
   def("overlay.sword", grid(SWORD));

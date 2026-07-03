@@ -20,9 +20,27 @@ export interface EnemyDef {
   gold: StatScale;
   drop?: { item: ItemId; chance: number; count: number };
   boss?: boolean;
+  /** ランダム出現の重み（省略時 1） */
+  weight?: number;
+  /** 夜間の重み（省略時は weight と同じ）。ゴーストは夜に増える */
+  nightWeight?: number;
+  /** ランダム出現しない（ミミックなどイベント専用） */
+  special?: boolean;
 }
 
 export const ENEMIES: EnemyDef[] = [
+  {
+    id: "rat",
+    name: "おおねずみ",
+    sprite: "battle.rat",
+    floors: [1, 2],
+    hp: [5, 2],
+    atk: [4, 2],
+    def: [0, 1],
+    exp: [1, 1],
+    gold: [3, 1],
+    weight: 1.2,
+  },
   {
     id: "slime",
     name: "スライム",
@@ -56,6 +74,32 @@ export const ENEMIES: EnemyDef[] = [
     exp: [8, 2],
     gold: [12, 3],
     drop: { item: "kouseki", chance: 0.35, count: 1 },
+  },
+  {
+    id: "ghost",
+    name: "さまようれい",
+    sprite: "battle.ghost",
+    floors: [2, 5],
+    hp: [9, 3],
+    atk: [9, 2],
+    def: [3, 1],
+    exp: [5, 2],
+    gold: [8, 2],
+    weight: 0.6,
+    nightWeight: 2.2,
+  },
+  {
+    id: "mimic",
+    name: "ミミック",
+    sprite: "battle.mimic",
+    floors: [3, 5],
+    hp: [28, 5],
+    atk: [14, 2],
+    def: [6, 1],
+    exp: [16, 3],
+    gold: [60, 15],
+    drop: { item: "houseki", chance: 0.5, count: 1 },
+    special: true,
   },
   {
     id: "nushi",
@@ -100,15 +144,36 @@ export function spawnEnemy(def: EnemyDef, floor: number): EnemyInstance {
   };
 }
 
-/** その階に出現しうる雑魚敵（ボス除く） */
+/** その階に出現しうる雑魚敵（ボス・イベント専用を除く） */
 export function enemiesForFloor(floor: number): EnemyDef[] {
   return ENEMIES.filter(
-    (e) => !e.boss && floor >= e.floors[0] && floor <= e.floors[1],
+    (e) => !e.boss && !e.special && floor >= e.floors[0] && floor <= e.floors[1],
   );
+}
+
+/** 重み付きランダム抽選（夜はゴーストなどの nightWeight が効く） */
+export function pickEnemy(
+  defs: EnemyDef[],
+  night: boolean,
+  roll: number,
+): EnemyDef | undefined {
+  const weights = defs.map((e) => (night ? (e.nightWeight ?? e.weight ?? 1) : (e.weight ?? 1)));
+  const total = weights.reduce((a, b) => a + b, 0);
+  if (total <= 0) return undefined;
+  let r = roll * total;
+  for (let i = 0; i < defs.length; i++) {
+    r -= weights[i]!;
+    if (r <= 0) return defs[i];
+  }
+  return defs[defs.length - 1];
 }
 
 export function bossDef(): EnemyDef {
   const boss = ENEMIES.find((e) => e.boss);
   if (!boss) throw new Error("ボスが定義されていません");
   return boss;
+}
+
+export function enemyById(id: string): EnemyDef | undefined {
+  return ENEMIES.find((e) => e.id === id);
 }
