@@ -59,6 +59,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     spells: [
       { spell: "mera", level: 1 },
       { spell: "gira", level: 4 },
+      { spell: "rukani", level: 6 },
       { spell: "merami", level: 8 },
     ],
   },
@@ -71,6 +72,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     spells: [
       { spell: "hoimi", level: 1 },
       { spell: "sukara", level: 3 },
+      { spell: "kiari", level: 5 },
       { spell: "behoimi", level: 7 },
     ],
   },

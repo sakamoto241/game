@@ -55,6 +55,8 @@ export class DungeonScene extends Scene {
   /** エンカウント猶予歩数 */
   private grace = GRACE_FLOOR_START;
 
+  /** どくダメージの赤点滅 */
+  private poisonFlash = 0;
   /** エンカウント演出（白フラッシュ）中は >0。終了時に戦闘へ */
   private encounterFx = 0;
   private pendingBattle: (() => void) | null = null;
@@ -69,6 +71,11 @@ export class DungeonScene extends Scene {
 
   override onEnter(): void {
     if (!this.state.run) this.state.startRun(this.game);
+    // 統計・到達クエストの進捗
+    this.state.stats.deepestFloor = Math.max(this.state.stats.deepestFloor, this.floor);
+    for (const q of this.state.quests) {
+      if (q.kind === "reach" && this.floor >= q.count) q.done = true;
+    }
     const plan = generateFloor(this.state.run!.seed, this.floor);
     this.map = plan.map;
     this.player = new Player(plan.entry.x, plan.entry.y);
@@ -87,6 +94,7 @@ export class DungeonScene extends Scene {
 
   update(dt: number): void {
     if (this.bannerTimer > 0) this.bannerTimer -= dt;
+    if (this.poisonFlash > 0) this.poisonFlash -= dt;
     for (const f of this.followers) f.update(dt);
     if (this.leaving) return;
 
@@ -132,6 +140,10 @@ export class DungeonScene extends Scene {
     // タイル到着イベント（連続移動中も1歩ごとに発火する）
     if (this.player.arrival) {
       this.state.advanceTime(MIN_PER_STEP);
+      if (this.state.applyPoisonStep().length > 0) {
+        this.poisonFlash = 0.4;
+        this.game.audio.playSe("poison");
+      }
       this.onArrive(this.player.arrival.x, this.player.arrival.y);
       return;
     }
@@ -329,6 +341,12 @@ export class DungeonScene extends Scene {
 
     this.renderTorchlight(ctx);
 
+    // どくの紫フラッシュ
+    if (this.poisonFlash > 0) {
+      ctx.fillStyle = `rgba(140, 60, 190, ${(this.poisonFlash * 0.45).toFixed(3)})`;
+      ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+    }
+
     // エンカウントの白フラッシュ（2回点滅）
     if (this.encounterFx > 0) {
       const phase = Math.floor(this.encounterFx * 13) % 2 === 0;
@@ -397,9 +415,9 @@ export class DungeonScene extends Scene {
           : m.hp <= m.maxHp * 0.5
             ? "#ffd970"
             : "#f5f1e8";
-      text.draw(ctx, m.name, UI_W - 202, y, {
+      text.draw(ctx, `${m.name}${m.poisoned ? "毒" : ""}`, UI_W - 202, y, {
         size: 10,
-        color: m.alive ? "#d8d2e8" : "#7d7690",
+        color: m.alive ? (m.poisoned ? "#c9a7ff" : "#d8d2e8") : "#7d7690",
       });
       text.draw(ctx, `HP${m.hp}`, UI_W - 128, y, { size: 10, color: hpColor });
       text.draw(ctx, `MP${m.mp}`, UI_W - 78, y, { size: 10, color: "#a8c8f0" });

@@ -26,6 +26,8 @@ export interface EnemyDef {
   nightWeight?: number;
   /** ランダム出現しない（ミミックなどイベント専用） */
   special?: boolean;
+  /** 攻撃時に状態異常を与える */
+  inflict?: { status: "poison" | "sleep"; chance: number };
 }
 
 export const ENEMIES: EnemyDef[] = [
@@ -62,6 +64,7 @@ export const ENEMIES: EnemyDef[] = [
     def: [2, 1],
     exp: [4, 1],
     gold: [7, 2],
+    inflict: { status: "poison", chance: 0.18 },
   },
   {
     id: "skeleton",
@@ -87,6 +90,7 @@ export const ENEMIES: EnemyDef[] = [
     gold: [8, 2],
     weight: 0.6,
     nightWeight: 2.2,
+    inflict: { status: "sleep", chance: 0.22 },
   },
   {
     id: "mimic",

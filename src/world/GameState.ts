@@ -14,8 +14,11 @@ import {
   type Season,
   type Weather,
 } from "../data/balance";
+import { ACHIEVEMENTS, type AchievementDef } from "../data/achievements";
 import type { FacilityId } from "../data/facilities";
 import { ITEMS, type ItemId } from "../data/items";
+import type { ActiveQuest } from "../data/quests";
+import { ROUTES, type RouteId } from "../data/routes";
 import { PartyMember, type SerializedMember } from "./PartyMember";
 
 export type Inventory = Partial<Record<ItemId, number>>;
@@ -25,6 +28,15 @@ export interface RunState {
   seed: number;
   battleRng: Rng;
   lootRng: Rng;
+}
+
+export interface GameStats {
+  battlesWon: number;
+  deaths: number;
+  /** 敵ID → 累計討伐数（図鑑・実績・依頼の共通ソース） */
+  kills: Record<string, number>;
+  deepestFloor: number;
+  questsCompleted: number;
 }
 
 /** セーブ形式 v2。v1 (Phase 1) からは load 時にマイグレーションする */
@@ -38,6 +50,13 @@ interface PersistShapeV2 {
   bossDefeated: boolean;
   day: number;
   minutes: number;
+  // --- Phase 4 追加（旧セーブでは省略され、デフォルトで補完される） ---
+  stats?: GameStats;
+  seenEnemies?: string[];
+  itemDex?: string[];
+  achievements?: string[];
+  quests?: ActiveQuest[];
+  route?: RouteId | null;
 }
 
 /** Phase 1 のセーブ形式（マイグレーション用） */
@@ -71,6 +90,23 @@ export class GameState {
   built: Partial<Record<FacilityId, boolean>> = {};
   runCount = 0;
   bossDefeated = false;
+
+  stats: GameStats = {
+    battlesWon: 0,
+    deaths: 0,
+    kills: {},
+    deepestFloor: 0,
+    questsCompleted: 0,
+  };
+  /** 見かけた敵（図鑑のシルエット解放） */
+  seenEnemies: string[] = [];
+  /** 一度でも入手したアイテム（アイテム図鑑） */
+  itemDex: string[] = [];
+  achievements: string[] = [];
+  quests: ActiveQuest[] = [];
+  route: RouteId | null = null;
+  /** どくの歩数カウンタ（4歩ごとにダメージ） */
+  private poisonSteps = 0;
 
   /** ゲーム内時間 */
   day = 1;
@@ -154,6 +190,51 @@ export class GameState {
     this.minutes = wakeHour * 60;
   }
 
+  /** 街の表示名（発展ルートで変わる） */
+  townTitle(): string {
+    return this.route ? ROUTES[this.route].townTitle : "アルバの村";
+  }
+
+  // --- 図鑑・統計 ---
+  markSeen(enemyId: string): void {
+    if (!this.seenEnemies.includes(enemyId)) this.seenEnemies.push(enemyId);
+  }
+
+  recordKill(enemyId: string): void {
+    this.stats.kills[enemyId] = (this.stats.kills[enemyId] ?? 0) + 1;
+    this.markSeen(enemyId);
+  }
+
+  /** 新しく解除された実績を返す（街に入ったときに呼ぶ） */
+  checkAchievements(): AchievementDef[] {
+    const unlocked: AchievementDef[] = [];
+    for (const a of ACHIEVEMENTS) {
+      if (this.achievements.includes(a.id)) continue;
+      if (a.condition(this)) {
+        this.achievements.push(a.id);
+        unlocked.push(a);
+      }
+    }
+    return unlocked;
+  }
+
+  // --- どく ---
+  /** 1歩ごとに呼ぶ。4歩ごとに毒メンバーがダメージを受け、その名前を返す */
+  applyPoisonStep(): string[] {
+    const poisoned = this.party.filter((m) => m.alive && m.poisoned);
+    if (poisoned.length === 0) return [];
+    this.poisonSteps++;
+    if (this.poisonSteps % 4 !== 0) return [];
+    const hurt: string[] = [];
+    for (const m of poisoned) {
+      if (m.hp > 1) {
+        m.hp = Math.max(1, m.hp - 2); // 歩行中の毒では倒れない（DQ流）
+        hurt.push(m.name);
+      }
+    }
+    return hurt;
+  }
+
   // --- インベントリ ---
   itemCount(id: ItemId): number {
     return this.inventory[id] ?? 0;
@@ -161,6 +242,7 @@ export class GameState {
 
   addItem(id: ItemId, n = 1): void {
     this.inventory[id] = this.itemCount(id) + n;
+    if (!this.itemDex.includes(id)) this.itemDex.push(id);
   }
 
   removeItem(id: ItemId, n = 1): void {
@@ -187,6 +269,7 @@ export class GameState {
 
   /** 全滅ペナルティを適用し、失った内容を返す。全員全回復して宿屋へ */
   applyDeath(): { goldLost: number; oreLost: number } {
+    this.stats.deaths++;
     const goldLost = deathGoldLoss(this.gold);
     this.gold -= goldLost;
     const oreLost = this.itemCount("kouseki");
@@ -208,6 +291,12 @@ export class GameState {
       bossDefeated: this.bossDefeated,
       day: this.day,
       minutes: this.minutes,
+      stats: this.stats,
+      seenEnemies: this.seenEnemies,
+      itemDex: this.itemDex,
+      achievements: this.achievements,
+      quests: this.quests,
+      route: this.route,
     };
     game.saves.save(AUTOSAVE_SLOT, data as unknown as Record<string, unknown>);
   }
@@ -242,6 +331,26 @@ export class GameState {
     state.bossDefeated = d.bossDefeated === true;
     state.day = clampInt(d.day, 1, 1e6, 1);
     state.minutes = clampInt(d.minutes, 0, 24 * 60 - 1, 8 * 60);
+    // --- Phase 4 追加フィールド（旧セーブはデフォルトのまま） ---
+    if (d.stats && typeof d.stats === "object") {
+      state.stats = {
+        battlesWon: clampInt(d.stats.battlesWon, 0, 1e9, 0),
+        deaths: clampInt(d.stats.deaths, 0, 1e9, 0),
+        kills: sanitizeCounts(d.stats.kills),
+        deepestFloor: clampInt(d.stats.deepestFloor, 0, 999, 0),
+        questsCompleted: clampInt(d.stats.questsCompleted, 0, 1e9, 0),
+      };
+    }
+    state.seenEnemies = stringArray(d.seenEnemies);
+    state.itemDex = stringArray(d.itemDex);
+    state.achievements = stringArray(d.achievements);
+    state.quests = Array.isArray(d.quests)
+      ? d.quests.filter(
+          (q): q is ActiveQuest =>
+            typeof q === "object" && q !== null && typeof q.id === "string",
+        )
+      : [];
+    state.route = d.route && d.route in ROUTES ? d.route : null;
     return state;
   }
 
@@ -283,6 +392,19 @@ function sanitizeInventory(inv: unknown): Inventory {
     if (key in ITEMS && typeof value === "number" && value > 0) {
       result[key as ItemId] = Math.min(99, Math.round(value));
     }
+  }
+  return result;
+}
+
+function stringArray(v: unknown): string[] {
+  return Array.isArray(v) ? v.filter((s): s is string => typeof s === "string") : [];
+}
+
+function sanitizeCounts(v: unknown): Record<string, number> {
+  const result: Record<string, number> = {};
+  if (typeof v !== "object" || v === null) return result;
+  for (const [key, value] of Object.entries(v)) {
+    if (typeof value === "number" && value > 0) result[key] = Math.round(value);
   }
   return result;
 }

@@ -8,9 +8,16 @@ export type ItemId =
   | "nijimasu"
   | "nushizakana"
   | "rod"
-  | "pickaxe";
+  | "pickaxe"
+  | "dokukeshi";
 
-export type ItemKind = "heal" | "return" | "material" | "valuable" | "tool";
+export type ItemKind =
+  | "heal"
+  | "return"
+  | "material"
+  | "valuable"
+  | "tool"
+  | "cureStatus";
 
 export interface ItemDef {
   id: ItemId;
@@ -100,6 +107,14 @@ export const ITEMS: Record<ItemId, ItemDef> = {
     price: 150,
     sell: 75,
     kind: "tool",
+  },
+  dokukeshi: {
+    id: "dokukeshi",
+    name: "どくけしそう",
+    desc: "どくを ちりょうする",
+    price: 10,
+    sell: 5,
+    kind: "cureStatus",
   },
 };
 

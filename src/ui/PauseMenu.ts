@@ -1,5 +1,7 @@
 import type { Game } from "../core/Game";
 import { UI_W } from "../core/Renderer";
+import { ACHIEVEMENTS } from "../data/achievements";
+import { ENEMIES } from "../data/enemies";
 import { equipName } from "../data/equipment";
 import { ITEMS, ITEM_IDS, type ItemId } from "../data/items";
 import type { GameState } from "../world/GameState";
@@ -13,7 +15,15 @@ import { ListMenu } from "./ListMenu";
  */
 export type PauseMenuResult = "close" | "wing" | null;
 
-type Phase = "root" | "selectMember" | "status" | "items" | "target";
+type Phase =
+  | "root"
+  | "selectMember"
+  | "status"
+  | "items"
+  | "target"
+  | "dexRoot"
+  | "dexList"
+  | "achievements";
 
 export class PauseMenu {
   private phase: Phase = "root";
@@ -21,10 +31,15 @@ export class PauseMenu {
     [
       { label: "つよさ", value: "status" },
       { label: "どうぐ", value: "items" },
+      { label: "ずかん", value: "dex" },
+      { label: "じっせき", value: "achievements" },
       { label: "とじる", value: "close" },
     ],
     "メニュー",
   );
+  private dexRoot: ListMenu | null = null;
+  private dexList: ListMenu | null = null;
+  private achList: ListMenu | null = null;
   private memberMenu: ListMenu | null = null;
   private items: ListMenu | null = null;
   private targetMenu: ListMenu | null = null;
@@ -62,6 +77,50 @@ export class PauseMenu {
           this.info = null;
           this.phase = "items";
         }
+        if (ev.item.value === "dex") {
+          this.dexRoot = new ListMenu(
+            [
+              { label: "モンスターずかん", value: "monsters" },
+              { label: "アイテムずかん", value: "items" },
+            ],
+            "ずかん",
+          );
+          this.phase = "dexRoot";
+        }
+        if (ev.item.value === "achievements") {
+          const unlocked = this.state.achievements;
+          this.achList = new ListMenu(
+            ACHIEVEMENTS.map((a) => ({
+              label: `${unlocked.includes(a.id) ? "★" : "・"}${a.name}`,
+              value: a.id,
+              note: unlocked.includes(a.id) ? "かいほう" : "",
+            })),
+            `じっせき ${unlocked.length}/${ACHIEVEMENTS.length}`,
+          );
+          this.phase = "achievements";
+        }
+        return null;
+      }
+      case "dexRoot": {
+        const ev = this.dexRoot?.update(input, dt);
+        if (!ev) return null;
+        if (ev.type === "cancel") {
+          this.phase = "root";
+          return null;
+        }
+        this.dexList =
+          ev.item.value === "monsters" ? this.buildMonsterDex() : this.buildItemDex();
+        this.phase = "dexList";
+        return null;
+      }
+      case "dexList": {
+        const ev = this.dexList?.update(input, dt);
+        if (ev?.type === "cancel") this.phase = "dexRoot";
+        return null;
+      }
+      case "achievements": {
+        const ev = this.achList?.update(input, dt);
+        if (ev?.type === "cancel") this.phase = "root";
         return null;
       }
       case "selectMember": {
@@ -104,6 +163,38 @@ export class PauseMenu {
     }
   }
 
+  private buildMonsterDex(): ListMenu {
+    const kills = this.state.stats.kills;
+    const seen = this.state.seenEnemies;
+    const known = ENEMIES.filter((e) => (kills[e.id] ?? 0) > 0).length;
+    return new ListMenu(
+      ENEMIES.map((e) => {
+        const defeated = (kills[e.id] ?? 0) > 0;
+        if (defeated) {
+          return { label: e.name, value: e.id, note: `x${kills[e.id]}` };
+        }
+        if (seen.includes(e.id)) {
+          return { label: e.name, value: e.id, note: "みかけた", disabled: true };
+        }
+        return { label: "？？？", value: e.id, note: "", disabled: true };
+      }),
+      `モンスターずかん ${known}/${ENEMIES.length}`,
+    );
+  }
+
+  private buildItemDex(): ListMenu {
+    const dex = this.state.itemDex;
+    const known = ITEM_IDS.filter((id) => dex.includes(id)).length;
+    return new ListMenu(
+      ITEM_IDS.map((id) =>
+        dex.includes(id)
+          ? { label: ITEMS[id].name, value: id, note: ITEMS[id].desc }
+          : { label: "？？？", value: id, note: "", disabled: true },
+      ),
+      `アイテムずかん ${known}/${ITEM_IDS.length}`,
+    );
+  }
+
   private buildItemMenu(): ListMenu {
     const entries = ITEM_IDS.filter((id) => this.state.itemCount(id) > 0).map(
       (id) => ({
@@ -122,13 +213,20 @@ export class PauseMenu {
     const def = ITEMS[id];
     if (!def || this.state.itemCount(id) <= 0) return null;
     switch (def.kind) {
-      case "heal": {
+      case "heal":
+      case "cureStatus": {
         this.pendingItem = id;
         this.targetMenu = new ListMenu(
           this.state.party.map((m) => ({
             label: m.name,
             value: m.id,
-            note: m.alive ? `HP ${m.hp}/${m.maxHp}` : "せんとうふのう",
+            note: !m.alive
+              ? "せんとうふのう"
+              : def.kind === "cureStatus"
+                ? m.poisoned
+                  ? "どく"
+                  : "けんこう"
+                : `HP ${m.hp}/${m.maxHp}`,
             disabled: !m.alive,
           })),
           "だれに つかう？",
@@ -163,6 +261,18 @@ export class PauseMenu {
     this.phase = "items";
     if (!id || !target) return null;
     const def = ITEMS[id];
+    if (def.kind === "cureStatus") {
+      if (!target.poisoned) {
+        this.info = `${target.name}は どくでは ない。`;
+        return null;
+      }
+      this.state.removeItem(id);
+      target.poisoned = false;
+      this.info = `${target.name}の どくが きえた！`;
+      game.audio.playSe("heal");
+      this.items = this.buildItemMenu();
+      return null;
+    }
     if (target.hp >= target.maxHp) {
       this.info = `${target.name}の HPは まんたんだ。`;
       return null;
@@ -189,6 +299,27 @@ export class PauseMenu {
       case "status":
         this.renderStatus(game, ctx);
         break;
+      case "dexRoot":
+        this.dexRoot?.render(ctx, text, x - 60, 50, 230);
+        break;
+      case "dexList":
+        this.dexList?.render(ctx, text, x - 180, 30, 350);
+        break;
+      case "achievements": {
+        this.achList?.render(ctx, text, x - 220, 20, 390);
+        // 選択中の実績の説明を下に出す
+        const menu = this.achList;
+        if (menu) {
+          const def = ACHIEVEMENTS[menu.index];
+          if (def) {
+            const y = 20 + menu.height() + 6;
+            const w = Math.max(menu.renderedWidth, 390);
+            text.window(ctx, x - 220, y, w, 32);
+            text.draw(ctx, def.desc, x - 206, y + 11, { size: 11, color: "#b8b0d8" });
+          }
+        }
+        break;
+      }
       case "items":
       case "target": {
         this.items?.render(ctx, text, x - 40, 50, 210);

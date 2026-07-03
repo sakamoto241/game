@@ -15,6 +15,8 @@ export interface NpcDef {
   body: string;
   /** この施設が建つと村に現れる（省略時は最初からいる） */
   requires?: FacilityId;
+  /** 全施設が建つと現れる（村長） */
+  requiresAllFacilities?: boolean;
   schedule: Record<DayPhase, { x: number; y: number } | null>;
   dialog: (state: GameState) => string[];
 }
@@ -120,6 +122,28 @@ export const NPCS: NpcDef[] = [
         return ["「たおれた おなかまが いるのですね……", "  きょうかいで よみがえらせて さしあげます。」"];
       }
       return ["「みなさまの たびに かごが ありますように。」"];
+    },
+  },
+  {
+    id: "mayor",
+    name: "そんちょうオルバン",
+    hair: "#c9cbde",
+    body: "#7a4a2b",
+    requiresAllFacilities: true,
+    schedule: {
+      morning: { x: 21, y: 10 },
+      day: { x: 21, y: 10 },
+      evening: { x: 21, y: 10 },
+      night: { x: 21, y: 6 },
+    },
+    dialog: (s) => {
+      if (s.route === null) {
+        return [
+          "「よくぞ ここまで むらを そだててくれた！",
+          "  そろそろ この むらの ゆくすえを きめようじゃないか。」",
+        ];
+      }
+      return ["「この むらを えらんで よかったと みなが いっておるよ。」"];
     },
   },
   {

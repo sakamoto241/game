@@ -561,6 +561,25 @@ const MIMIC = [
   "................",
 ];
 
+const BOARD = [
+  "................",
+  "................",
+  "..oooooooooooo..",
+  ".oBBBBBBBBBBBBo.",
+  ".oBXXoBXXoBXXBo.",
+  ".oBXXoBXXoBXXBo.",
+  ".oBXeoBXXoBeXBo.",
+  ".oBBBBBBBBBBBBo.",
+  "..oooooooooooo..",
+  "....obo..obo....",
+  "....obo..obo....",
+  "....ooo..ooo....",
+  "................",
+  "................",
+  "................",
+  "................",
+];
+
 const ORE_NODE = [
   "................",
   "................",
@@ -723,6 +742,7 @@ export function registerPixelArt(assets: AssetManager): void {
   def("tile.chestOpen", layered(dungeonFloor, grid(CHEST_OPEN)));
   def("tile.boss", layered(dungeonFloor, grid(BOSS_ALTAR)));
   def("tile.ore", layered(dungeonFloor, grid(ORE_NODE)));
+  def("tile.board", layered(grass, grid(BOARD)));
 
   // --- キャラクター（職業色はクラス定義から） ---
   const charaPainter = (classId: ClassId): Painter => {

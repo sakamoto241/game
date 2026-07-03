@@ -33,6 +33,7 @@ export interface SerializedMember {
   hp: number;
   mp: number;
   equip: Equipped;
+  poisoned?: boolean;
 }
 
 /**
@@ -47,6 +48,8 @@ export class PartyMember {
   hp: number;
   mp: number;
   equip: Equipped = { weapon: null, shield: null, armor: null };
+  /** どく状態（戦闘後も続く。教会・どくけしそう・キアリーで治す） */
+  poisoned = false;
 
   constructor(
     readonly id: string,
@@ -107,10 +110,12 @@ export class PartyMember {
   fullRestore(): void {
     this.hp = this.maxHp;
     this.mp = this.maxMp;
+    this.poisoned = false;
   }
 
   revive(): void {
     this.hp = this.maxHp;
+    this.poisoned = false;
   }
 
   damage(amount: number): void {
@@ -153,6 +158,7 @@ export class PartyMember {
       hp: this.hp,
       mp: this.mp,
       equip: this.equip,
+      poisoned: this.poisoned,
     };
   }
 
@@ -168,6 +174,7 @@ export class PartyMember {
     };
     m.hp = clamp(num(d.hp, m.maxHp), 0, m.maxHp);
     m.mp = clamp(num(d.mp, m.maxMp), 0, m.maxMp);
+    m.poisoned = d.poisoned === true;
     return m;
   }
 

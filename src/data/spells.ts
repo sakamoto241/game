@@ -1,9 +1,17 @@
 /**
  * 呪文定義。誰がいつ覚えるかは classes.ts 側（職業ごとの習得表）で管理する。
  */
-export type SpellId = "mera" | "gira" | "merami" | "hoimi" | "behoimi" | "sukara";
+export type SpellId =
+  | "mera"
+  | "gira"
+  | "merami"
+  | "hoimi"
+  | "behoimi"
+  | "sukara"
+  | "kiari"
+  | "rukani";
 
-export type SpellKind = "attack" | "heal" | "buffDef";
+export type SpellKind = "attack" | "heal" | "buffDef" | "cureStatus" | "debuffDef";
 
 export interface SpellDef {
   id: SpellId;
@@ -69,6 +77,24 @@ export const SPELLS: Record<SpellId, SpellDef> = {
     desc: "みかたひとりの しゅびを あげる",
     mp: 2,
     kind: "buffDef",
+    power: 0.5,
+    variance: 0,
+  },
+  kiari: {
+    id: "kiari",
+    name: "キアリー",
+    desc: "どくを ちりょうする",
+    mp: 2,
+    kind: "cureStatus",
+    power: 0,
+    variance: 0,
+  },
+  rukani: {
+    id: "rukani",
+    name: "ルカニ",
+    desc: "てきの まもりを やわらげる",
+    mp: 3,
+    kind: "debuffDef",
     power: 0.5,
     variance: 0,
   },

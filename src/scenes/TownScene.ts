@@ -18,11 +18,21 @@ import {
 import { CLASSES, type ClassId } from "../data/classes";
 import { COMPANIONS } from "../data/companions";
 import { NPCS } from "../data/npcs";
+import { dailyQuests, type ActiveQuest } from "../data/quests";
+import {
+  ROUTES,
+  ROUTE_IDS,
+  applyBuy,
+  applySell,
+  innPrice,
+  smithyCostMult,
+  smithyMaxPlus,
+  type RouteId,
+} from "../data/routes";
 import {
   ARMOR_SHOP_STOCK,
   EQUIPMENT,
   SLOT_NAMES,
-  SMITHY_MAX_PLUS,
   WEAPON_SHOP_STOCK,
   equipName,
   type EquipId,
@@ -58,6 +68,9 @@ export const INN_SPAWN = { x: 18, y: 5 };
 /** ポータルの上（portalArmed ラッチで即再発動を防ぐ） */
 export const PORTAL_SPAWN = { x: 18, y: 21 };
 
+/** 依頼掲示板の位置（宿屋のとなり） */
+const BOARD_POS = { x: 22, y: 5 };
+
 /** シーン内メニューのスタック要素 */
 interface OpenMenu {
   menu: ListMenu;
@@ -89,6 +102,8 @@ export class TownScene extends Scene {
   private toastTimer = 0;
   private portalArmed = false;
   private leaving = false;
+  /** 村長との会話後に発展ルート選択を開く */
+  private pendingRouteMenu = false;
 
   constructor(
     private state: GameState,
@@ -107,15 +122,26 @@ export class TownScene extends Scene {
       .slice(1)
       .map((m) => new Follower(m, this.spawn.x, this.spawn.y));
     this.portalArmed = this.map.get(this.spawn.x, this.spawn.y) !== T.PORTAL;
-    // 村人: 施設が建つほど住民が増える
-    this.npcs = NPCS.filter((def) => !def.requires || this.state.built[def.requires]).map(
-      (def) => new Npc(def, this.game.rootRng.fork(`npc:${def.id}`)),
-    );
+    // 村人: 施設が建つほど住民が増える（村長は全施設で登場）
+    const allBuilt = FACILITY_IDS.every((id) => this.state.built[id]);
+    this.npcs = NPCS.filter((def) =>
+      def.requiresAllFacilities
+        ? allBuilt
+        : !def.requires || this.state.built[def.requires],
+    ).map((def) => new Npc(def, this.game.rootRng.fork(`npc:${def.id}`)));
     this.lastPhase = null; // 次の update で setPhase される
     this.game.audio.playBgm("town");
     if (this.introMessage) {
       this.message = this.introMessage;
       this.introMessage = undefined;
+    }
+    // 実績の判定（新規解除があればメッセージで祝う）
+    const unlocked = this.state.checkAchievements();
+    if (unlocked.length > 0) {
+      this.game.audio.playSe("levelup");
+      const lines = ["じっせきを かいほうした！"];
+      for (const a of unlocked) lines.push(`★『${a.name}』 — ${a.desc}`);
+      this.message = this.message ? [...this.message, ...lines] : lines;
     }
     this.state.save(this.game);
     this.toastTimer = 1.8;
@@ -123,6 +149,7 @@ export class TownScene extends Scene {
 
   /** 街の発展状態をマップに反映する（建物 or 建築予定地の看板） */
   private applyTownState(): void {
+    this.map.set(BOARD_POS.x, BOARD_POS.y, T.BOARD);
     for (const id of FACILITY_IDS) {
       const def = FACILITIES[id];
       if (this.state.built[id]) {
@@ -172,6 +199,10 @@ export class TownScene extends Scene {
     if (this.message) {
       if (input.pressed("confirm") || input.pressed("cancel")) {
         this.message = null;
+        if (this.pendingRouteMenu) {
+          this.pendingRouteMenu = false;
+          this.openRouteMenu();
+        }
       }
       return;
     }
@@ -211,6 +242,7 @@ export class TownScene extends Scene {
     const arrival = this.player.arrival;
     if (arrival) {
       this.state.advanceTime(MIN_PER_STEP);
+      this.state.applyPoisonStep();
       if (this.map.get(arrival.x, arrival.y) !== T.PORTAL) {
         this.portalArmed = true;
       } else if (this.portalArmed) {
@@ -244,6 +276,12 @@ export class TownScene extends Scene {
     if (npc) {
       npc.faceToward(this.player.tileX, this.player.tileY);
       this.game.audio.playSe("decide");
+      // 村長: 発展方針が未決定なら選択メニューへ
+      if (npc.def.id === "mayor" && this.state.route === null) {
+        this.message = [`＊ ${npc.def.name}`, ...npc.def.dialog(this.state)];
+        this.pendingRouteMenu = true;
+        return;
+      }
       this.message = [`＊ ${npc.def.name}`, ...npc.def.dialog(this.state)];
       return;
     }
@@ -263,6 +301,10 @@ export class TownScene extends Scene {
       if (tile === T.SIGN) {
         const facility = this.facilityAtSign(spot.x, spot.y);
         if (facility) this.openBuildMenu(facility);
+        return;
+      }
+      if (tile === T.BOARD) {
+        this.openBoard();
         return;
       }
       if (tile === T.WATER) {
@@ -388,9 +430,16 @@ export class TownScene extends Scene {
     this.pushMenu(
       new ListMenu(
         [
-          { label: "とまる（あさまで やすむ）", value: "rest", note: `${INN_PRICE}G` },
-          { label: `${ITEMS.yakusou.name}を かう`, value: "yakusou", note: `${ITEMS.yakusou.price}G` },
-          { label: `${ITEMS.tsubasa.name}を かう`, value: "tsubasa", note: `${ITEMS.tsubasa.price}G` },
+          {
+            label: "とまる（あさまで やすむ）",
+            value: "rest",
+            note: `${innPrice(this.state.route, INN_PRICE)}G`,
+          },
+          ...(["yakusou", "tsubasa", "dokukeshi"] as const).map((id) => ({
+            label: `${ITEMS[id].name}を かう`,
+            value: id,
+            note: `${applyBuy(this.state.route, ITEMS[id].price)}G`,
+          })),
           { label: "やめる", value: "quit" },
         ],
         "やどや『ねむりのおおかみ亭』",
@@ -402,11 +451,12 @@ export class TownScene extends Scene {
   private onInnSelect(value: string): void {
     switch (value) {
       case "rest": {
-        if (this.state.gold < INN_PRICE) {
+        const price = innPrice(this.state.route, INN_PRICE);
+        if (this.state.gold < price) {
           this.showMessage(["「おかねが たりないようだね。」"]);
           return;
         }
-        this.state.gold -= INN_PRICE;
+        this.state.gold -= price;
         for (const m of this.state.party) {
           if (m.alive) m.fullRestore();
         }
@@ -424,13 +474,15 @@ export class TownScene extends Scene {
         return;
       }
       case "yakusou":
-      case "tsubasa": {
+      case "tsubasa":
+      case "dokukeshi": {
         const item = ITEMS[value];
-        if (this.state.gold < item.price) {
+        const price = applyBuy(this.state.route, item.price);
+        if (this.state.gold < price) {
           this.showMessage(["「おかねが たりないようだね。」"]);
           return;
         }
-        this.state.gold -= item.price;
+        this.state.gold -= price;
         this.state.addItem(item.id);
         this.state.save(this.game);
         this.game.audio.playSe("buy");
@@ -486,7 +538,11 @@ export class TownScene extends Scene {
           ...stock.map((id) => {
             const e = EQUIPMENT[id];
             const stat = e.atk > 0 ? `こうげき+${e.atk}` : `しゅび+${e.def}`;
-            return { label: `${e.name}（${stat}）`, value: id, note: `${e.price}G` };
+            return {
+              label: `${e.name}（${stat}）`,
+              value: id,
+              note: `${applyBuy(this.state.route, e.price)}G`,
+            };
           }),
           { label: "やめる", value: "quit" },
         ],
@@ -527,11 +583,12 @@ export class TownScene extends Scene {
       return;
     }
     const tradeIn = old ? Math.floor(EQUIPMENT[old.id].price * TRADE_IN_RATE) : 0;
-    if (this.state.gold + tradeIn < e.price) {
+    const price = applyBuy(this.state.route, e.price);
+    if (this.state.gold + tradeIn < price) {
       this.showMessage(["「おかねが たりないぜ。 また きてくれ！」"]);
       return;
     }
-    this.state.gold = this.state.gold - e.price + tradeIn;
+    this.state.gold = this.state.gold - price + tradeIn;
     member.equip[e.slot] = { id: equipId, plus: 0 };
     this.state.save(this.game);
     this.game.audio.playSe("buy");
@@ -668,10 +725,18 @@ export class TownScene extends Scene {
       (value) => {
         if (value === "quit") this.closeMenus();
         else if (value === "pray") {
-          this.showMessage([
-            "しずかな いのりが きこえる……",
-            "こころが やすらいだ。",
-          ]);
+          const poisoned = this.state.party.filter((m) => m.alive && m.poisoned);
+          for (const m of poisoned) m.poisoned = false;
+          if (poisoned.length > 0) this.state.save(this.game);
+          this.game.audio.playSe("heal");
+          this.showMessage(
+            poisoned.length > 0
+              ? [
+                  "しずかな いのりが つつみこむ……",
+                  `${poisoned.map((m) => m.name).join("と ")}の どくが きえた！`,
+                ]
+              : ["しずかな いのりが きこえる……", "こころが やすらいだ。"],
+          );
         } else this.openReviveMenu();
       },
     );
@@ -746,7 +811,7 @@ export class TownScene extends Scene {
           if (!inst) {
             return { label: `${SLOT_NAMES[slot]}: なし`, value: slot, disabled: true };
           }
-          if (inst.plus >= SMITHY_MAX_PLUS) {
+          if (inst.plus >= smithyMaxPlus(this.state.route)) {
             return {
               label: `${equipName(inst)}`,
               value: slot,
@@ -754,7 +819,7 @@ export class TownScene extends Scene {
               disabled: true,
             };
           }
-          const cost = smithyCost(inst.plus + 1);
+          const cost = this.smithyCostFor(inst.plus + 1);
           return {
             label: `${equipName(inst)} → +${inst.plus + 1}`,
             value: slot,
@@ -767,10 +832,20 @@ export class TownScene extends Scene {
     );
   }
 
+  /** 工業都市は鍛冶コスト半額 */
+  private smithyCostFor(nextPlus: number): { kouseki: number; gold: number } {
+    const base = smithyCost(nextPlus);
+    const mult = smithyCostMult(this.state.route);
+    return {
+      kouseki: Math.max(1, Math.ceil(base.kouseki * mult)),
+      gold: Math.max(1, Math.floor(base.gold * mult)),
+    };
+  }
+
   private forgeEquip(member: PartyMember, slot: EquipSlot): void {
     const inst = member.equip[slot];
-    if (!inst || inst.plus >= SMITHY_MAX_PLUS) return;
-    const cost = smithyCost(inst.plus + 1);
+    if (!inst || inst.plus >= smithyMaxPlus(this.state.route)) return;
+    const cost = this.smithyCostFor(inst.plus + 1);
     if (this.state.itemCount("kouseki") < cost.kouseki || this.state.gold < cost.gold) {
       this.showMessage([
         "「ざいりょうか かねが たりねえな。」",
@@ -837,7 +912,7 @@ export class TownScene extends Scene {
           return {
             label: `${ITEMS[id].name}（${ITEMS[id].desc}）`,
             value: id,
-            note: owned ? "もっている" : `${ITEMS[id].price}G`,
+            note: owned ? "もっている" : `${applyBuy(this.state.route, ITEMS[id].price)}G`,
             disabled: owned,
           };
         }),
@@ -845,11 +920,12 @@ export class TownScene extends Scene {
       ),
       (value) => {
         const item = ITEMS[value as ItemId];
-        if (this.state.gold < item.price) {
+        const price = applyBuy(this.state.route, item.price);
+        if (this.state.gold < price) {
           this.showMessage(["「おかねが たりないわよ。」"]);
           return;
         }
-        this.state.gold -= item.price;
+        this.state.gold -= price;
         this.state.addItem(item.id);
         this.state.save(this.game);
         this.game.audio.playSe("buy");
@@ -869,14 +945,15 @@ export class TownScene extends Scene {
     ).map((id) => ({
       label: `${ITEMS[id].name}を うる`,
       value: id,
-      note: `${ITEMS[id].sell}G x${this.state.itemCount(id)}`,
+      note: `${applySell(this.state.route, ITEMS[id].sell)}G x${this.state.itemCount(id)}`,
     }));
   }
 
   private sellItem(id: ItemId): void {
     if (this.state.itemCount(id) <= 0) return;
+    const price = applySell(this.state.route, ITEMS[id].sell);
     this.state.removeItem(id);
-    this.state.gold += ITEMS[id].sell;
+    this.state.gold += price;
     this.game.audio.playSe("buy");
     // メニューを作り直して継続販売できるようにする
     const top = this.menuStack[this.menuStack.length - 1];
@@ -884,9 +961,155 @@ export class TownScene extends Scene {
       const items = this.buildSellMenuItems();
       top.menu.items = [...items, { label: "やめる", value: "quit" }];
       top.menu.index = Math.min(top.menu.index, top.menu.items.length - 1);
-      top.info = `${ITEMS[id].name}を うった！（+${ITEMS[id].sell}G / しょじ ${this.state.gold}G）`;
+      top.info = `${ITEMS[id].name}を うった！（+${price}G / しょじ ${this.state.gold}G）`;
     }
     this.state.save(this.game);
+  }
+
+  // =========================================================================
+  // 依頼掲示板
+  // =========================================================================
+  private questProgress(q: ActiveQuest): { done: boolean; note: string } {
+    switch (q.kind) {
+      case "hunt": {
+        const cur = Math.min(
+          q.count,
+          (this.state.stats.kills[q.targetId] ?? 0) - q.baseline,
+        );
+        return { done: cur >= q.count, note: cur >= q.count ? "ほうこくOK!" : `${Math.max(0, cur)}/${q.count}` };
+      }
+      case "deliver": {
+        const cur = Math.min(q.count, this.state.itemCount(q.targetId as ItemId));
+        return { done: cur >= q.count, note: cur >= q.count ? "ほうこくOK!" : `${cur}/${q.count}` };
+      }
+      case "reach":
+        return { done: q.done, note: q.done ? "ほうこくOK!" : "みとうたつ" };
+    }
+  }
+
+  private openBoard(): void {
+    this.game.audio.playSe("decide");
+    const items: { label: string; value: string; note?: string }[] = [];
+    for (const q of this.state.quests) {
+      const p = this.questProgress(q);
+      items.push({
+        label: `[うけおい] ${q.label}`,
+        value: p.done ? `report:${q.id}` : `info:${q.id}`,
+        note: p.note,
+      });
+    }
+    if (this.state.quests.length < 2) {
+      const offers = dailyQuests(this.state.day).filter(
+        (o) => !this.state.quests.some((q) => q.id === o.id),
+      );
+      for (const o of offers) {
+        items.push({ label: `[ぼしゅう] ${o.label}`, value: `accept:${o.id}`, note: `${o.rewardGold}G` });
+      }
+    }
+    items.push({ label: "やめる", value: "quit" });
+    this.pushMenu(
+      new ListMenu(items, "いらいけいじばん"),
+      (value) => this.onBoardSelect(value),
+      "いらいは どうじに 2けんまで。あしたには あたらしい ぼしゅうが はられる",
+    );
+  }
+
+  private onBoardSelect(value: string): void {
+    const [op, ...rest] = value.split(":");
+    const id = rest.join(":");
+    if (op === "quit") {
+      this.closeMenus();
+      return;
+    }
+    if (op === "accept") {
+      const offer = dailyQuests(this.state.day).find((o) => o.id === id);
+      if (!offer) return;
+      this.state.quests.push({
+        ...offer,
+        baseline: this.state.stats.kills[offer.targetId] ?? 0,
+        done: false,
+      });
+      this.state.save(this.game);
+      this.game.audio.playSe("decide");
+      this.closeMenus();
+      this.showMessage([`いらい『${offer.label}』を うけた！`]);
+      return;
+    }
+    const quest = this.state.quests.find((q) => q.id === id);
+    if (!quest) return;
+    if (op === "info") {
+      const p = this.questProgress(quest);
+      this.showMessage([quest.label, `しんちょく: ${p.note}   ほうしゅう: ${quest.rewardGold}G`]);
+      return;
+    }
+    // report
+    const p = this.questProgress(quest);
+    if (!p.done) return;
+    if (quest.kind === "deliver") {
+      this.state.removeItem(quest.targetId as ItemId, quest.count);
+    }
+    this.state.gold += quest.rewardGold;
+    this.state.stats.questsCompleted++;
+    this.state.quests = this.state.quests.filter((q) => q.id !== quest.id);
+    this.state.save(this.game);
+    this.game.audio.playSe("levelup");
+    this.showMessage([
+      `いらい『${quest.label}』を たっせいした！`,
+      `ほうしゅう ${quest.rewardGold}Gを うけとった！`,
+    ]);
+  }
+
+  // =========================================================================
+  // 発展ルート（村長）
+  // =========================================================================
+  private openRouteMenu(): void {
+    this.pushMenu(
+      new ListMenu(
+        [
+          ...ROUTE_IDS.map((id) => ({
+            label: `${ROUTES[id].name}（${ROUTES[id].perks}）`,
+            value: id,
+          })),
+          { label: "まだ きめない", value: "quit" },
+        ],
+        "むらの はってんほうしん",
+      ),
+      (value) => {
+        if (value === "quit") {
+          this.closeMenus();
+          return;
+        }
+        this.confirmRoute(value as RouteId);
+      },
+      "いちど きめると かえられない！ むらの なまえも かわる",
+    );
+  }
+
+  private confirmRoute(id: RouteId): void {
+    this.pushMenu(
+      new ListMenu(
+        [
+          { label: "やめておく", value: "no" },
+          { label: `${ROUTES[id].name}に けってい！`, value: "yes" },
+        ],
+        `ほんとうに ${ROUTES[id].name}へ すすむ？`,
+      ),
+      (value) => {
+        if (value !== "yes") {
+          this.menuStack.pop();
+          return;
+        }
+        this.state.route = id;
+        this.state.save(this.game);
+        this.game.audio.playSe("build");
+        this.bannerTimer = 4;
+        this.showMessage([
+          "むらは あたらしい みちを あゆみはじめた！",
+          `ここは きょうから 『${ROUTES[id].townTitle}』！`,
+          `（${ROUTES[id].perks}）`,
+        ]);
+      },
+    );
   }
 
   // =========================================================================
@@ -990,7 +1213,7 @@ export class TownScene extends Scene {
   private renderUi(ctx: CanvasRenderingContext2D): void {
     const text = this.game.text;
     this.renderHud(ctx);
-    drawBanner(this.game, ctx, "アルバの村", this.bannerTimer);
+    drawBanner(this.game, ctx, this.state.townTitle(), this.bannerTimer, 240);
     drawToast(this.game, ctx, "オートセーブしました", this.toastTimer);
 
     if (this.pauseMenu) {
@@ -1060,9 +1283,9 @@ export class TownScene extends Scene {
         : m.hp <= m.maxHp * 0.25
           ? "#ff8a8a"
           : "#f5f1e8";
-      text.draw(ctx, m.name, UI_W - 222, y, {
+      text.draw(ctx, `${m.name}${m.poisoned ? "毒" : ""}`, UI_W - 222, y, {
         size: 10,
-        color: m.alive ? "#d8d2e8" : "#7d7690",
+        color: m.alive ? (m.poisoned ? "#c9a7ff" : "#d8d2e8") : "#7d7690",
       });
       text.draw(ctx, `HP${m.hp}`, UI_W - 138, y, { size: 10, color: hpColor });
       text.draw(ctx, `MP${m.mp}`, UI_W - 82, y, { size: 10, color: "#a8c8f0" });

@@ -13,6 +13,7 @@ import {
 } from "../data/balance";
 import type { EnemyInstance } from "../data/enemies";
 import { ITEMS, type ItemId } from "../data/items";
+import { routeDefBonus, spellMpDiscount } from "../data/routes";
 import { SPELLS, type SpellDef } from "../data/spells";
 import type { GameState } from "../world/GameState";
 import type { PartyMember } from "../world/PartyMember";
@@ -74,6 +75,10 @@ export class BattleScene extends Scene {
   private guarding = new Set<string>();
   /** スカラ等の防御倍率（メンバーID → 倍率） */
   private defBuff = new Map<string, number>();
+  /** ねむり中のメンバーID（戦闘終了で解除） */
+  private sleeping = new Set<string>();
+  /** ルカニによる敵防御倍率 */
+  private enemyDefMult = 1;
 
   // --- 演出タイマー ---
   private introT = 0;
@@ -101,6 +106,7 @@ export class BattleScene extends Scene {
 
   override onEnter(): void {
     this.rng = this.state.run?.battleRng ?? this.game.rootRng.fork("battle-fallback");
+    this.state.markSeen(this.enemy.def.id); // 図鑑: 目撃
     this.game.audio.playBgm(this.enemy.def.boss ? "boss" : "battle");
     this.queueMsgs([{ text: `${this.enemy.def.name}が あらわれた！` }], () =>
       this.startRound(),
@@ -144,11 +150,33 @@ export class BattleScene extends Scene {
       if (!m.alive) continue;
       this.activeIdx = i;
       this.guarding.delete(m.id); // 前ラウンドのぼうぎょ解除
+
+      // ねむり: 50% で目を覚ます。眠ったままなら行動スキップ
+      if (this.sleeping.has(m.id)) {
+        if (this.rng.chance(0.5)) {
+          this.sleeping.delete(m.id);
+          this.queueMsgs([{ text: `${m.name}は めを さました！` }], () => {
+            this.commandMenu = this.buildCommandMenu(m);
+            this.phase = "command";
+          });
+        } else {
+          this.queueMsgs([{ text: `${m.name}は ぐうぐう ねむっている……` }], () =>
+            this.nextMember(),
+          );
+        }
+        return;
+      }
+
       this.commandMenu = this.buildCommandMenu(m);
       this.phase = "command";
       return;
     }
     this.enemyPhase(this.enemy.def.boss ? bossActions(this.aliveCount()) : 1);
+  }
+
+  /** 魔法都市はMPコストが下がる */
+  private spellCost(spell: SpellDef): number {
+    return Math.max(1, spell.mp - spellMpDiscount(this.state.route));
   }
 
   private aliveCount(): number {
@@ -251,8 +279,8 @@ export class BattleScene extends Scene {
           m.spells().map((s) => ({
             label: s.name,
             value: s.id,
-            note: `MP ${s.mp}`,
-            disabled: m.mp < s.mp,
+            note: `MP ${this.spellCost(s)}`,
+            disabled: m.mp < this.spellCost(s),
           })),
           "じゅもん",
         );
@@ -261,7 +289,9 @@ export class BattleScene extends Scene {
       }
       case "item": {
         const usable = (Object.keys(this.state.inventory) as ItemId[]).filter(
-          (id) => ITEMS[id].kind === "heal" && this.state.itemCount(id) > 0,
+          (id) =>
+            (ITEMS[id].kind === "heal" || ITEMS[id].kind === "cureStatus") &&
+            this.state.itemCount(id) > 0,
         );
         if (usable.length === 0) {
           this.queueMsgs([{ text: "つかえる どうぐを もっていない！" }], () => {
@@ -288,15 +318,32 @@ export class BattleScene extends Scene {
 
   private onSpellChosen(spell: SpellDef): void {
     const caster = this.activeMember();
-    if (caster.mp < spell.mp) return;
+    if (caster.mp < this.spellCost(spell)) return;
     if (spell.kind === "attack") {
       this.castAttackSpell(caster, spell);
+    } else if (spell.kind === "debuffDef") {
+      this.castDebuff(caster, spell);
     } else {
-      // 回復・バフは対象を選ぶ
+      // 回復・バフ・治療は対象を選ぶ
       this.pending = { kind: "spell", spell, caster };
       this.targetMenu = this.buildTargetMenu();
       this.phase = "target";
     }
+  }
+
+  private castDebuff(caster: PartyMember, spell: SpellDef): void {
+    caster.mp -= this.spellCost(spell);
+    this.enemyDefMult = Math.max(0.25, this.enemyDefMult - spell.power);
+    this.queueMsgs(
+      [
+        {
+          text: `${caster.name}は ${spell.name}を となえた！`,
+          fx: () => (this.spellFlash = 0.4),
+        },
+        { text: `${this.enemy.def.name}の まもりが やわらいだ！` },
+      ],
+      () => this.afterMemberAction(),
+    );
   }
 
   private onItemChosen(item: ItemId): void {
@@ -335,7 +382,7 @@ export class BattleScene extends Scene {
   // =========================================================================
   private memberAttack(m: PartyMember): void {
     const crit = !this.enemy.def.boss && this.rng.chance(CRIT_CHANCE);
-    let dmg = physDamage(m.atk, this.enemy.defense, this.rng);
+    let dmg = physDamage(m.atk, this.enemy.defense * this.enemyDefMult, this.rng);
     if (crit) dmg = Math.round(dmg * CRIT_MULT);
 
     const msgs: QueuedMsg[] = [{ text: `${m.name}の こうげき！` }];
@@ -356,7 +403,7 @@ export class BattleScene extends Scene {
   }
 
   private castAttackSpell(caster: PartyMember, spell: SpellDef): void {
-    caster.mp -= spell.mp;
+    caster.mp -= this.spellCost(spell);
     const dmg = spell.power + this.rng.int(0, spell.variance);
     this.queueMsgs(
       [
@@ -378,7 +425,26 @@ export class BattleScene extends Scene {
     spell: SpellDef,
     target: PartyMember,
   ): void {
-    caster.mp -= spell.mp;
+    caster.mp -= this.spellCost(spell);
+    if (spell.kind === "cureStatus") {
+      const cured = target.poisoned;
+      target.poisoned = false;
+      this.queueMsgs(
+        [
+          {
+            text: `${caster.name}は ${spell.name}を となえた！`,
+            fx: () => (this.spellFlash = 0.3),
+          },
+          {
+            text: cured
+              ? `${target.name}の どくが きえた！`
+              : `……しかし なにも おこらなかった。`,
+          },
+        ],
+        () => this.nextMember(),
+      );
+      return;
+    }
     if (spell.kind === "heal") {
       const healed = target.heal(spell.power + this.rng.int(0, spell.variance));
       this.queueMsgs(
@@ -413,7 +479,28 @@ export class BattleScene extends Scene {
 
   private useItem(user: PartyMember, id: ItemId, target: PartyMember): void {
     const def = ITEMS[id];
-    if (def.kind !== "heal" || this.state.itemCount(id) <= 0) {
+    if (this.state.itemCount(id) <= 0) {
+      this.phase = "command";
+      return;
+    }
+    if (def.kind === "cureStatus") {
+      this.state.removeItem(id);
+      const cured = target.poisoned;
+      target.poisoned = false;
+      this.queueMsgs(
+        [
+          { text: `${user.name}は ${def.name}を つかった！` },
+          {
+            text: cured
+              ? `${target.name}の どくが きえた！`
+              : "……しかし なにも おこらなかった。",
+          },
+        ],
+        () => this.nextMember(),
+      );
+      return;
+    }
+    if (def.kind !== "heal") {
       this.phase = "command";
       return;
     }
@@ -473,9 +560,12 @@ export class BattleScene extends Scene {
       return;
     }
     const target = this.rng.pick(alive)!;
-    let def = target.def * (this.defBuff.get(target.id) ?? 1);
+    const def =
+      (target.def + routeDefBonus(this.state.route)) *
+      (this.defBuff.get(target.id) ?? 1);
     let dmg = physDamage(this.enemy.atk, def, this.rng);
     if (this.guarding.has(target.id)) dmg = Math.max(1, Math.round(dmg * GUARD_MULT));
+    const willSurvive = target.hp - dmg > 0;
 
     const msgs: QueuedMsg[] = [
       {
@@ -490,11 +580,29 @@ export class BattleScene extends Scene {
           this.redFlash = 0.55;
           this.popupAtMember(target, `-${dmg}`, "#ff8a8a");
           this.game.audio.playSe("damage");
+          // 攻撃を受けると目が覚める
+          if (this.sleeping.has(target.id)) this.sleeping.delete(target.id);
         },
       },
     ];
-    if (target.hp - dmg <= 0) {
+    if (!willSurvive) {
       msgs.push({ text: `${target.name}は たおれてしまった！` });
+    } else {
+      // 状態異常の付与（コウモリ=どく / ゴースト=ねむり）
+      const inflict = this.enemy.def.inflict;
+      if (inflict && this.rng.chance(inflict.chance)) {
+        if (inflict.status === "poison" && !target.poisoned) {
+          msgs.push({
+            text: `${target.name}は どくを うけてしまった！`,
+            fx: () => (target.poisoned = true),
+          });
+        } else if (inflict.status === "sleep" && !this.sleeping.has(target.id)) {
+          msgs.push({
+            text: `${target.name}は ねむってしまった！`,
+            fx: () => this.sleeping.add(target.id),
+          });
+        }
+      }
     }
     this.queueMsgs(msgs, () => {
       if (this.aliveCount() === 0) this.defeat();
@@ -503,8 +611,34 @@ export class BattleScene extends Scene {
   }
 
   private endEnemyPhase(): void {
-    if (this.aliveCount() === 0) this.defeat();
-    else this.startRound();
+    if (this.aliveCount() === 0) {
+      this.defeat();
+      return;
+    }
+    // どくのダメージ（ラウンド終了時）
+    const poisoned = this.members.filter((m) => m.alive && m.poisoned);
+    if (poisoned.length > 0) {
+      const dmg = 3;
+      this.queueMsgs(
+        [
+          {
+            text: `どくが からだを むしばむ……！`,
+            fx: () => {
+              for (const m of poisoned) {
+                m.damage(dmg);
+                this.popupAtMember(m, `-${dmg}`, "#c9a7ff");
+              }
+            },
+          },
+        ],
+        () => {
+          if (this.aliveCount() === 0) this.defeat();
+          else this.startRound();
+        },
+      );
+      return;
+    }
+    this.startRound();
   }
 
   // =========================================================================
@@ -514,6 +648,10 @@ export class BattleScene extends Scene {
     this.enemyDead = true;
     const e = this.enemy;
     const alive = this.members.filter((m) => m.alive);
+
+    // 図鑑・統計
+    this.state.recordKill(e.def.id);
+    this.state.stats.battlesWon++;
 
     this.state.gold += e.gold;
     const each = expShare(e.exp, alive.length);
@@ -713,8 +851,13 @@ export class BattleScene extends Scene {
         text.draw(ctx, "▶", 34, y, { size: 11, color: "#ffe9a0" });
       }
       const nameColor = !m.alive ? "#7d7690" : isActive ? "#ffffff" : "#d8d2e8";
-      const buffMark = this.defBuff.has(m.id) ? "↑" : this.guarding.has(m.id) ? "盾" : "";
-      text.draw(ctx, `${m.name}${buffMark}`, 48, y, { size: 11, color: nameColor });
+      const marks = [
+        m.poisoned ? "毒" : "",
+        this.sleeping.has(m.id) ? "眠" : "",
+        this.defBuff.has(m.id) ? "↑" : "",
+        this.guarding.has(m.id) ? "盾" : "",
+      ].join("");
+      text.draw(ctx, `${m.name}${marks}`, 48, y, { size: 11, color: nameColor });
       const hpColor = !m.alive
         ? "#7d7690"
         : m.hp <= m.maxHp * 0.25
