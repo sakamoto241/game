@@ -46,6 +46,28 @@ export class TextRenderer {
     ctx.fillText(str, x, y);
   }
 
+  /** 文字幅を計測する（フォント設定込み） */
+  measure(ctx: CanvasRenderingContext2D, str: string, size = 12, bold = false): number {
+    ctx.font = `${bold ? "bold " : ""}${size}px ${this.fontFamily}`;
+    return ctx.measureText(str).width;
+  }
+
+  /** maxWidth に収まるよう末尾を「…」で切り詰める */
+  truncate(
+    ctx: CanvasRenderingContext2D,
+    str: string,
+    maxWidth: number,
+    size = 12,
+    bold = false,
+  ): string {
+    if (this.measure(ctx, str, size, bold) <= maxWidth) return str;
+    let s = str;
+    while (s.length > 1 && this.measure(ctx, `${s}…`, size, bold) > maxWidth) {
+      s = s.slice(0, -1);
+    }
+    return `${s}…`;
+  }
+
   /** ドラクエ風メッセージウィンドウ（黒地 + 白の二重枠） */
   window(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): void {
     ctx.fillStyle = "rgba(10, 10, 22, 0.92)";

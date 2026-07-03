@@ -904,7 +904,7 @@ export class TownScene extends Scene {
           },
           { label: "やめる", value: "quit" },
         ],
-        `けんちくよていち: ${def.desc}（こうせき ${this.state.itemCount("kouseki")}こ しょじ）`,
+        "けんちくよていち",
       ),
       (value) => {
         if (value !== "build") {
@@ -913,6 +913,7 @@ export class TownScene extends Scene {
         }
         this.build(def);
       },
+      `${def.desc}（こうせき ${this.state.itemCount("kouseki")}こ しょじ）`,
     );
   }
 
@@ -1022,10 +1023,12 @@ export class TownScene extends Scene {
       this.menuStack.forEach((entry, i) => {
         const x = 56 + i * 36;
         const y = UI_H - entry.menu.height() - 96 - i * 14;
-        entry.menu.render(ctx, text, x, y, 360);
+        entry.menu.render(ctx, text, x, y, 320);
         if (i === this.menuStack.length - 1 && entry.info) {
-          text.window(ctx, x, y + entry.menu.height() + 6, 360, 32);
-          text.draw(ctx, entry.info, x + 14, y + entry.menu.height() + 16, { size: 11 });
+          const w = Math.max(entry.menu.renderedWidth, 320);
+          const infoText = text.truncate(ctx, entry.info, w - 28, 11);
+          text.window(ctx, x, y + entry.menu.height() + 6, w, 32);
+          text.draw(ctx, infoText, x + 14, y + entry.menu.height() + 16, { size: 11 });
         }
       });
       return;
