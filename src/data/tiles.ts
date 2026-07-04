@@ -32,6 +32,7 @@ export const T = {
   ROOF_WHITE: 22,
   ORE: 23,
   BOARD: 24,
+  SAKURA: 25,
 } as const;
 
 export const TILE_DEFS: TileDefs = {
@@ -60,6 +61,7 @@ export const TILE_DEFS: TileDefs = {
   [T.ROOF_WHITE]: { name: "白い屋根", solid: true, sprite: "tile.roofWhite" },
   [T.ORE]: { name: "こうみゃく", solid: true, sprite: "tile.ore" },
   [T.BOARD]: { name: "依頼掲示板", solid: true, sprite: "tile.board" },
+  [T.SAKURA]: { name: "桜の木", solid: true, sprite: "tile.sakura" },
 };
 
 /** 街マップの文字 → タイルID */

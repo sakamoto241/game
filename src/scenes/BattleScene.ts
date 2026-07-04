@@ -872,18 +872,32 @@ export class BattleScene extends Scene {
   private renderUi(ctx: CanvasRenderingContext2D): void {
     const text = this.game.text;
 
+    // 敵の名前は、パーティウィンドウ（左）と重ならないよう
+    // 右側の空きスペースに名前プレートとして描く
     if (!this.enemyDead) {
-      text.draw(ctx, this.enemy.def.name, UI_W / 2, 44, {
+      const name = this.enemy.def.name;
+      const w = Math.max(90, text.measure(ctx, name, 13, true) + 28);
+      const cx = (300 + (UI_W - 16)) / 2; // パーティ枠の右端(≈286)より右で中央寄せ
+      const x = Math.round(cx - w / 2);
+      text.window(ctx, x, 16, w, 26);
+      text.draw(ctx, name, cx, 23, {
         size: 13,
         align: "center",
-        color: "#e8ddf5",
+        color: "#f0e6ff",
+        bold: true,
+      });
+      text.draw(ctx, `B${this.floor}F`, UI_W - 16, 48, {
+        size: 10,
+        align: "right",
+        color: "#8f87a8",
+      });
+    } else {
+      text.draw(ctx, `B${this.floor}F`, UI_W - 16, 12, {
+        size: 10,
+        align: "right",
+        color: "#8f87a8",
       });
     }
-    text.draw(ctx, `B${this.floor}F`, UI_W - 16, 12, {
-      size: 11,
-      align: "right",
-      color: "#8f87a8",
-    });
 
     this.renderPartyStatus(ctx);
 

@@ -76,8 +76,8 @@ export class DungeonScene extends Scene {
   private sparkTimer = 0;
   private pendingBattle: (() => void) | null = null;
   private leaving = false;
-  /** この階に入った直後に中ボス固定エンカウントを起こすか */
-  private forcedMidboss = false;
+  /** 中ボスの門番がいる階段の位置（撃破前のみ）。null なら門番なし */
+  private guardianAt: { x: number; y: number } | null = null;
 
   constructor(
     private state: GameState,
@@ -97,17 +97,58 @@ export class DungeonScene extends Scene {
       .slice(1)
       .map((m) => new Follower(m, plan.entry.x, plan.entry.y));
     this.grace = GRACE_FLOOR_START;
-    // 中ボス階に初めて入った（この潜行でまだ倒していない）なら固定エンカウント
-    this.forcedMidboss =
+    // 中ボス階: この潜行で未撃破なら、階段の前に桜の木を植え、門番を立たせる
+    this.guardianAt = null;
+    if (
       this.floor === MIDBOSS_FLOOR &&
-      !(this.state.run?.midbossDefeated.has(this.floor) ?? false);
+      !(this.state.run?.midbossDefeated.has(this.floor) ?? false)
+    ) {
+      this.setupGuardian();
+    }
     this.game.audio.playBgm("dungeon");
   }
 
   override resume(): void {
     // 戦闘から帰ってきた直後は少し安全に
     this.grace = Math.max(this.grace, GRACE_AFTER_BATTLE);
+    // 門番を倒した直後: 桜を残しつつ門番を消し、階段の上にいれば下層へ
+    if (this.guardianAt && (this.state.run?.midbossDefeated.has(this.floor) ?? false)) {
+      const g = this.guardianAt;
+      this.guardianAt = null;
+      if (this.player.tileX === g.x && this.player.tileY === g.y) {
+        this.descend();
+        return;
+      }
+    }
     this.game.audio.playBgm("dungeon");
+  }
+
+  /** 階段の前に桜を植え、門番（中ボス）を配置する */
+  private setupGuardian(): void {
+    const stairs = this.map.findTiles(T.STAIRS)[0];
+    if (!stairs) return;
+    this.guardianAt = stairs;
+    // 階段に近い岩壁を1〜2本、桜に変える（岩壁のみ変更＝到達性を壊さない）。
+    // 半径を広げつつ、上方（背景）を優先して探す。
+    let planted = 0;
+    for (let r = 1; r <= 4 && planted < 2; r++) {
+      const ring: { x: number; y: number }[] = [];
+      for (let dy = -r; dy <= r; dy++) {
+        for (let dx = -r; dx <= r; dx++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+          ring.push({ x: stairs.x + dx, y: stairs.y + dy });
+        }
+      }
+      // 上（y が小さい）を背景として優先
+      ring.sort((a, b) => a.y - b.y);
+      for (const p of ring) {
+        if (planted >= 2) break;
+        if (this.map.get(p.x, p.y) === T.ROCK) {
+          this.map.set(p.x, p.y, T.SAKURA);
+          planted++;
+        }
+      }
+    }
   }
 
   update(dt: number): void {
@@ -125,17 +166,6 @@ export class DungeonScene extends Scene {
         this.pendingBattle = null;
         start();
       }
-      return;
-    }
-
-    // 中ボス階に入った直後の固定エンカウント（バナー表示後に発動）
-    if (this.forcedMidboss && this.bannerTimer <= 1.4 && !this.message) {
-      this.forcedMidboss = false;
-      this.message = this.game.text.wrap(
-        "ひやりとした くうきが ながれる……\nはかばの ぬしが みちを ふさいでいる！",
-        40,
-      );
-      this.startBattle(false, midbossDef());
       return;
     }
 
@@ -216,9 +246,16 @@ export class DungeonScene extends Scene {
     const tile = this.map.get(x, y);
 
     if (tile === T.STAIRS) {
-      this.game.audio.playSe("stairs");
-      this.game.scenes.replace(new DungeonScene(this.state, this.floor + 1), 0.45);
-      this.leaving = true;
+      // 門番が守る階段: 未撃破なら降りる代わりに中ボス戦
+      if (this.guardianAt && this.guardianAt.x === x && this.guardianAt.y === y) {
+        this.message = this.game.text.wrap(
+          "さくらの きの したで、はかもりの よみまるが しずかに ふりむいた。\n「‥‥ここから さきへは、とおさぬ。」",
+          40,
+        );
+        this.startBattle(false, midbossDef());
+        return;
+      }
+      this.descend();
       return;
     }
 
@@ -397,6 +434,7 @@ export class DungeonScene extends Scene {
         else if (id === T.ORE) found.push({ x, y, color: "#6fd8c8" });
         else if (id === T.STAIRS || id === T.EXIT) found.push({ x, y, color: "#8fe8d8" });
         else if (id === T.BOSS) found.push({ x, y, color: "#e05a7a" });
+        else if (id === T.SAKURA) found.push({ x, y, color: "#f7c8dc" });
       }
     }
     return found;
@@ -436,6 +474,26 @@ export class DungeonScene extends Scene {
     return lights;
   }
 
+  /** 階段の上で待ち構える中ボスの門番を描く（ゆらぎ付き） */
+  private renderGuardian(ctx: CanvasRenderingContext2D): void {
+    if (!this.guardianAt) return;
+    const bob = Math.round(Math.sin(this.game.elapsed * 2.2) * 1.5);
+    this.game.assets.drawSprite(
+      ctx,
+      "battle.yomimaru",
+      this.guardianAt.x * TILE,
+      this.guardianAt.y * TILE - 3 + bob,
+      TILE,
+      TILE,
+    );
+  }
+
+  private descend(): void {
+    this.game.audio.playSe("stairs");
+    this.game.scenes.replace(new DungeonScene(this.state, this.floor + 1), 0.45);
+    this.leaving = true;
+  }
+
   private returnHome(reason: string): void {
     this.leaving = true;
     this.state.endRun();
@@ -458,6 +516,7 @@ export class DungeonScene extends Scene {
     this.cam.begin(ctx);
     this.map.render(ctx, this.cam, TILE_DEFS, this.game.assets);
     this.ambientFx.render(ctx); // 塵・きらめきは闇に沈む
+    this.renderGuardian(ctx);
     for (let i = this.followers.length - 1; i >= 0; i--) {
       this.followers[i]!.render(ctx, this.game.assets);
     }

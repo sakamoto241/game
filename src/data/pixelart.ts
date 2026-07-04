@@ -580,6 +580,26 @@ const BOARD = [
   "................",
 ];
 
+// 桜の木（花びらピンク）。ダンジョン床の上に立つ
+const SAKURA = [
+  ".....IIiII......",
+  "...IIiIIIiII....",
+  "..IiIIhIIIiII...",
+  "..IIhIIIIhIIi...",
+  ".IiIIIIhIIIIiI..",
+  ".IIhIIIIIIhIII..",
+  "..IIiIIIhIIiI...",
+  "...IIiIIIiII....",
+  "....IbIbIbI.....",
+  ".....obbbo......",
+  "......obo.......",
+  "......obo.......",
+  ".....obbbo......",
+  "....oo...oo.....",
+  "................",
+  "................",
+];
+
 const ORE_NODE = [
   "................",
   "................",
@@ -762,6 +782,11 @@ export function registerPixelArt(assets: AssetManager): void {
   def("tile.boss", layered(dungeonFloor, grid(BOSS_ALTAR)));
   def("tile.ore", layered(dungeonFloor, grid(ORE_NODE)));
   def("tile.board", layered(grass, grid(BOARD)));
+  // 桜: 幹はダンジョン床、花は3段のピンク（I=標準/i=明/h=影）
+  def(
+    "tile.sakura",
+    layered(dungeonFloor, grid(SAKURA, { i: "#f7c8dc", h: "#d76a9e" })),
+  );
 
   // --- キャラクター（職業色はクラス定義から） ---
   const charaPainter = (classId: ClassId): Painter => {
