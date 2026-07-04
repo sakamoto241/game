@@ -131,9 +131,18 @@
 7. B5Fのぬしを撃破すると報酬を得て村へ帰還、bossDefeated が記録される
 8. 死亡すると所持金半減・こうせき没収で宿屋で復活する（HP全快）
 
-## 6. 既知の TODO（次 Phase 以降）
+## 6. サウンド（実装済み）
+
+- AudioManager: Web Audio API。BGM のループ再生 + クロスフェード切替。
+- 自動再生ポリシー対策: 最初のユーザー操作で AudioContext を resume（unlock）。
+- 音源は `src/assets/audio/*.ogg` を Vite が data: URI としてインライン化
+  （`assetsInlineLimit` を大きく設定）。→ 単一HTML(file://)でも BGM が鳴る。
+- 追加は `src/data/audioAssets.ts` に1行足すだけ（データ駆動）。町=village, ダンジョン=dungeon。
+- SE のインターフェース（playSe）は用意済み。音源を SE_SOURCES に足せば有効化。
+
+## 7. 既知の TODO（次 Phase 以降）
 
 - ピクセルフォント（PixelMplus 等）の同梱による全環境での文字統一
-- AudioManager の実装（Web Audio API、BGM クロスフェード、SE 同時発音制御）
+- SE（攻撃・決定・回復など）の音源追加
 - ゲームパッド対応（Input のバインディング差し替えで対応可能な設計済み）
-- セーブスロット UI
+- セーブスロット UI / 音量設定 UI

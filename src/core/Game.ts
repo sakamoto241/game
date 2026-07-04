@@ -69,8 +69,27 @@ export class Game {
 
   async start(makeInitialScene: (game: Game) => Scene): Promise<void> {
     await this.assets.loadManifest();
+    this.audio.init();
+    this.installAudioUnlock();
     this.scenes.replace(makeInitialScene(this), 0.6);
     requestAnimationFrame((t) => this.frame(t));
+  }
+
+  /**
+   * ブラウザの自動再生ポリシー対策。
+   * AudioContext.resume() は「ユーザー操作のハンドラ内」で呼ぶ必要があるため、
+   * 最初の入力を直接のイベントリスナーで捕まえて unlock する（1回だけ）。
+   */
+  private installAudioUnlock(): void {
+    const unlock = () => {
+      this.audio.unlock();
+      window.removeEventListener("keydown", unlock);
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("touchstart", unlock);
+    };
+    window.addEventListener("keydown", unlock);
+    window.addEventListener("pointerdown", unlock);
+    window.addEventListener("touchstart", unlock);
   }
 
   private frame(timeMs: number): void {
