@@ -122,28 +122,31 @@ export class Player {
   }
 
   /**
-   * 描画。member を渡すと装備が見た目に反映される
-   * （武器・盾のミニスプライトを手元に重ねる。鎧は Phase 4 のレイヤー衣装で対応予定）。
+   * 描画。member を渡すと装備がキャラに一体化して反映される（DQ1/2 風）:
+   * 胴 = 鎧ティアで色替え / 盾・武器 = 方向別レイヤーを手元に重ねる。
    */
   render(ctx: CanvasRenderingContext2D, assets: AssetManager, member?: PartyMember): void {
     const x = Math.round(this.px);
     const y = Math.round(this.py);
-    assets.drawSprite(ctx, `hero.${this.dir}`, x, y, TILE, TILE);
-    if (!member) return;
-    const { weapon, shield } = member.equip;
-    if (shield) {
-      assets.drawSprite(ctx, "overlay.shield", x - 4, y + 4, 12, 12);
+
+    if (!member) {
+      assets.drawSprite(ctx, `hero.${this.dir}`, x, y, TILE, TILE);
+      return;
     }
+    const { weapon, shield, armor } = member.equip;
+    // 体（鎧の色を反映）
+    const armorKey = armor ? armor.id : "base";
+    assets.drawSprite(ctx, `hero.body.${armorKey}.${this.dir}`, x, y, TILE, TILE);
+    // 盾（手元レイヤー）
+    if (shield) {
+      assets.drawSprite(ctx, `hero.shield.${shield.id}.${this.dir}`, x, y, TILE, TILE);
+    }
+    // 武器（剣/斧レイヤー）
     if (weapon) {
-      assets.drawSprite(ctx, weaponOverlayId(weapon.id), x + 7, y + 2, 13, 13);
+      const wk = weapon.id === "axe" ? "axe" : weapon.id;
+      assets.drawSprite(ctx, `hero.weapon.${wk}.${this.dir}`, x, y, TILE, TILE);
     }
   }
-}
-
-function weaponOverlayId(id: string): string {
-  if (id === "club") return "overlay.club";
-  if (id === "axe") return "overlay.axe";
-  return "overlay.sword";
 }
 
 function lerp(a: number, b: number, t: number): number {

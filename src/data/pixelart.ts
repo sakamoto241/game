@@ -446,6 +446,240 @@ const CHARA_WARRIOR = [
   "................",
 ];
 
+// =============================================================================
+// 勇者の装備レイヤー（DQ1/2 風）。
+// 体・盾・武器を「方向別レイヤー」に分け、輪郭と陰影を共有させて一体化する。
+// 鎧は胴(B/b)の色替えで反映、盾/武器は専用レイヤーを手元に重ねる。
+// c=髪, a=髪かげ, F/f=肌, e=目, B/b=胴(鎧色), M=ブーツ
+// =============================================================================
+const HERO_DN = [
+  "................",
+  "......cccc......",
+  ".....cccccc.....",
+  "....caaaaaaac...",
+  "....oFFFFFFo....",
+  "....oFeFFeFo....",
+  "....offFFffo....",
+  ".....ooFFoo.....",
+  "...oBBBBBBBBo...",
+  "..oFBBBBBBBBFo..",
+  "..oFBBBBBBBBFo..",
+  "...oBBBBBBBBo...",
+  "...obBBBBBBbo...",
+  "....oMMooMMo....",
+  "....oMo..oMo....",
+  "................",
+];
+
+const HERO_UP = [
+  "................",
+  "......cccc......",
+  ".....cccccc.....",
+  "....caaaaaaac...",
+  "....caaaaaaac...",
+  "....caaaaaaac...",
+  ".....ooaaoo.....",
+  "...oBBBBBBBBo...",
+  "..oFBBBBBBBBFo..",
+  "..oFBBBBBBBBFo..",
+  "...oBBBBBBBBo...",
+  "...obBBBBBBbo...",
+  "...oBBBBBBBBo...",
+  "....oMMooMMo....",
+  "....oMo..oMo....",
+  "................",
+];
+
+const HERO_SD = [
+  "................",
+  "....cccc........",
+  "...cccccc.......",
+  "..caaaaaac......",
+  "..cFFFFFo.......",
+  ".cFeFFFo........",
+  ".cffFFo.........",
+  "..ooFoo.........",
+  "..oBBBBBo.......",
+  ".oFBBBBBBo......",
+  ".oFBBBBBBo......",
+  "..oBBBBBo.......",
+  "..obBBBbo.......",
+  "..oMMoMMo.......",
+  "..oMo.oMo.......",
+  "................",
+];
+
+const SHIELD_DN = [
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  ".oooo...........",
+  "osSSKo..........",
+  "osSSSo..........",
+  "osSSSo..........",
+  ".osSo...........",
+  "..oo............",
+  "................",
+  "................",
+];
+
+const SHIELD_UP = [
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "..........oooo..",
+  ".........oKSSSo.",
+  ".........oSSSSo.",
+  ".........oSSSSo.",
+  "..........oSSo..",
+  "............oo..",
+  "................",
+  "................",
+];
+
+const SHIELD_SD = [
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "oooo............",
+  "sSSKo...........",
+  "sSSSo...........",
+  "sSSSo...........",
+  "oSSo............",
+  ".oo.............",
+  "................",
+  "................",
+];
+
+const BLADE_DN = [
+  "................",
+  ".........oKKo...",
+  ".........oKKo...",
+  ".........oKKo...",
+  ".........oKKo...",
+  ".........oKKo...",
+  ".........oKKo...",
+  "........oYYYYo..",
+  ".........oBBo...",
+  ".........oBBo...",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+];
+
+const BLADE_UP = [
+  "................",
+  "....oKKo........",
+  "....oKKo........",
+  "....oKKo........",
+  "....oKKo........",
+  "....oKKo........",
+  "....oKKo........",
+  "...oYYYYo.......",
+  "....oBBo........",
+  "....oBBo........",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+];
+
+const BLADE_SD = [
+  "................",
+  "..........oKKo..",
+  "..........oKKo..",
+  "..........oKKo..",
+  "..........oKKo..",
+  "..........oKKo..",
+  "..........oKKo..",
+  ".........oYYYYo.",
+  "..........oBBo..",
+  "..........oBBo..",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+];
+
+const AXE_DN = [
+  "................",
+  "................",
+  "........oKKKKo..",
+  ".......oKKKKKo..",
+  ".......oKKKKo...",
+  "........oKKo....",
+  ".........oBo....",
+  ".........oBo....",
+  ".........oBo....",
+  ".........oBo....",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+];
+
+const AXE_UP = [
+  "................",
+  "................",
+  "...oKKKKo.......",
+  "..oKKKKKo.......",
+  "...oKKKKo.......",
+  "....oKKo........",
+  "....oBo.........",
+  "....oBo.........",
+  "....oBo.........",
+  "....oBo.........",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+];
+
+const AXE_SD = [
+  "................",
+  "................",
+  ".........oKKKKo.",
+  ".........oKKKKK.",
+  ".........oKKKKo.",
+  "..........oKKo..",
+  "..........oBo...",
+  "..........oBo...",
+  "..........oBo...",
+  "..........oBo...",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+];
+
 // --- モンスター ---
 const SLIME = [
   "................",
@@ -887,6 +1121,67 @@ function registerChara(assets: AssetManager, baseId: string, painter: Painter): 
   assets.definePixelArt(`${baseId}.left`, 16, 16, painter, true);
 }
 
+/**
+ * 方向別グリッド {down,up,side} を4方向スプライトとして登録する。
+ * side は left にそのまま、right に左右反転で使う。
+ */
+function registerDirLayer(
+  assets: AssetManager,
+  baseId: string,
+  grids: { down: string[]; up: string[]; side: string[] },
+  extra: Record<string, string>,
+): void {
+  assets.definePixelArt(`${baseId}.down`, 16, 16, grid(grids.down, extra));
+  assets.definePixelArt(`${baseId}.up`, 16, 16, grid(grids.up, extra));
+  assets.definePixelArt(`${baseId}.left`, 16, 16, grid(grids.side, extra));
+  assets.definePixelArt(`${baseId}.right`, 16, 16, grid(grids.side, extra), true);
+}
+
+/** 勇者の胴（鎧色）・盾・武器レイヤーを全ティア登録する（DQ1/2 風） */
+function registerHeroEquipLayers(assets: AssetManager): void {
+  const body = { down: HERO_DN, up: HERO_UP, side: HERO_SD };
+  const shieldG = { down: SHIELD_DN, up: SHIELD_UP, side: SHIELD_SD };
+  const bladeG = { down: BLADE_DN, up: BLADE_UP, side: BLADE_SD };
+  const axeG = { down: AXE_DN, up: AXE_UP, side: AXE_SD };
+  const hair = { c: "#7a4a2b", a: "#563218" };
+
+  // 胴（鎧ティアで色替え。base=素の勇者青）
+  const ARMOR: Record<string, { B: string; b: string }> = {
+    base: { B: "#4a7dd4", b: "#39538c" },
+    cloth: { B: "#5a9a4a", b: "#3e7233" },
+    leatherArmor: { B: "#9a6a3a", b: "#6e4a26" },
+    chain: { B: "#8a92b0", b: "#5a6280" },
+    steelArmor: { B: "#c2c8dc", b: "#828aa4" },
+  };
+  for (const [key, col] of Object.entries(ARMOR)) {
+    registerDirLayer(assets, `hero.body.${key}`, body, { ...hair, ...col });
+  }
+  // base の体を通常の hero.* にも上書き（HUD/戦闘アイコンも新デザインに）
+  registerDirLayer(assets, "hero", body, { ...hair, ...ARMOR.base! });
+
+  // 盾（装備IDで色替え）
+  const SHIELDS: Record<string, { S: string; s: string; K: string }> = {
+    leatherShield: { S: "#a0764a", s: "#6e4a2a", K: "#c49468" },
+    scaleShield: { S: "#4a9a8a", s: "#2e6658", K: "#7fd0c0" },
+    steelShield: { S: "#b8bed0", s: "#7a8098", K: "#e4e8f4" },
+  };
+  for (const [key, col] of Object.entries(SHIELDS)) {
+    registerDirLayer(assets, `hero.shield.${key}`, shieldG, col);
+  }
+
+  // 剣（武器IDで色替え）
+  const BLADES: Record<string, { K: string; Y: string; B: string }> = {
+    club: { K: "#a0764a", Y: "#7a4a2b", B: "#6e4a2a" },
+    copper: { K: "#d08a4a", Y: "#e8c170", B: "#6e4a2a" },
+    steel: { K: "#d0d6e4", Y: "#e8c170", B: "#6e4a2a" },
+  };
+  for (const [key, col] of Object.entries(BLADES)) {
+    registerDirLayer(assets, `hero.weapon.${key}`, bladeG, col);
+  }
+  // 斧
+  registerDirLayer(assets, "hero.weapon.axe", axeG, { K: "#c2c8dc", B: "#6e4a2a" });
+}
+
 export function registerPixelArt(assets: AssetManager): void {
   const def = (id: string, painter: Painter) => assets.definePixelArt(id, 16, 16, painter);
 
@@ -945,6 +1240,9 @@ export function registerPixelArt(assets: AssetManager): void {
   for (const cls of Object.values(CLASSES)) {
     registerChara(assets, `chara.${cls.id}`, charaPainter(cls.id));
   }
+
+  // --- 勇者の装備レイヤー（体=鎧色 / 盾 / 武器 を方向別に登録） ---
+  registerHeroEquipLayers(assets);
 
   // --- 村人（施設で増える住民。配色は npcs.ts から） ---
   for (const npc of NPCS) {
