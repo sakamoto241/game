@@ -18,6 +18,7 @@ import { SPELLS, type SpellDef } from "../data/spells";
 import type { GameState } from "../world/GameState";
 import type { PartyMember } from "../world/PartyMember";
 import { ListMenu } from "../ui/ListMenu";
+import { drawBar } from "../ui/Windows";
 
 export type BattleOutcome = "victory" | "defeat" | "fled" | "bossVictory";
 
@@ -794,7 +795,7 @@ export class BattleScene extends Scene {
     this.renderPartyStatus(ctx);
 
     // コマンド・サブメニュー
-    const menuY = 40 + this.members.length * 20 + 24;
+    const menuY = 64 + this.members.length * 22;
     if (this.phase === "command") {
       this.commandMenu?.render(ctx, text, 24, menuY, 140);
     } else if (this.phase === "spell" || this.phase === "item") {
@@ -842,14 +843,20 @@ export class BattleScene extends Scene {
 
   private renderPartyStatus(ctx: CanvasRenderingContext2D): void {
     const text = this.game.text;
-    const h = 30 + this.members.length * 20;
-    text.window(ctx, 24, 24, 236, h);
+    const h = 32 + this.members.length * 22;
+    text.window(ctx, 24, 24, 262, h);
     this.members.forEach((m, i) => {
-      const y = 40 + i * 20;
+      const y = 42 + i * 22;
       const isActive = this.phase !== "msg" && i === this.activeIdx;
       if (isActive) {
-        text.draw(ctx, "▶", 34, y, { size: 11, color: "#ffe9a0" });
+        text.draw(ctx, "▶", 32, y, { size: 11, color: "#ffe9a0" });
       }
+      const iconId = m.classId === "hero" ? "hero.down" : `chara.${m.classId}.down`;
+      ctx.save();
+      if (!m.alive) ctx.globalAlpha = 0.45;
+      this.game.assets.drawSprite(ctx, iconId, 44, y - 3, 14, 14);
+      ctx.restore();
+
       const nameColor = !m.alive ? "#7d7690" : isActive ? "#ffffff" : "#d8d2e8";
       const marks = [
         m.poisoned ? "毒" : "",
@@ -857,22 +864,12 @@ export class BattleScene extends Scene {
         this.defBuff.has(m.id) ? "↑" : "",
         this.guarding.has(m.id) ? "盾" : "",
       ].join("");
-      text.draw(ctx, `${m.name}${marks}`, 48, y, { size: 11, color: nameColor });
-      const hpColor = !m.alive
-        ? "#7d7690"
-        : m.hp <= m.maxHp * 0.25
-          ? "#ff8a8a"
-          : m.hp <= m.maxHp * 0.5
-            ? "#ffd970"
-            : "#f5f1e8";
-      text.draw(ctx, `HP${String(m.hp).padStart(3, " ")}`, 150, y, {
-        size: 11,
-        color: hpColor,
-      });
-      text.draw(ctx, `MP${String(m.mp).padStart(3, " ")}`, 204, y, {
-        size: 11,
-        color: "#a8c8f0",
-      });
+      text.draw(ctx, `${m.name}${marks}`, 62, y, { size: 11, color: nameColor });
+
+      drawBar(ctx, 132, y + 1, 66, 9, m.alive ? m.hp / m.maxHp : 0, "hp");
+      text.draw(ctx, `${m.hp}/${m.maxHp}`, 165, y + 1, { size: 9, align: "center" });
+      drawBar(ctx, 204, y + 1, 48, 9, m.maxMp > 0 ? m.mp / m.maxMp : 0, "mp");
+      text.draw(ctx, `${m.mp}`, 228, y + 1, { size: 9, align: "center" });
     });
   }
 }

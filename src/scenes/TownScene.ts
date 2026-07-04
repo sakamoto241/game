@@ -51,9 +51,11 @@ import { ITEMS, ITEM_IDS, type ItemId } from "../data/items";
 import { T, TILE_DEFS, TOWN_LEGEND } from "../data/tiles";
 import { TOWN_MAP_ROWS } from "../data/maps";
 import { TILE, TileMap } from "../gfx/TileMap";
+import { Lighting, type LightSource } from "../gfx/Lighting";
+import { Particles } from "../gfx/Particles";
 import { WeatherFX } from "../gfx/WeatherFX";
 import { ListMenu } from "../ui/ListMenu";
-import { drawBanner, drawMessage, drawToast } from "../ui/Windows";
+import { drawBanner, drawHudRow, drawMessage, drawToast } from "../ui/Windows";
 import { PauseMenu } from "../ui/PauseMenu";
 import { Follower } from "../world/Follower";
 import type { GameState } from "../world/GameState";
@@ -93,6 +95,10 @@ export class TownScene extends Scene {
   private npcs: Npc[] = [];
   private lastPhase: DayPhase | null = null;
   private weatherFx = new WeatherFX();
+  private lighting = new Lighting();
+  private particles = new Particles();
+  private fireflyTimer = 0;
+  private portalSparkTimer = 0;
   private fishing: { phase: "wait" | "bite"; t: number } | null = null;
   private cam = new Camera();
   private bannerTimer = 2.6;
@@ -184,6 +190,7 @@ export class TownScene extends Scene {
     // 天候・村人の生活（メニュー中も世界は動き続ける）
     this.weatherFx.setWeather(this.state.weather);
     this.weatherFx.update(dt);
+    this.updateFx(dt);
     const phase = this.state.phase();
     if (phase !== this.lastPhase) {
       this.lastPhase = phase;
@@ -257,6 +264,71 @@ export class TownScene extends Scene {
     if (input.pressed("confirm") && !this.player.isMoving) {
       this.interact();
     }
+  }
+
+  /** 演出パーティクル（ポータルのきらめき・夜の蛍） */
+  private updateFx(dt: number): void {
+    this.particles.update(dt);
+
+    this.portalSparkTimer -= dt;
+    if (this.portalSparkTimer <= 0) {
+      this.portalSparkTimer = 0.4;
+      this.particles.sparkle(18 * TILE + 16, 21 * TILE + 6, "#c9a7ff");
+    }
+
+    if (this.state.phase() === "night") {
+      this.fireflyTimer -= dt;
+      if (this.fireflyTimer <= 0 && this.particles.count < 40) {
+        this.fireflyTimer = 0.5;
+        const t = this.game.elapsed;
+        const fx = this.cam.x + ((Math.sin(t * 1.3) + 1) / 2) * this.cam.viewW;
+        const fy = this.cam.y + ((Math.sin(t * 2.1 + 2.4) + 1) / 2) * this.cam.viewH;
+        this.particles.firefly(fx, fy);
+      }
+    }
+  }
+
+  /** 夜の村の光源（窓明かり・ポータル・一行のカンテラ） */
+  private collectNightLights(): LightSource[] {
+    const lights: LightSource[] = [
+      {
+        x: this.cam.toScreenX(this.player.px + 8),
+        y: this.cam.toScreenY(this.player.py + 8),
+        radius: 64,
+        color: "#ff9a3c",
+        flicker: 0.6,
+        glow: 0.4,
+      },
+    ];
+    const x0 = Math.max(0, Math.floor(this.cam.x / TILE));
+    const y0 = Math.max(0, Math.floor(this.cam.y / TILE));
+    const x1 = Math.min(this.map.cols - 1, Math.ceil((this.cam.x + this.cam.viewW) / TILE));
+    const y1 = Math.min(this.map.rows - 1, Math.ceil((this.cam.y + this.cam.viewH) / TILE));
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
+        const id = this.map.get(x, y);
+        if (id === T.DOOR || id === T.SHOP_DOOR) {
+          lights.push({
+            x: this.cam.toScreenX(x * TILE + 8),
+            y: this.cam.toScreenY(y * TILE + 8),
+            radius: 34,
+            color: "#ffb45a",
+            flicker: 0.4,
+            glow: 0.5,
+          });
+        } else if (id === T.PORTAL) {
+          lights.push({
+            x: this.cam.toScreenX(x * TILE + 8),
+            y: this.cam.toScreenY(y * TILE + 8),
+            radius: 38,
+            color: "#b06ae8",
+            flicker: 0.5,
+            glow: 0.55,
+          });
+        }
+      }
+    }
+    return lights;
   }
 
   private syncFollowers(): void {
@@ -1194,16 +1266,27 @@ export class TownScene extends Scene {
     this.player.render(ctx, this.game.assets, this.state.hero);
     this.cam.end(ctx);
 
-    // 季節 → 昼夜 の順にティントを重ね、その上に天候エフェクト
+    // 昼: 粒子はそのまま重ねる / 夜: ライティングで窓明かりが灯る
+    const phase = this.state.phase();
+    this.cam.begin(ctx);
+    this.particles.render(ctx);
+    this.cam.end(ctx);
+
+    // 季節ティント
     const seasonTint = SEASON_TINTS[this.state.season];
     if (seasonTint) {
       ctx.fillStyle = seasonTint;
       ctx.fillRect(0, 0, WORLD_W, WORLD_H);
     }
-    const tint = PHASE_TINTS[this.state.phase()];
-    if (tint) {
-      ctx.fillStyle = tint;
-      ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+    if (phase === "night") {
+      // 夜はフラットな青ではなくダイナミックライティング
+      this.lighting.render(ctx, this.collectNightLights(), 0.62, this.game.elapsed);
+    } else {
+      const tint = PHASE_TINTS[phase];
+      if (tint) {
+        ctx.fillStyle = tint;
+        ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+      }
     }
     this.weatherFx.render(ctx);
 
@@ -1267,30 +1350,19 @@ export class TownScene extends Scene {
   private renderHud(ctx: CanvasRenderingContext2D): void {
     const s = this.state;
     const text = this.game.text;
-    const h = 52 + s.party.length * 16;
-    text.window(ctx, UI_W - 236, 10, 226, h);
+    const h = 56 + s.party.length * 18;
+    text.window(ctx, UI_W - 246, 10, 236, h);
     text.draw(
       ctx,
       `${s.timeLabel()}  ${s.seasonWeatherLabel()}`,
-      UI_W - 222,
+      UI_W - 230,
       20,
-      { size: 10, color: "#ffe9a0" },
+      { size: 10, color: "#e3c98b" },
     );
     s.party.forEach((m, i) => {
-      const y = 36 + i * 16;
-      const hpColor = !m.alive
-        ? "#7d7690"
-        : m.hp <= m.maxHp * 0.25
-          ? "#ff8a8a"
-          : "#f5f1e8";
-      text.draw(ctx, `${m.name}${m.poisoned ? "毒" : ""}`, UI_W - 222, y, {
-        size: 10,
-        color: m.alive ? (m.poisoned ? "#c9a7ff" : "#d8d2e8") : "#7d7690",
-      });
-      text.draw(ctx, `HP${m.hp}`, UI_W - 138, y, { size: 10, color: hpColor });
-      text.draw(ctx, `MP${m.mp}`, UI_W - 82, y, { size: 10, color: "#a8c8f0" });
+      drawHudRow(this.game, ctx, m, UI_W - 230, 38 + i * 18);
     });
-    text.draw(ctx, `${s.gold} G`, UI_W - 24, 36 + s.party.length * 16, {
+    text.draw(ctx, `${s.gold} G`, UI_W - 26, 40 + s.party.length * 18, {
       size: 10,
       align: "right",
       color: "#ffd970",

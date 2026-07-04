@@ -27,7 +27,9 @@ import {
 import { ITEMS } from "../data/items";
 import { T, TILE_DEFS } from "../data/tiles";
 import { TILE, TileMap } from "../gfx/TileMap";
-import { drawBanner, drawMessage } from "../ui/Windows";
+import { Lighting, type LightSource } from "../gfx/Lighting";
+import { Particles, drawTorchFlame } from "../gfx/Particles";
+import { drawBanner, drawHudRow, drawMessage } from "../ui/Windows";
 import { PauseMenu } from "../ui/PauseMenu";
 import { generateFloor } from "../world/DungeonGenerator";
 import { Follower } from "../world/Follower";
@@ -59,6 +61,17 @@ export class DungeonScene extends Scene {
   private poisonFlash = 0;
   /** エンカウント演出（白フラッシュ）中は >0。終了時に戦闘へ */
   private encounterFx = 0;
+
+  // --- 演出（ライティング・パーティクル） ---
+  private lighting = new Lighting();
+  /** 闇の下に沈む粒子（塵・きらめき） */
+  private ambientFx = new Particles();
+  /** 闇の上で光る粒子（火の粉・煙） */
+  private glowFx = new Particles();
+  private emberTimer = 0;
+  private smokeTimer = 0;
+  private dustTimer = 0;
+  private sparkTimer = 0;
   private pendingBattle: (() => void) | null = null;
   private leaving = false;
 
@@ -96,6 +109,7 @@ export class DungeonScene extends Scene {
     if (this.bannerTimer > 0) this.bannerTimer -= dt;
     if (this.poisonFlash > 0) this.poisonFlash -= dt;
     for (const f of this.followers) f.update(dt);
+    this.updateFx(dt);
     if (this.leaving) return;
 
     // エンカウント演出 → 戦闘開始
@@ -312,6 +326,100 @@ export class DungeonScene extends Scene {
     }
   }
 
+  private sparkIdx = 0;
+
+  /** 演出パーティクルの生成（ロジックには影響しない） */
+  private updateFx(dt: number): void {
+    this.ambientFx.update(dt);
+    this.glowFx.update(dt);
+
+    // 松明の火の粉と煙
+    this.emberTimer -= dt;
+    if (this.emberTimer <= 0) {
+      this.emberTimer = 0.11;
+      this.glowFx.ember(this.player.px + 13, this.player.py + 2);
+    }
+    this.smokeTimer -= dt;
+    if (this.smokeTimer <= 0) {
+      this.smokeTimer = 0.5;
+      this.glowFx.smoke(this.player.px + 13, this.player.py - 3);
+    }
+
+    // 画面内を漂う塵
+    this.dustTimer -= dt;
+    if (this.dustTimer <= 0) {
+      this.dustTimer = 0.3;
+      const t = this.game.elapsed;
+      const dx = this.cam.x + ((Math.sin(t * 1.7) + 1) / 2) * this.cam.viewW;
+      const dy = this.cam.y + ((Math.sin(t * 2.3 + 1.7) + 1) / 2) * this.cam.viewH;
+      this.ambientFx.dust(dx, dy);
+    }
+
+    // 特別なタイルのきらめき（順繰りに光らせる）
+    this.sparkTimer -= dt;
+    if (this.sparkTimer <= 0) {
+      this.sparkTimer = 0.35;
+      const specials = this.visibleSpecialTiles();
+      if (specials.length > 0) {
+        this.sparkIdx = (this.sparkIdx + 1) % specials.length;
+        const pick = specials[this.sparkIdx]!;
+        this.ambientFx.sparkle(pick.x * TILE + 8, pick.y * TILE + 6, pick.color);
+      }
+    }
+  }
+
+  private visibleSpecialTiles(): { x: number; y: number; color: string }[] {
+    const x0 = Math.max(0, Math.floor(this.cam.x / TILE));
+    const y0 = Math.max(0, Math.floor(this.cam.y / TILE));
+    const x1 = Math.min(this.map.cols - 1, Math.ceil((this.cam.x + this.cam.viewW) / TILE));
+    const y1 = Math.min(this.map.rows - 1, Math.ceil((this.cam.y + this.cam.viewH) / TILE));
+    const found: { x: number; y: number; color: string }[] = [];
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
+        const id = this.map.get(x, y);
+        if (id === T.CHEST) found.push({ x, y, color: "#ffd24a" });
+        else if (id === T.ORE) found.push({ x, y, color: "#6fd8c8" });
+        else if (id === T.STAIRS || id === T.EXIT) found.push({ x, y, color: "#8fe8d8" });
+        else if (id === T.BOSS) found.push({ x, y, color: "#e05a7a" });
+      }
+    }
+    return found;
+  }
+
+  /** 光源リスト（スクリーン座標） */
+  private collectLights(): LightSource[] {
+    const lights: LightSource[] = [
+      {
+        x: this.cam.toScreenX(this.player.px + 13),
+        y: this.cam.toScreenY(this.player.py + 4),
+        radius: 96,
+        flicker: 1,
+        color: "#ff9a3c",
+        glow: 0.6,
+      },
+    ];
+    for (const f of this.followers) {
+      lights.push({
+        x: this.cam.toScreenX(f.px + 8),
+        y: this.cam.toScreenY(f.py + 8),
+        radius: 34,
+        color: "#ff9a3c",
+        glow: 0.2,
+      });
+    }
+    for (const s of this.visibleSpecialTiles()) {
+      lights.push({
+        x: this.cam.toScreenX(s.x * TILE + 8),
+        y: this.cam.toScreenY(s.y * TILE + 8),
+        radius: s.color === "#e05a7a" ? 34 : 26,
+        color: s.color,
+        glow: 0.45,
+        flicker: 0.5,
+      });
+    }
+    return lights;
+  }
+
   private returnHome(reason: string): void {
     this.leaving = true;
     this.state.endRun();
@@ -328,18 +436,26 @@ export class DungeonScene extends Scene {
     const py = this.player.py + TILE / 2;
     this.cam.centerOn(px, py, this.map.widthPx, this.map.heightPx);
 
-    ctx.fillStyle = "#1a1722";
+    ctx.fillStyle = "#141220";
     ctx.fillRect(0, 0, WORLD_W, WORLD_H);
 
     this.cam.begin(ctx);
     this.map.render(ctx, this.cam, TILE_DEFS, this.game.assets);
+    this.ambientFx.render(ctx); // 塵・きらめきは闇に沈む
     for (let i = this.followers.length - 1; i >= 0; i--) {
       this.followers[i]!.render(ctx, this.game.assets);
     }
     this.player.render(ctx, this.game.assets, this.state.hero);
     this.cam.end(ctx);
 
-    this.renderTorchlight(ctx);
+    // ダイナミックライティング（松明・宝箱・階段・祭壇が闇を照らす）
+    this.lighting.render(ctx, this.collectLights(), 0.94, this.game.elapsed);
+
+    // 闇の上で光るもの: 松明の炎・火の粉・煙
+    this.cam.begin(ctx);
+    drawTorchFlame(ctx, this.player.px + 12, this.player.py + 3, this.game.elapsed);
+    this.glowFx.render(ctx);
+    this.cam.end(ctx);
 
     // どくの紫フラッシュ
     if (this.poisonFlash > 0) {
@@ -357,20 +473,6 @@ export class DungeonScene extends Scene {
     }
 
     this.renderUi(r.ui);
-  }
-
-  private renderTorchlight(ctx: CanvasRenderingContext2D): void {
-    const sx = this.cam.toScreenX(this.player.px + TILE / 2);
-    const sy = this.cam.toScreenY(this.player.py + TILE / 2);
-    const flicker =
-      4 * Math.sin(this.game.elapsed * 7.3) + 2 * Math.sin(this.game.elapsed * 13.1);
-    const radius = 92 + flicker;
-    const grad = ctx.createRadialGradient(sx, sy, radius * 0.32, sx, sy, radius);
-    grad.addColorStop(0, "rgba(8, 6, 18, 0)");
-    grad.addColorStop(0.7, "rgba(8, 6, 18, 0.55)");
-    grad.addColorStop(1, "rgba(8, 6, 18, 0.92)");
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, WORLD_W, WORLD_H);
   }
 
   private renderUi(ctx: CanvasRenderingContext2D): void {
@@ -395,32 +497,20 @@ export class DungeonScene extends Scene {
   private renderHud(ctx: CanvasRenderingContext2D): void {
     const s = this.state;
     const text = this.game.text;
-    const h = 36 + s.party.length * 16;
-    text.window(ctx, UI_W - 216, 10, 206, h);
-    text.draw(ctx, `B${this.floor}F / B${DUNGEON_MAX_FLOOR}F`, UI_W - 202, 20, {
+    const h = 40 + s.party.length * 18;
+    text.window(ctx, UI_W - 246, 10, 236, h);
+    text.draw(ctx, `B${this.floor}F / B${DUNGEON_MAX_FLOOR}F`, UI_W - 230, 20, {
       size: 10,
-      color: "#ffe9a0",
+      color: "#e3c98b",
     });
-    text.draw(ctx, `${s.gold} G`, UI_W - 24, 20, {
+    text.draw(ctx, `${s.gold} G`, UI_W - 26, 20, {
       size: 10,
       align: "right",
       color: "#ffd970",
     });
     s.party.forEach((m, i) => {
-      const y = 36 + i * 16;
-      const hpColor = !m.alive
-        ? "#7d7690"
-        : m.hp <= m.maxHp * 0.25
-          ? "#ff8a8a"
-          : m.hp <= m.maxHp * 0.5
-            ? "#ffd970"
-            : "#f5f1e8";
-      text.draw(ctx, `${m.name}${m.poisoned ? "毒" : ""}`, UI_W - 202, y, {
-        size: 10,
-        color: m.alive ? (m.poisoned ? "#c9a7ff" : "#d8d2e8") : "#7d7690",
-      });
-      text.draw(ctx, `HP${m.hp}`, UI_W - 128, y, { size: 10, color: hpColor });
-      text.draw(ctx, `MP${m.mp}`, UI_W - 78, y, { size: 10, color: "#a8c8f0" });
+      const y = 38 + i * 18;
+      drawHudRow(this.game, ctx, m, UI_W - 230, y);
     });
   }
 }

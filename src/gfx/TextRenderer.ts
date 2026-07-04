@@ -68,15 +68,43 @@ export class TextRenderer {
     return `${s}…`;
   }
 
-  /** ドラクエ風メッセージウィンドウ（黒地 + 白の二重枠） */
+  /** 装飾ウィンドウ（濃紺のグラデ地 + 金縁 + コーナー飾り） */
   window(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): void {
-    ctx.fillStyle = "rgba(10, 10, 22, 0.92)";
-    fillRound(ctx, x, y, w, h, 6);
-    ctx.strokeStyle = "#f5f1e8";
+    // 本体（上から下へ僅かに明→暗）
+    const bg = ctx.createLinearGradient(0, y, 0, y + h);
+    bg.addColorStop(0, "rgba(24, 21, 44, 0.94)");
+    bg.addColorStop(1, "rgba(13, 11, 26, 0.94)");
+    ctx.fillStyle = bg;
+    fillRound(ctx, x, y, w, h, 5);
+
+    // 外枠: 金 → 銅のグラデーション
+    const frame = ctx.createLinearGradient(0, y, 0, y + h);
+    frame.addColorStop(0, "#e3c98b");
+    frame.addColorStop(0.5, "#b08a4e");
+    frame.addColorStop(1, "#7d5f36");
+    ctx.strokeStyle = frame;
     ctx.lineWidth = 2;
-    strokeRound(ctx, x + 1, y + 1, w - 2, h - 2, 5);
+    strokeRound(ctx, x + 1, y + 1, w - 2, h - 2, 4);
+
+    // 内側の細ライン
+    ctx.strokeStyle = "rgba(227, 201, 139, 0.25)";
     ctx.lineWidth = 1;
     strokeRound(ctx, x + 4.5, y + 4.5, w - 9, h - 9, 3);
+
+    // コーナーの菱形飾り
+    for (const [cx, cy] of [
+      [x + 2, y + 2],
+      [x + w - 3, y + 2],
+      [x + 2, y + h - 3],
+      [x + w - 3, y + h - 3],
+    ] as const) {
+      ctx.fillStyle = "#e3c98b";
+      ctx.fillRect(cx, cy - 2, 1, 5);
+      ctx.fillRect(cx - 2, cy, 5, 1);
+      ctx.fillRect(cx - 1, cy - 1, 3, 3);
+      ctx.fillStyle = "#7d5f36";
+      ctx.fillRect(cx, cy, 1, 1);
+    }
   }
 
   /**
