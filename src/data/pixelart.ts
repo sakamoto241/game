@@ -600,6 +600,141 @@ const SAKURA = [
   "................",
 ];
 
+// --- 深層(6-10F)の敵 ---
+const PHANTOM_BAT = [
+  "................",
+  "................",
+  "................",
+  "..o..........o..",
+  ".ovo........ovo.",
+  "ovvvo......ovvvo",
+  "ovvvvo....ovvvvo",
+  "ovvVVvoooovVVvvo",
+  "ovVreVVVVreVVvvo",
+  ".ovVVVooVVVVvo..",
+  "..oo.oVVVVo.oo..",
+  ".....ovVVo......",
+  "......ovo.......",
+  "................",
+  "................",
+  "................",
+];
+
+const HEAVY_ARMOR = [
+  "................",
+  ".....oooooo.....",
+  "....okkkkkko....",
+  "....okrKKrko....",
+  "....okKeeKko....",
+  ".....okKKko.....",
+  "...ooookkoooo...",
+  "..okKkkKKkkKko..",
+  "..okKkKKKKkKko..",
+  "..okmMKKKKmMko..",
+  "..oooMKKKKMooo..",
+  "....okKMMKko....",
+  "....okko.okko...",
+  "....oMo...oMo...",
+  "....oo.....oo...",
+  "................",
+];
+
+const GHOUL = [
+  "................",
+  "................",
+  "....oooo........",
+  "...oCCCCo.......",
+  "...oCrCrCo......",
+  "...oCeCeCo......",
+  "...oCCwwCo......",
+  "..ooCCCCCoo.....",
+  ".oCCCCCCCCCo....",
+  "oCoCCCCCCCoCo...",
+  "oo.oCCCCCCo.o...",
+  "...oCCooCCo.....",
+  "...oCo..oCo.....",
+  "..oCo....oCo....",
+  "..oo......oo....",
+  "................",
+];
+
+const WANDERER = [
+  "................",
+  ".....oooo.......",
+  "....oMMMMo......",
+  "...oMMMMMMo.....",
+  "...oMFeeFMo.....",
+  "...oMFFFFMo.....",
+  "..ooMMMMMMoo....",
+  ".oMMMMMMMMMMYo..",
+  ".oMMMMMMMMMoYYo.",
+  ".oMMMMMMMMo.oYo.",
+  ".oMMMMMMMMo..o..",
+  ".oMMMMMMMMo.....",
+  ".oMoMMMMoMo.....",
+  ".oo.oooo.oo.....",
+  "................",
+  "................",
+];
+
+const ACOLYTE = [
+  "................",
+  ".....oooo.......",
+  "....oQQQQo......",
+  "...oQQQQQQo.....",
+  "...oQeQQeQo.....",
+  "...oQQwwQQo.....",
+  "..ooQQQQQQoo....",
+  ".oQQQXXXXQQQo...",
+  ".oQQXQQQQXQQo...",
+  ".oQQQQQQQQQQo...",
+  ".oqQQQQQQQQqo...",
+  ".oqqQQQQQQqqo...",
+  "..oqQoooQqo.....",
+  "..ooo..ooo......",
+  "................",
+  "................",
+];
+
+const BOMB_SKULL = [
+  ".........o......",
+  "........oyo.....",
+  ".......oyo......",
+  "....ooooo.......",
+  "...oXXXXXo......",
+  "..oXXXXXXXo.....",
+  "..oXrXXrXXo.....",
+  "..oXXXXXXXo.....",
+  "..oXXooXXXo.....",
+  "..ooXXXXXoo.....",
+  ".oXXXXXXXXXo....",
+  ".oXoXXXXoXXo....",
+  ".oo.oXXo.oo.....",
+  "....o..o........",
+  "................",
+  "................",
+];
+
+// 深淵の処刑人・ガシャドクロ（巨大なされこうべ）。戦闘では64pxで描画
+const GASHADOKURO = [
+  "....oo....oo....",
+  "...oMMo..oMMo...",
+  "....oMMooMMo....",
+  ".....oXXXXo.....",
+  "...ooXXXXXXoo...",
+  "..oXXXXXXXXXXo..",
+  "..oXXrXXXXrXXo..",
+  "..oXXrXXXXrXXo..",
+  "..oXXXXwwXXXXo..",
+  "..oXXoXXXXoXXo..",
+  "..oXXXoooXXXXo..",
+  "...oXWWWWWWXo...",
+  "..oXoWoWoWoXo...",
+  ".oXXXXWWWWXXXo..",
+  ".oXXoXoXoXoXXo..",
+  "..oo.o.o.o.oo...",
+];
+
 const ORE_NODE = [
   "................",
   "................",
@@ -619,22 +754,23 @@ const ORE_NODE = [
   "................",
 ];
 
+// 墓守りの黄泉丸: 角付きの鬼面（白面・赤目）+ 紫の羽織 + 大薙刀（参考画像準拠）
 const YOMIMARU = [
-  "................",
-  "......oooo......",
-  ".....oKKKKo.....",
-  "....oKKKKKKo....",
-  "....oKeKKeKo....",
-  "....oKKKKKKo....",
-  "...ooKKooKKoo...",
-  "..oMMoKKKKoMMo..",
-  "..oMMMMMMMMMMo..",
-  "..oMMoMMMMoMMo..",
-  "...ooMMMMMMoo...",
-  "....oMMMMMMo....",
-  "....oMo..oMo....",
-  "....oo....oo....",
-  "................",
+  "..o..........o..",
+  ".oMo........oMo.",
+  ".oMMo......oMMo.",
+  "..oKKKoooKKKo...",
+  "..oKKKKKKKKKo...",
+  "..oKrKoooKrKo...",
+  "..oKKKeeKKKKo...",
+  "...oKKwwKKKo....",
+  "..VVoKKKKoVVn...",
+  ".VVVVMMMMVVVvn..",
+  ".VVMVVVVVVMVvn..",
+  ".oVVMVVVVMVVo.n.",
+  "..oVMo..oMVo..n.",
+  "..oMo....oMo..o.",
+  "..oo......oo....",
   "................",
 ];
 
@@ -827,7 +963,59 @@ export function registerPixelArt(assets: AssetManager): void {
   def("battle.rat", grid(RAT));
   def("battle.ghost", grid(GHOST));
   def("battle.mimic", grid(MIMIC));
-  def("battle.yomimaru", grid(YOMIMARU, { M: "#6a4a7a", K: "#c9c2d8" }));
+  def("battle.yomimaru", grid(YOMIMARU, {
+    M: "#2a2230", // 黒鉄の鎧
+    K: "#e4e0e8", // 白い鬼面
+    V: "#4a3a5e", // 紫の羽織
+    v: "#6a5580",
+    r: "#e8483c", // 赤い目
+    w: "#3a2030", // 口
+    n: "#9aa0b0", // 薙刀の刃
+  }));
+
+  // --- 深層(6-10F)の敵 ---
+  def("battle.phantomBat", grid(PHANTOM_BAT, {
+    v: "#6a4a9e",
+    V: "#8a6ac0",
+    r: "#ff5a6a",
+    e: "#2a1840",
+  }));
+  def("battle.heavyArmor", grid(HEAVY_ARMOR, {
+    k: "#8a90a8",
+    K: "#c2c8dc",
+    m: "#5a6078",
+    M: "#42485c",
+    r: "#ffd24a",
+  }));
+  def("battle.ghoul", grid(GHOUL, {
+    C: "#7a9a5a",
+    r: "#e8d24a",
+    w: "#3a4a28",
+  }));
+  def("battle.wanderer", grid(WANDERER, {
+    M: "#4a4258",
+    F: "#e8c9a0",
+    Y: "#ffd24a",
+  }));
+  def("battle.acolyte", grid(ACOLYTE, {
+    Q: "#a83848",
+    q: "#7a2432",
+    X: "#e8d8b0",
+    r: "#ffe070",
+    w: "#3a1018",
+  }));
+  def("battle.bombSkull", grid(BOMB_SKULL, {
+    X: "#e4e0d0",
+    r: "#e8483c",
+    y: "#ff9435",
+  }));
+  def("battle.gashadokuro", grid(GASHADOKURO, {
+    X: "#e8e4d4", // 白骨
+    W: "#c2beb0",
+    M: "#5a5648",
+    r: "#7fd8ff", // 青白く光る眼窩
+    w: "#2a2820",
+  }));
 
   // --- 装備オーバーレイ ---
   def("overlay.sword", grid(SWORD));

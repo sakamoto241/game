@@ -262,12 +262,12 @@ export class DungeonScene extends Scene {
     if (tile === T.BOSS) {
       if (this.state.bossDefeated) {
         this.message = this.game.text.wrap(
-          "ぬしの すがたは もう ない。しずかな いせきだけが のこっている……",
+          `${bossDef().name}の すがたは もう ない。しずかな あんこくだけが のこっている……`,
           40,
         );
       } else {
         this.message = this.game.text.wrap(
-          "くらやみの おくで なにかが うごめいている……！",
+          "しんえんの そこから、しょけいにんの きはいが たちのぼる……！",
           40,
         );
         this.startBattle(true);
@@ -333,8 +333,8 @@ export class DungeonScene extends Scene {
       case "bossVictory": {
         this.state.endRun();
         const lines = [
-          "どうくつの ぬしを たおした！",
-          "ひかりに つつまれ、ゆうしゃは 村へ もどった。",
+          `${bossDef().name}を うちたおした！`,
+          "しんえんに しずけさが もどり、ゆうしゃは 村へ かえった。",
         ];
         this.game.scenes.replaceAll(new TownScene(this.state, PORTAL_SPAWN, lines), 0.9);
         break;

@@ -28,6 +28,14 @@ export interface EnemyDef {
   special?: boolean;
   /** 攻撃時に状態異常を与える */
   inflict?: { status: "poison" | "sleep"; chance: number };
+  /** 物理攻撃の回避率(0..1)。命中判定で使う（ファントムバット） */
+  evasion?: number;
+  /** 与ダメージのうち自身のHPへ吸収する割合(0..1)（ブラッド・アコライト） */
+  lifesteal?: number;
+  /** Nターン経過で確定逃走（欲深きさまよい人）。倒せば大量報酬 */
+  fleeAfter?: number;
+  /** Nターン経過で自爆。パーティ全体に atk*mult のダメージ後に自滅（ボムスカル） */
+  selfDestruct?: { after: number; mult: number };
   /**
    * 中ボス。逃走不可・専用報酬あり・撃破しても bossDefeated は立てない
    * （＝ゲームクリアの最終ボスとは区別する）。
@@ -152,18 +160,107 @@ export const ENEMIES: EnemyDef[] = [
       ],
     },
   },
+  // ========================= 深層(6F〜10F)の通常敵 =========================
   {
-    id: "nushi",
-    name: "どうくつのぬし",
-    sprite: "battle.nushi",
-    floors: [5, 5],
-    hp: [110, 0],
-    atk: [24, 0],
-    def: [11, 0],
-    exp: [80, 0],
-    gold: [200, 0],
-    drop: { item: "kouseki", chance: 1, count: 5 },
+    id: "phantomBat",
+    name: "ファントムバット",
+    sprite: "battle.phantomBat",
+    floors: [6, 9],
+    hp: [16, 4],
+    atk: [15, 2],
+    def: [3, 1],
+    exp: [9, 2],
+    gold: [11, 2],
+    evasion: 0.45, // 高回避: 物理がよく外れる（魔法で対処）
+    weight: 1.1,
+    nightWeight: 1.6,
+  },
+  {
+    id: "heavyArmor",
+    name: "彷徨う重甲冑",
+    sprite: "battle.heavyArmor",
+    floors: [6, 10],
+    hp: [44, 6],
+    atk: [14, 2],
+    def: [20, 3], // 物理が通りにくい鉄壁（ルカニ/魔法が有効）
+    exp: [13, 3],
+    gold: [16, 3],
+    weight: 0.9,
+  },
+  {
+    id: "ghoul",
+    name: "コラプト・グール",
+    sprite: "battle.ghoul",
+    floors: [6, 10],
+    hp: [28, 4],
+    atk: [16, 2],
+    def: [6, 1],
+    exp: [11, 2],
+    gold: [12, 2],
+    inflict: { status: "poison", chance: 0.4 }, // 毒付与
+    weight: 1,
+  },
+  {
+    id: "wanderer",
+    name: "欲深きさまよい人",
+    sprite: "battle.wanderer",
+    floors: [6, 10],
+    hp: [30, 5],
+    atk: [10, 1],
+    def: [8, 2],
+    exp: [45, 12],
+    gold: [140, 35], // 倒せば大量報酬。ただし3ターンで逃げる
+    fleeAfter: 3,
+    drop: { item: "houseki", chance: 0.6, count: 1 },
+    weight: 0.5,
+  },
+  {
+    id: "acolyte",
+    name: "ブラッド・アコライト",
+    sprite: "battle.acolyte",
+    floors: [7, 10],
+    hp: [34, 5],
+    atk: [17, 2],
+    def: [7, 1],
+    exp: [13, 3],
+    gold: [15, 3],
+    lifesteal: 0.5, // 与ダメの半分を吸収して回復
+    weight: 0.85,
+  },
+  {
+    id: "bombSkull",
+    name: "嘆きのボムスカル",
+    sprite: "battle.bombSkull",
+    floors: [7, 10],
+    hp: [20, 3],
+    atk: [11, 1],
+    def: [4, 1],
+    exp: [16, 3],
+    gold: [10, 2],
+    selfDestruct: { after: 3, mult: 2.2 }, // 3ターン後に全体大ダメージ自爆
+    weight: 0.7,
+  },
+  // ============================ 10F 固定ボス ============================
+  {
+    id: "gashadokuro",
+    name: "深淵の処刑人・ガシャドクロ",
+    sprite: "battle.gashadokuro",
+    floors: [10, 10],
+    hp: [440, 0],
+    atk: [32, 0],
+    def: [15, 0],
+    exp: [400, 0],
+    gold: [800, 0],
     boss: true,
+    inflict: { status: "poison", chance: 0.3 },
+    specialMove: {
+      name: "断末魔の大鎌",
+      mult: 1.9,
+      chance: 0.34,
+      se: "bossSpecial",
+      all: true,
+    },
+    drop: { item: "houseki", chance: 1, count: 3 },
   },
 ];
 

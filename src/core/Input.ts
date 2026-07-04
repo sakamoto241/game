@@ -64,6 +64,14 @@ export class Input {
     target.addEventListener("blur", () => {
       this.downSet.clear();
     });
+
+    // マウス/タップは「決定」として扱う（メッセージ送り・メニュー決定）。
+    // 1ステップだけ pressed("confirm") を立てる（押しっぱなし扱いにはしない）。
+    const asConfirm = (e: Event) => {
+      e.preventDefault();
+      this.pressedSet.add("confirm");
+    };
+    target.addEventListener("pointerdown", asConfirm);
   }
 
   /** 押されている間ずっと true */

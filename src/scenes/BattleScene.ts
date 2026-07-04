@@ -47,8 +47,13 @@ type PendingAction =
   | { kind: "spell"; spell: SpellDef; caster: PartyMember }
   | { kind: "item"; item: ItemId; user: PartyMember };
 
-const MSG_AUTO_ADVANCE = 0.85;
-const MSG_SKIP_LOCK = 0.12;
+/**
+ * メッセージ送り: 基本はプレイヤーの入力（Z / クリック）待ち。
+ * 長時間放置しても進むよう、保険の自動送りを長めに設定する。
+ * 表示直後の誤操作でスキップしないよう、最初の SKIP_LOCK 秒だけ入力を無視。
+ */
+const MSG_AUTO_ADVANCE = 6.0;
+const MSG_SKIP_LOCK = 0.14;
 
 /**
  * ドラクエ風ターン制戦闘（パーティ対応）。
@@ -80,6 +85,8 @@ export class BattleScene extends Scene {
   private sleeping = new Set<string>();
   /** ルカニによる敵防御倍率 */
   private enemyDefMult = 1;
+  /** 敵の行動ターン数（出現からの経過。逃走・自爆・大技の判定に使う） */
+  private enemyTurns = 0;
 
   // --- 演出タイマー ---
   private introT = 0;
@@ -174,8 +181,41 @@ export class BattleScene extends Scene {
       this.phase = "command";
       return;
     }
-    this.enemyPhase(this.enemy.def.boss ? bossActions(this.aliveCount()) : 1);
+    this.beginEnemyTurn();
   }
+
+  /**
+   * 敵ターンの開始。ターン数を進め、逃走／自爆の特殊行動を先に判定する。
+   * それ以外は通常の敵行動（ボスは複数回）へ。
+   */
+  private beginEnemyTurn(): void {
+    this.enemyTurns++;
+    const def = this.enemy.def;
+
+    // 欲深きさまよい人: 規定ターンで確定逃走（倒せなければ報酬なし）
+    if (def.fleeAfter && this.enemyTurns >= def.fleeAfter) {
+      this.queueMsgs(
+        [
+          {
+            text: `${def.name}は そそくさと にげだした！`,
+            fx: () => this.game.audio.playSE("flee"),
+          },
+        ],
+        () => this.endBattle("fled"),
+      );
+      return;
+    }
+
+    // 嘆きのボムスカル: 規定ターンで自爆（全体大ダメージ→自滅）
+    if (def.selfDestruct && this.enemyTurns >= def.selfDestruct.after) {
+      this.enemySelfDestruct(def.selfDestruct.mult);
+      return;
+    }
+
+    this.enemyPhase(def.boss ? bossActions(this.aliveCount()) : 1);
+  }
+
+  /** 魔法都市はMPコストが下がる */
 
   /** 魔法都市はMPコストが下がる */
   private spellCost(spell: SpellDef): number {
@@ -384,6 +424,21 @@ export class BattleScene extends Scene {
   // 行動の実装
   // =========================================================================
   private memberAttack(m: PartyMember): void {
+    // 命中判定: 敵の回避率で物理攻撃が外れることがある（ファントムバット）
+    if (this.enemy.def.evasion && this.rng.chance(this.enemy.def.evasion)) {
+      this.queueMsgs(
+        [
+          { text: `${m.name}の こうげき！`, fx: () => this.game.audio.playSE("attack") },
+          {
+            text: `しかし ${this.enemy.def.name}は すばやく かわした！`,
+            fx: () => this.game.audio.playSE("evade"),
+          },
+        ],
+        () => this.afterMemberAction(),
+      );
+      return;
+    }
+
     const crit = !this.enemy.def.boss && this.rng.chance(CRIT_CHANCE);
     let dmg = physDamage(m.atk, this.enemy.defense * this.enemyDefMult, this.rng);
     if (crit) dmg = Math.round(dmg * CRIT_MULT);
@@ -531,11 +586,6 @@ export class BattleScene extends Scene {
     return !this.enemy.def.boss && !this.enemy.def.midboss;
   }
 
-  /** 敵の1ターンあたりの行動回数 */
-  private enemyActionCount(): number {
-    return this.enemy.def.boss ? bossActions(this.aliveCount()) : 1;
-  }
-
   private tryFlee(m: PartyMember): void {
     if (!this.canFleeEnemy) {
       this.queueMsgs(
@@ -543,7 +593,7 @@ export class BattleScene extends Scene {
           { text: `${m.name}たちは にげだそうとした！` },
           { text: "しかし にげられなかった！" },
         ],
-        () => this.enemyPhase(this.enemyActionCount()),
+        () => this.beginEnemyTurn(),
       );
       return;
     }
@@ -559,9 +609,47 @@ export class BattleScene extends Scene {
           { text: `${m.name}たちは にげだした！` },
           { text: "しかし まわりこまれてしまった！" },
         ],
-        () => this.enemyPhase(this.enemyActionCount()),
+        () => this.beginEnemyTurn(),
       );
     }
+  }
+
+  /** ボムスカルの自爆: 全員に atk*mult のダメージ後、自身は戦闘不能 */
+  private enemySelfDestruct(mult: number): void {
+    const alive = () => this.members.filter((m) => m.alive);
+    const msgs: QueuedMsg[] = [
+      {
+        text: `${this.enemy.def.name}は じばくの カウントを はじめた……`,
+      },
+      {
+        text: "ドオオン！！ 　${?}", // 下で置換しないのでプレースホルダ回避
+        fx: () => {
+          this.shake = 10;
+          this.redFlash = 0.85;
+          this.spellFlash = 0.8;
+          this.game.audio.playSE("explode");
+        },
+      },
+    ];
+    // 上のダミー文言を実文言に
+    msgs[1]!.text = "ドオオン！！ じばくした！！";
+    for (const target of alive()) {
+      const def = (target.def + routeDefBonus(this.state.route)) * (this.defBuff.get(target.id) ?? 1);
+      let dmg = Math.round(physDamage(this.enemy.atk, def, this.rng) * mult);
+      if (this.guarding.has(target.id)) dmg = Math.max(1, Math.round(dmg * GUARD_MULT));
+      msgs.push({
+        text: `${target.name}に ${dmg}の だいダメージ！`,
+        fx: () => {
+          target.damage(dmg);
+          this.popupAtMember(target, `-${dmg}`, "#ff6a6a");
+        },
+      });
+    }
+    this.enemy.hp = 0; // 自滅
+    this.queueMsgs(msgs, () => {
+      if (this.aliveCount() === 0) this.defeat();
+      else this.victory(); // 自爆した敵は倒したものとして報酬を得る
+    });
   }
 
   private damageEnemy(dmg: number): void {
@@ -619,16 +707,33 @@ export class BattleScene extends Scene {
         },
       },
     ];
+    // HP吸収（ブラッド・アコライト）: 与ダメの一部を敵が回復
+    const steal = this.enemy.def.lifesteal;
+    if (steal && dmg > 0) {
+      const healed = Math.max(1, Math.floor(dmg * steal));
+      msgs.push({
+        text: `${this.enemy.def.name}は ${healed} HPを すいとった！`,
+        fx: () => {
+          this.enemy.hp = Math.min(this.enemy.maxHp, this.enemy.hp + healed);
+          this.spellFlash = 0.35;
+          this.game.audio.playSE("drain");
+        },
+      });
+    }
+
     if (!willSurvive) {
       msgs.push({ text: `${target.name}は たおれてしまった！` });
     } else {
-      // 状態異常の付与（コウモリ=どく / ゴースト=ねむり）
+      // 状態異常の付与（コウモリ/グール=どく / ゴースト=ねむり）
       const inflict = this.enemy.def.inflict;
       if (inflict && this.rng.chance(inflict.chance)) {
         if (inflict.status === "poison" && !target.poisoned) {
           msgs.push({
-            text: `${target.name}は どくを うけてしまった！`,
-            fx: () => (target.poisoned = true),
+            text: `${target.name}は どくに おかされた！`,
+            fx: () => {
+              target.poisoned = true;
+              this.game.audio.playSE("poison");
+            },
           });
         } else if (inflict.status === "sleep" && !this.sleeping.has(target.id)) {
           msgs.push({
@@ -698,6 +803,7 @@ export class BattleScene extends Scene {
           {
             text: `どくが からだを むしばむ……！`,
             fx: () => {
+              this.game.audio.playSE("poison");
               for (const m of poisoned) {
                 m.damage(dmg);
                 this.popupAtMember(m, `-${dmg}`, "#c9a7ff");
@@ -855,7 +961,7 @@ export class BattleScene extends Scene {
 
   private renderEnemy(ctx: CanvasRenderingContext2D): void {
     if (this.enemyDead && this.enemyDeathT >= 1) return;
-    const size = this.enemy.def.boss ? 64 : 48;
+    const size = this.enemy.def.boss ? 72 : this.enemy.def.midboss ? 60 : 48;
     const bob = this.enemyDead ? 0 : Math.sin(this.game.elapsed * 2.4) * 2;
     const lunge = Math.sin(Math.min(1, 1 - this.enemyLunge) * Math.PI) * 10;
     const x = WORLD_W / 2 - size / 2;
@@ -921,6 +1027,15 @@ export class BattleScene extends Scene {
     text.window(ctx, 48, UI_H - 80, UI_W - 96, 64);
     if (msgText) {
       text.draw(ctx, msgText, 64, UI_H - 62, { size: 13 });
+    }
+    // メッセージ待ちのあいだ「▼（クリック/Zで送る）」を点滅表示
+    if (
+      this.phase === "msg" &&
+      this.currentMsg &&
+      this.msgTimer > MSG_SKIP_LOCK &&
+      Math.sin(this.game.elapsed * 6) > 0
+    ) {
+      text.draw(ctx, "▼", UI_W - 74, UI_H - 34, { size: 12, color: "#ffe9a0" });
     }
 
     for (const p of this.popups) {
