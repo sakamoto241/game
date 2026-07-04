@@ -195,6 +195,23 @@ export class GameState {
     return this.route ? ROUTES[this.route].townTitle : "アルバの村";
   }
 
+  // --- 到達階層（ワープ用チェックポイント） ---
+  /**
+   * 最深到達階。stats.deepestFloor を正とし（既にセーブ・ロード対象）、
+   * ここを唯一の参照点にすることで二重管理を避ける。
+   */
+  get maxReachedFloor(): number {
+    return this.stats.deepestFloor;
+  }
+
+  /** 階層に到達したことを記録（到達クエストの進捗も進める） */
+  recordFloorReached(floor: number): void {
+    if (floor > this.stats.deepestFloor) this.stats.deepestFloor = floor;
+    for (const q of this.quests) {
+      if (q.kind === "reach" && floor >= q.count) q.done = true;
+    }
+  }
+
   // --- 図鑑・統計 ---
   markSeen(enemyId: string): void {
     if (!this.seenEnemies.includes(enemyId)) this.seenEnemies.push(enemyId);

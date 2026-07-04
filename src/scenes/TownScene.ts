@@ -3,6 +3,7 @@ import type { Renderer } from "../core/Renderer";
 import { UI_W, UI_H, WORLD_W, WORLD_H } from "../core/Renderer";
 import { Scene } from "../core/Scene";
 import {
+  availableCheckpoints,
   FISHING_BITE_WINDOW,
   FISHING_WAIT,
   INN_PRICE,
@@ -253,9 +254,8 @@ export class TownScene extends Scene {
       if (this.map.get(arrival.x, arrival.y) !== T.PORTAL) {
         this.portalArmed = true;
       } else if (this.portalArmed) {
-        this.leaving = true;
-        this.game.audio.playSe("warp");
-        this.game.scenes.replace(new DungeonScene(this.state, 1), 0.5);
+        this.portalArmed = false; // メニュー中の多重発火を防ぐ
+        this.openDungeonEntryMenu();
         return;
       }
     }
@@ -1036,6 +1036,52 @@ export class TownScene extends Scene {
       top.info = `${ITEMS[id].name}を うった！（+${price}G / しょじ ${this.state.gold}G）`;
     }
     this.state.save(this.game);
+  }
+
+  // =========================================================================
+  // ダンジョン突入（チェックポイント選択）
+  // =========================================================================
+  private openDungeonEntryMenu(): void {
+    const checkpoints = availableCheckpoints(this.state.maxReachedFloor);
+    // 1F しか行けない（未到達 or 5F未満）ならメニューを出さず即突入
+    if (checkpoints.length <= 1) {
+      this.enterDungeon(1);
+      return;
+    }
+    this.game.audio.playSe("decide");
+    this.pushMenu(
+      new ListMenu(
+        [
+          ...checkpoints
+            .slice()
+            .reverse() // 深い階を上に（進んだ人ほど使いやすく）
+            .map((f) => ({
+              label: f === 1 ? "1Fから もぐる" : `B${f}Fへ ワープ`,
+              value: `${f}`,
+              note: f === this.state.maxReachedFloor ? "さいしんとうたつ" : "",
+            })),
+          { label: "やめる", value: "quit" },
+        ],
+        "どこから もぐる？",
+      ),
+      (value) => {
+        if (value === "quit") {
+          this.closeMenus();
+          return;
+        }
+        this.closeMenus();
+        this.enterDungeon(Number(value));
+      },
+      `さいしんとうたつ: B${this.state.maxReachedFloor}F`,
+    );
+  }
+
+  private enterDungeon(floor: number): void {
+    this.leaving = true;
+    this.game.audio.playSe("warp");
+    // 新しい潜行を開始（ワープ先の階から生成される）
+    this.state.endRun();
+    this.game.scenes.replace(new DungeonScene(this.state, floor), 0.5);
   }
 
   // =========================================================================

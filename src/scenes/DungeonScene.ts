@@ -84,11 +84,8 @@ export class DungeonScene extends Scene {
 
   override onEnter(): void {
     if (!this.state.run) this.state.startRun(this.game);
-    // 統計・到達クエストの進捗
-    this.state.stats.deepestFloor = Math.max(this.state.stats.deepestFloor, this.floor);
-    for (const q of this.state.quests) {
-      if (q.kind === "reach" && this.floor >= q.count) q.done = true;
-    }
+    // 階段を降りて新フロアに入るたびにここが走る = 到達記録の自動更新ポイント
+    this.state.recordFloorReached(this.floor);
     const plan = generateFloor(this.state.run!.seed, this.floor);
     this.map = plan.map;
     this.player = new Player(plan.entry.x, plan.entry.y);

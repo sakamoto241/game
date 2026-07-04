@@ -46,6 +46,21 @@ export const GUARD_MULT = 0.5;
 
 // --- ダンジョン ---
 export const DUNGEON_MAX_FLOOR = 5;
+
+/** ワープ地点（チェックポイント）の間隔。1F と この倍数の階へ飛べる */
+export const CHECKPOINT_INTERVAL = 5;
+
+/**
+ * 最深到達階 maxFloor から、突入時に選べるチェックポイント一覧を返す。
+ * 常に 1F を含み、5F/10F/... のうち到達済みのものを昇順で返す。
+ */
+export function availableCheckpoints(maxFloor: number): number[] {
+  const points = [1];
+  for (let f = CHECKPOINT_INTERVAL; f <= maxFloor; f += CHECKPOINT_INTERVAL) {
+    points.push(f);
+  }
+  return points;
+}
 /** 1歩ごとのエンカウント率 */
 export const ENCOUNTER_RATE = 0.08;
 /** 戦闘直後・階層開始直後の安全歩数 */
