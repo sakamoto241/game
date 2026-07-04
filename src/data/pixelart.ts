@@ -478,44 +478,84 @@ const CHARA_BASE = [
   "................",
 ];
 
-// 魔法使い（とんがり帽子）
+// 魔法使い: とんがり帽子 + 金トリムのローブ。賢者らしい細身。
 const CHARA_MAGE = [
   ".......oo.......",
   "......oHHo......",
   ".....oHHHHo.....",
-  "..ooooHHHHoooo..",
-  "..oHHHHHHHHHHo..",
-  "...oFFFFFFFFo...",
-  "...oFeFFFFeFo...",
-  "...ofFFFFFFfo...",
-  "....oooooooo....",
-  "...oBBBBBBBBo...",
-  "..oFoBBBBBBoFo..",
-  "....oBBBBBBo....",
-  "....obBBBBbo....",
-  "....oMo..oMo....",
-  "....oo....oo....",
-  "................",
+  "....oHHHHHHo....",
+  "..ooHHHHHHHHoo..",
+  "...oFFFFFFo.....",
+  "...oFeFFeFo.....",
+  "...offFFffo.....",
+  "....oBBBBo......",
+  "...oBBBBBBo.....",
+  "..oFBBYYBBFo....",
+  "..oBBBBBBBBo....",
+  "...oBBBBBBo.....",
+  "...oBBBBBBo.....",
+  "...obBBBBbo.....",
+  "....oooooo......",
 ];
 
-// 戦士（兜）
+// 戦士: 前立て（赤い前立て）付きの兜 + 肩当て + 赤マント + 金の紋章。騎士然と。
 const CHARA_WARRIOR = [
-  "................",
-  "....oooooooo....",
-  "...okkkkkkkko...",
-  "...okKkkkkKko...",
-  "...okkkkkkkko...",
-  "...oFeFFFFeFo...",
-  "...oFFFFFFFFo...",
-  "...ofFFFFFFfo...",
-  "....oooooooo....",
+  "......RR........",
+  "....ooRRoo......",
+  "...okkkkkko.....",
+  "...oKKkkKKko....",
+  "...okFeeFko.....",
+  "...okFFFFko.....",
+  "...ooKKKKoo.....",
+  "..RRoBBBBBBoRR..",
+  "..oKoBBYBBBoKo..",
+  "..oKoBBBBBBoKo..",
+  "...obBBBBBBbo...",
   "...oBBBBBBBBo...",
-  "..oFoBBBBBBoFo..",
-  "....oBBBBBBo....",
-  "....obBBBBbo....",
+  "...okBBBBBBko...",
+  "....oMMooMMo....",
+  "....oMMooMMo....",
   "....oMo..oMo....",
-  "....oo....oo....",
+];
+
+// 僧侶: フード + 金の十字紋のローブ。
+const CHARA_PRIEST = [
   "................",
+  "....oHHHHHHo....",
+  "...oHHHHHHHHo...",
+  "...oHHFFFFHHo...",
+  "...oHFeFFeFHo...",
+  "...oHFFFFFFHo...",
+  "....oHFFFHo.....",
+  "...oBBBBBBBBo...",
+  "..oFBBBYBBBFo...",
+  "..oFBBBYBBBFo...",
+  "...oBBBBBBBBo...",
+  "...obBBBBBBbo...",
+  "...oBBBBBBBBo...",
+  "...oBBBBBBBBo...",
+  "...obBBBBBBbo...",
+  "....oo..oo......",
+];
+
+// 盗賊: フード + 覆面のスカーフ + マント + ベルト。
+const CHARA_THIEF = [
+  "................",
+  "....oHHHHHHo....",
+  "...oHHHHHHHHo...",
+  "...oHHFFFFHHo...",
+  "...oHFeFFeFHo...",
+  "...ooFFFFFoo....",
+  "....oqqqqo......",
+  "..RRoBBBBBBoRR..",
+  "..oFoBBBBBBoFo..",
+  "...obBBBBBBbo...",
+  "...oBBBBBBBBo...",
+  "...oBBBBBBBBo...",
+  "....oBBooBBo....",
+  "....oBBooBBo....",
+  "....oMMooMMo....",
+  "....oMo..oMo....",
 ];
 
 // =============================================================================
@@ -524,61 +564,64 @@ const CHARA_WARRIOR = [
 // 鎧は胴(B/b)の色替えで反映、盾/武器は専用レイヤーを手元に重ねる。
 // c=髪, a=髪かげ, F/f=肌, e=目, B/b=胴(鎧色), M=ブーツ
 // =============================================================================
+// 勇者（正面）: 金のサークレット + 赤マント + 金トリムの胴。DQ の主人公然とした姿。
 const HERO_DN = [
-  "................",
-  "......cccc......",
-  ".....cccccc.....",
-  "....caaaaaaac...",
+  "......oooo......",
+  ".....occcco.....",
+  "....occcccco....",
+  "....oYYYYYYo....",
   "....oFFFFFFo....",
   "....oFeFFeFo....",
   "....offFFffo....",
-  ".....ooFFoo.....",
-  "...oBBBBBBBBo...",
-  "..oFBBBBBBBBFo..",
-  "..oFBBBBBBBBFo..",
-  "...oBBBBBBBBo...",
+  ".....oFFFFo.....",
+  "..RRoBBBBBBoRR..",
+  "..RqoBYBBYBoRq..",
+  "..oFoBBBBBBoFo..",
   "...obBBBBBBbo...",
+  "...oBBBBBBBBo...",
+  "...oBBBBBBBBo...",
   "....oMMooMMo....",
   "....oMo..oMo....",
-  "................",
 ];
 
+// 勇者（背面）: マントが背中いっぱいに翻る、いちばん DQ らしいアングル。
 const HERO_UP = [
-  "................",
-  "......cccc......",
-  ".....cccccc.....",
-  "....caaaaaaac...",
-  "....caaaaaaac...",
-  "....caaaaaaac...",
-  ".....ooaaoo.....",
-  "...oBBBBBBBBo...",
-  "..oFBBBBBBBBFo..",
-  "..oFBBBBBBBBFo..",
-  "...oBBBBBBBBo...",
-  "...obBBBBBBbo...",
+  "......oooo......",
+  ".....occcco.....",
+  "....occcccco....",
+  "....oaaaaaao....",
+  "....oaaaaaao....",
+  ".....oaaao......",
+  "...ooRRRRRRoo...",
+  "..oRRRRRRRRRRo..",
+  "..oRRRqqqqRRRo..",
+  "..oRRRqqqqRRRo..",
+  "..oRRRRRRRRRRo..",
+  "..oRRRRRRRRRRo..",
+  "...oRRRRRRRRo...",
   "...oBBBBBBBBo...",
   "....oMMooMMo....",
   "....oMo..oMo....",
-  "................",
 ];
 
+// 勇者（横・左向き）: マントが後方へなびく。
 const HERO_SD = [
   "................",
   "....cccc........",
   "...cccccc.......",
-  "..caaaaaac......",
+  "..cYYYYYYc......",
   "..cFFFFFo.......",
   ".cFeFFFo........",
   ".cffFFo.........",
   "..ooFoo.........",
-  "..oBBBBBo.......",
-  ".oFBBBBBBo......",
-  ".oFBBBBBBo......",
-  "..oBBBBBo.......",
+  "..oBBBBBoRR.....",
+  ".oFBBBBBBoRRq...",
+  ".oFBBBBBBoRq....",
+  "..oBBBBBoq......",
   "..obBBBbo.......",
+  "..oBBBBBo.......",
   "..oMMoMMo.......",
   "..oMo.oMo.......",
-  "................",
 ];
 
 const SHIELD_DN = [
@@ -1312,9 +1355,9 @@ export function registerPixelArt(assets: AssetManager): void {
       case "warrior":
         return grid(CHARA_WARRIOR, body);
       case "priest":
-        return grid(CHARA_BASE, { H: "#e8e8e0", ...body });
+        return grid(CHARA_PRIEST, { H: "#e8e2d0", ...body });
       case "thief":
-        return grid(CHARA_BASE, { H: PAL.A!, ...body });
+        return grid(CHARA_THIEF, { H: PAL.A!, ...body });
       default:
         return grid(CHARA_BASE, { H: "#7a4a2b", B: PAL.U!, b: "#39538c" });
     }
