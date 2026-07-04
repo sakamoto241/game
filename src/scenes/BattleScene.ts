@@ -939,17 +939,7 @@ export class BattleScene extends Scene {
       );
     }
 
-    const grad = ctx.createLinearGradient(0, 0, 0, WORLD_H);
-    grad.addColorStop(0, "#141020");
-    grad.addColorStop(1, "#2c2438");
-    ctx.fillStyle = grad;
-    ctx.fillRect(-8, -8, WORLD_W + 16, WORLD_H + 16);
-
-    ctx.fillStyle = "#3a3348";
-    ctx.beginPath();
-    ctx.ellipse(WORLD_W / 2, 118, 90, 22, 0, 0, Math.PI * 2);
-    ctx.fill();
-
+    this.renderBattleStage(ctx);
     this.renderEnemy(ctx);
     ctx.restore();
 
@@ -957,6 +947,72 @@ export class BattleScene extends Scene {
       ctx.fillStyle = `rgba(255, 200, 90, ${(this.spellFlash * 0.4).toFixed(3)})`;
       ctx.fillRect(0, 0, WORLD_W, WORLD_H);
     }
+  }
+
+  /**
+   * 戦闘ステージの背景。奥行き（空→地平線→床）と敵の後光・柔らかい接地影で
+   * のっぺり感を消す。深層ほど寒色・暗色に寄せて緊張感を出す。
+   */
+  private renderBattleStage(ctx: CanvasRenderingContext2D): void {
+    const boss = this.enemy.def.boss || this.enemy.def.midboss;
+    const depth = Math.min(1, this.floor / 10);
+    const horizon = 108;
+
+    // 空〜奥の壁（上部）。深層で寒色・ボスで赤黒く
+    const sky = ctx.createLinearGradient(0, 0, 0, horizon);
+    if (boss) {
+      sky.addColorStop(0, "#1a0e16");
+      sky.addColorStop(1, "#3a1824");
+    } else {
+      sky.addColorStop(0, mix("#1a1730", "#0e1420", depth));
+      sky.addColorStop(1, mix("#342a44", "#1c2436", depth));
+    }
+    ctx.fillStyle = sky;
+    ctx.fillRect(-8, -8, WORLD_W + 16, horizon + 8);
+
+    // 敵の背後のスポットライト（後光）
+    const glow = ctx.createRadialGradient(WORLD_W / 2, 74, 6, WORLD_W / 2, 74, 96);
+    glow.addColorStop(0, boss ? "rgba(255,120,90,0.30)" : "rgba(150,170,230,0.22)");
+    glow.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, WORLD_W, horizon + 20);
+
+    // 床（地平線から手前へ、明→暗のグラデで奥行き）
+    const floor = ctx.createLinearGradient(0, horizon, 0, WORLD_H);
+    floor.addColorStop(0, mix("#4a4258", "#2c2a3e", depth));
+    floor.addColorStop(1, mix("#241f30", "#14121f", depth));
+    ctx.fillStyle = floor;
+    ctx.fillRect(-8, horizon, WORLD_W + 16, WORLD_H - horizon + 8);
+
+    // 地平線のハイライト（一本の淡い光）
+    ctx.fillStyle = "rgba(200,200,230,0.10)";
+    ctx.fillRect(0, horizon, WORLD_W, 1);
+
+    // 床の遠近グリッド（うっすら）で立っている感を出す
+    ctx.strokeStyle = "rgba(0,0,0,0.16)";
+    ctx.lineWidth = 1;
+    for (let i = 1; i <= 4; i++) {
+      const y = horizon + i * i * 2.6;
+      if (y >= WORLD_H) break;
+      ctx.beginPath();
+      ctx.moveTo(0, y + 0.5);
+      ctx.lineTo(WORLD_W, y + 0.5);
+      ctx.stroke();
+    }
+
+    // 柔らかい接地影（フラット楕円 → 中心濃い放射グラデ）
+    const shW = boss ? 116 : 88;
+    const sh = ctx.createRadialGradient(WORLD_W / 2, 118, 4, WORLD_W / 2, 118, shW);
+    sh.addColorStop(0, "rgba(0,0,0,0.5)");
+    sh.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.save();
+    ctx.translate(WORLD_W / 2, 118);
+    ctx.scale(1, 0.26);
+    ctx.fillStyle = sh;
+    ctx.beginPath();
+    ctx.arc(0, 0, shW, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
   }
 
   private renderEnemy(ctx: CanvasRenderingContext2D): void {
@@ -1094,4 +1150,15 @@ export class BattleScene extends Scene {
       text.draw(ctx, `${m.mp}`, 228, y + 1, { size: 9, align: "center" });
     });
   }
+}
+
+/** 2つの #rrggbb を t(0..1) で線形補間する（背景の奥行き用） */
+function mix(a: string, b: string, t: number): string {
+  const pa = parseInt(a.slice(1), 16);
+  const pb = parseInt(b.slice(1), 16);
+  const lerp = (sa: number, sb: number) => Math.round(sa + (sb - sa) * t);
+  const r = lerp((pa >> 16) & 0xff, (pb >> 16) & 0xff);
+  const g = lerp((pa >> 8) & 0xff, (pb >> 8) & 0xff);
+  const bl = lerp(pa & 0xff, pb & 0xff);
+  return `#${((r << 16) | (g << 8) | bl).toString(16).padStart(6, "0")}`;
 }

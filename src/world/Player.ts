@@ -1,5 +1,6 @@
 import type { AssetManager } from "../core/AssetManager";
 import type { Input } from "../core/Input";
+import { drawGroundShadow } from "../gfx/Shadow";
 import { TILE, type TileDefs, type TileMap } from "../gfx/TileMap";
 import type { PartyMember } from "./PartyMember";
 
@@ -128,6 +129,10 @@ export class Player {
   render(ctx: CanvasRenderingContext2D, assets: AssetManager, member?: PartyMember): void {
     const x = Math.round(this.px);
     const y = Math.round(this.py);
+
+    // 足元の接地影（歩行でわずかに沈む）
+    const bob = this.moving ? Math.abs(Math.sin(this.progress * Math.PI)) : 0;
+    drawGroundShadow(ctx, x + 8, y + 14.5, 5.4 - bob * 0.6, 2.3);
 
     if (!member) {
       assets.drawSprite(ctx, `hero.${this.dir}`, x, y, TILE, TILE);

@@ -16,6 +16,24 @@ export type TileDefs = Record<number, TileDef>;
 /** 範囲外を表す番兵。isSolid では常に「壁」として扱う */
 export const OUT_OF_BOUNDS = -1;
 
+/** バリエーションを持つ地形スプライトの接頭辞 */
+const VARIED = new Set(["tile.grass", "tile.path", "tile.water", "tile.floor", "tile.rock"]);
+
+/**
+ * 地形の反復を消すため、座標から決定的にバリエーション(~1..3)を選ぶ。
+ * 登録が無ければベースのままにフォールバックする。
+ */
+function variantSprite(sprite: string, x: number, y: number, assets: AssetManager): string {
+  if (!VARIED.has(sprite)) return sprite;
+  // 座標ハッシュ（0..3）。0 はベース、1..3 はバリエーション
+  let h = (x * 73856093) ^ (y * 19349663);
+  h = (h ^ (h >>> 13)) >>> 0;
+  const v = h & 3;
+  if (v === 0) return sprite;
+  const id = `${sprite}~${v}`;
+  return assets.hasArt(id) ? id : sprite;
+}
+
 /**
  * タイルマップ。データ構造・当たり判定・描画（可視範囲カリング付き）。
  * Phase 1 のランダム生成ダンジョンもこのクラスにタイルを流し込むだけで動く。
@@ -111,7 +129,9 @@ export class TileMap {
       for (let x = x0; x <= x1; x++) {
         const def = defs[this.get(x, y)];
         if (!def) continue;
-        assets.drawSprite(ctx, def.sprite, x * TILE, y * TILE, TILE, TILE);
+        // 広い地形は座標ハッシュでバリエーション(~1..3)を選び、反復（格子感）を消す
+        const sprite = variantSprite(def.sprite, x, y, assets);
+        assets.drawSprite(ctx, sprite, x * TILE, y * TILE, TILE, TILE);
         // プレースホルダー（色付き矩形）のときだけ市松の明暗で単調さを消す
         if (!assets.hasArt(def.sprite) && (x + y) % 2 === 0) {
           ctx.fillStyle = "rgba(0, 0, 0, 0.045)";

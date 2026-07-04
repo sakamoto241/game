@@ -3,6 +3,7 @@ import type { Rng } from "../core/Rng";
 import type { DayPhase } from "../data/balance";
 import type { NpcDef } from "../data/npcs";
 import { T } from "../data/tiles";
+import { drawGroundShadow } from "../gfx/Shadow";
 import { TILE, type TileDefs, type TileMap } from "../gfx/TileMap";
 import type { Dir } from "./Player";
 
@@ -148,14 +149,10 @@ export class Npc {
 
   render(ctx: CanvasRenderingContext2D, assets: AssetManager): void {
     if (!this.visible) return;
-    assets.drawSprite(
-      ctx,
-      `npc.${this.def.id}.${this.dir}`,
-      Math.round(this.px),
-      Math.round(this.py),
-      TILE,
-      TILE,
-    );
+    const x = Math.round(this.px);
+    const y = Math.round(this.py);
+    drawGroundShadow(ctx, x + 8, y + 14.5, 5, 2.1, 0.26);
+    assets.drawSprite(ctx, `npc.${this.def.id}.${this.dir}`, x, y, TILE, TILE);
   }
 }
 

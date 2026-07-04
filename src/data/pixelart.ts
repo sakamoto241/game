@@ -97,25 +97,85 @@ function dots(
 }
 
 // =============================================================================
-// 地形タイル（プロシージャル）
+// 地形タイル（プロシージャル・決定的ノイズ）
 // =============================================================================
-const grass: Painter = (ctx) => {
-  fill(ctx, PAL.G!);
-  dots(ctx, PAL.g!, [[2, 3], [7, 1], [12, 4], [5, 8], [10, 11], [3, 13], [14, 9], [8, 6], [1, 10], [13, 14]]);
-  dots(ctx, PAL.h!, [[4, 5], [11, 2], [6, 12], [14, 6]], 1, 2);
-};
+/** 小さな決定的 PRNG（タイルのバリエーション生成用。実行毎に同じ絵になる） */
+function mulberry32(seed: number): () => number {
+  let s = seed >>> 0;
+  return () => {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
 
-const path: Painter = (ctx) => {
-  fill(ctx, PAL.S!);
-  dots(ctx, PAL.s!, [[3, 2], [9, 4], [13, 1], [6, 7], [1, 9], [11, 10], [4, 13], [14, 12], [8, 14]]);
-  dots(ctx, PAAL_SAFE("u"), [[5, 4], [12, 7], [2, 11]]);
-};
+/**
+ * 地形の陰影を「重なる複数トーン + 種依存のノイズ」で焼く。
+ * base をベタ塗りし、暗トーン→明トーンの順に斑を散らして立体感と土の質感を出す。
+ * seed を変えると散り方が変わる → 同じ地形でもタイルごとに違って見え、格子感が消える。
+ */
+function terrain(
+  base: string,
+  tones: { color: string; n: number; tall?: boolean; wide?: boolean }[],
+  seed: number,
+): Painter {
+  return (ctx) => {
+    fill(ctx, base);
+    const rnd = mulberry32(seed);
+    for (const tone of tones) {
+      ctx.fillStyle = tone.color;
+      for (let i = 0; i < tone.n; i++) {
+        const x = Math.floor(rnd() * 16);
+        const y = Math.floor(rnd() * 16);
+        const w = tone.wide ? (rnd() < 0.5 ? 2 : 1) : 1;
+        const h = tone.tall ? (rnd() < 0.5 ? 2 : 1) : 1;
+        ctx.fillRect(x, y, w, h);
+      }
+    }
+  };
+}
 
-const water: Painter = (ctx) => {
-  fill(ctx, PAL.W!);
-  dots(ctx, PAL.d!, [[2, 6], [9, 2], [13, 9], [5, 13], [11, 14]]);
-  dots(ctx, PAL.w!, [[2, 3], [3, 3], [4, 3], [9, 8], [10, 8], [11, 8], [12, 8], [4, 12], [5, 12], [6, 12]]);
-};
+// 草地: 深い影 → 影 → 明るい葉先。tall で草の縦筋を演出
+const grassTones = [
+  { color: "#3c6e30", n: 7 },
+  { color: PAL.g!, n: 12 },
+  { color: PAL.h!, n: 9, tall: true },
+];
+const grass: Painter = terrain(PAL.G!, grassTones, 1001);
+
+// 土の道: 砂利の粒（暗→明）を散らす
+const pathTones = [
+  { color: "#9a6f3f", n: 8 },
+  { color: PAL.s!, n: 11 },
+  { color: PAAL_SAFE("u"), n: 7 },
+];
+const path: Painter = terrain(PAL.S!, pathTones, 2001);
+
+// 水面: 横に走る波のハイライト + 深みの影
+function waterVariant(seed: number): Painter {
+  const scatter = terrain(
+    PAL.W!,
+    [
+      { color: PAL.d!, n: 8, wide: true },
+      { color: "#2c5f8c", n: 5 },
+    ],
+    seed,
+  );
+  return (ctx) => {
+    scatter(ctx);
+    // 横向きのさざ波ハイライト（数本、位置は種で少しずらす）
+    const rnd = mulberry32(seed ^ 0x9e3779b9);
+    ctx.fillStyle = PAL.w!;
+    for (let i = 0; i < 4; i++) {
+      const y = 2 + Math.floor(rnd() * 12);
+      const x0 = Math.floor(rnd() * 6);
+      const len = 3 + Math.floor(rnd() * 4);
+      ctx.fillRect(x0, y, len, 1);
+    }
+  };
+}
+const water: Painter = waterVariant(3001);
 
 /** 屋根（色違いで共用） */
 function roof(base: string, dark: string, light: string): Painter {
@@ -143,28 +203,40 @@ const plasterWall: Painter = (ctx) => {
   dots(ctx, PAL.p!, [[3, 5], [12, 7], [7, 10], [2, 12], [13, 12]]);
 };
 
-/** 石レンガ（ダンジョンの壁） */
-const rockWall: Painter = (ctx) => {
-  fill(ctx, PAL.k!);
-  // レンガごとの立体感（上辺ハイライト・下辺の影）
-  ctx.fillStyle = PAL.K!;
-  for (const y of [0, 4, 8, 12]) ctx.fillRect(0, y, 16, 1);
-  ctx.fillStyle = PAL.m!;
-  for (const y of [2, 6, 10, 14]) ctx.fillRect(0, y, 16, 1);
-  // 目地は最後に描いてレンガの区切りをはっきりさせる
-  ctx.fillStyle = PAL.M!;
-  for (const y of [3, 7, 11, 15]) ctx.fillRect(0, y, 16, 1);
-  for (const [x, y0] of [[7, 0], [3, 4], [11, 4], [7, 8], [3, 12], [11, 12]] as const) {
-    ctx.fillRect(x, y0, 1, 3);
-  }
-};
+/** 石レンガ（ダンジョンの壁）。段ごとに互い違い + 種依存のひび・苔で単調さを消す */
+function rockWallVariant(seed: number): Painter {
+  return (ctx) => {
+    fill(ctx, PAL.k!);
+    // レンガ段: 上辺ハイライト・下辺の影・目地
+    ctx.fillStyle = PAL.K!;
+    for (const y of [0, 4, 8, 12]) ctx.fillRect(0, y, 16, 1);
+    ctx.fillStyle = PAL.m!;
+    for (const y of [2, 6, 10, 14]) ctx.fillRect(0, y, 16, 1);
+    ctx.fillStyle = PAL.M!;
+    for (const y of [3, 7, 11, 15]) ctx.fillRect(0, y, 16, 1);
+    // 縦目地（段で互い違い）
+    for (const [x, y0] of [[7, 0], [3, 4], [11, 4], [7, 8], [3, 12], [11, 12]] as const) {
+      ctx.fillRect(x, y0, 1, 3);
+    }
+    // 種依存の風化（暗いひび + 明るい面取り）
+    const rnd = mulberry32(seed);
+    for (let i = 0; i < 5; i++) {
+      ctx.fillStyle = rnd() < 0.5 ? "#3a3550" : PAL.K!;
+      const bx = 1 + Math.floor(rnd() * 14);
+      const by = 1 + Math.floor(rnd() * 13);
+      ctx.fillRect(bx, by, 1, 1);
+    }
+  };
+}
+const rockWall: Painter = rockWallVariant(4001);
 
-const dungeonFloor: Painter = (ctx) => {
-  fill(ctx, PAL.S!);
-  dots(ctx, PAL.s!, [[2, 3], [7, 1], [12, 4], [5, 8], [10, 11], [3, 13], [14, 9], [8, 6]]);
-  dots(ctx, PAAL_SAFE("u"), [[4, 5], [11, 2], [6, 12]]);
-  dots(ctx, PAL.m!, [[13, 13]], 2, 1); // 小石
-};
+// 洞窟の床: 湿った土 + 小石。種でばらけさせる
+const floorTones = [
+  { color: "#4a4256", n: 6 },
+  { color: PAL.m!, n: 9 },
+  { color: "#6d6580", n: 6 },
+];
+const dungeonFloor: Painter = terrain("#585062", floorTones, 5001);
 
 // PAL アクセスの typo 対策（存在チェック付き）
 function PAAL_SAFE(ch: string): string {
@@ -1191,6 +1263,13 @@ export function registerPixelArt(assets: AssetManager): void {
   def("tile.path", path);
   def("tile.water", water);
   def("tile.tree", layered(grass, grid(TREE)));
+
+  // 同じ地形をタイルごとに散らして格子感を消す（TileMap が座標ハッシュで選ぶ）
+  for (let v = 1; v <= 3; v++) {
+    def(`tile.grass~${v}`, terrain(PAL.G!, grassTones, 1001 + v * 131));
+    def(`tile.path~${v}`, terrain(PAL.S!, pathTones, 2001 + v * 131));
+    def(`tile.water~${v}`, waterVariant(3001 + v * 131));
+  }
   def("tile.wall", plasterWall);
   def("tile.roof", roof(PAL.R!, "#8e3630", "#cf6a5a"));
   def("tile.roofBlue", roof(PAL.L!, "#39538c", "#7291d4"));
@@ -1206,6 +1285,10 @@ export function registerPixelArt(assets: AssetManager): void {
   // --- ダンジョン ---
   def("tile.rock", rockWall);
   def("tile.floor", dungeonFloor);
+  for (let v = 1; v <= 3; v++) {
+    def(`tile.rock~${v}`, rockWallVariant(4001 + v * 131));
+    def(`tile.floor~${v}`, terrain("#585062", floorTones, 5001 + v * 131));
+  }
   def("tile.stairs", layered(dungeonFloor, grid(STAIRS)));
   def("tile.exit", layered(dungeonFloor, grid(EXIT_RUNE)));
   def("tile.chest", layered(dungeonFloor, grid(CHEST)));
