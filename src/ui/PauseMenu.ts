@@ -7,6 +7,7 @@ import { ITEMS, ITEM_IDS, type ItemId } from "../data/items";
 import type { GameState } from "../world/GameState";
 import type { PartyMember } from "../world/PartyMember";
 import { ListMenu } from "./ListMenu";
+import { SettingsMenu } from "./SettingsMenu";
 
 /**
  * C キーで開くポーズメニュー（街・ダンジョン共用）。
@@ -23,7 +24,8 @@ type Phase =
   | "target"
   | "dexRoot"
   | "dexList"
-  | "achievements";
+  | "achievements"
+  | "settings";
 
 export class PauseMenu {
   private phase: Phase = "root";
@@ -33,6 +35,7 @@ export class PauseMenu {
       { label: "どうぐ", value: "items" },
       { label: "ずかん", value: "dex" },
       { label: "じっせき", value: "achievements" },
+      { label: "せってい", value: "settings" },
       { label: "とじる", value: "close" },
     ],
     "メニュー",
@@ -43,6 +46,7 @@ export class PauseMenu {
   private memberMenu: ListMenu | null = null;
   private items: ListMenu | null = null;
   private targetMenu: ListMenu | null = null;
+  private settings: SettingsMenu | null = null;
   private statusTarget: PartyMember | null = null;
   private pendingItem: ItemId | null = null;
   private info: string | null = null;
@@ -99,6 +103,10 @@ export class PauseMenu {
           );
           this.phase = "achievements";
         }
+        if (ev.item.value === "settings") {
+          this.settings = new SettingsMenu();
+          this.phase = "settings";
+        }
         return null;
       }
       case "dexRoot": {
@@ -121,6 +129,10 @@ export class PauseMenu {
       case "achievements": {
         const ev = this.achList?.update(input, dt);
         if (ev?.type === "cancel") this.phase = "root";
+        return null;
+      }
+      case "settings": {
+        if (this.settings?.update(game, dt) === "close") this.phase = "root";
         return null;
       }
       case "selectMember": {
@@ -298,6 +310,9 @@ export class PauseMenu {
         break;
       case "status":
         this.renderStatus(game, ctx);
+        break;
+      case "settings":
+        this.settings?.render(game, ctx);
         break;
       case "dexRoot":
         this.dexRoot?.render(ctx, text, x - 60, 50, 230);

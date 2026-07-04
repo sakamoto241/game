@@ -2,6 +2,7 @@ import { Scene } from "../core/Scene";
 import type { Renderer } from "../core/Renderer";
 import { WORLD_W, WORLD_H, UI_W, UI_H } from "../core/Renderer";
 import { ListMenu } from "../ui/ListMenu";
+import { SettingsMenu } from "../ui/SettingsMenu";
 import { GameState } from "../world/GameState";
 import { TownScene } from "./TownScene";
 
@@ -12,7 +13,7 @@ interface Star {
   phase: number;
 }
 
-type Phase = "prompt" | "menu" | "confirmNew";
+type Phase = "prompt" | "menu" | "confirmNew" | "settings";
 
 /**
  * タイトル画面。夕暮れの空 + 街のシルエット（すべて矩形描画のプレースホルダー）。
@@ -26,6 +27,7 @@ export class TitleScene extends Scene {
   private phase: Phase = "prompt";
   private menu: ListMenu | null = null;
   private confirmMenu: ListMenu | null = null;
+  private settings: SettingsMenu | null = null;
 
   override onEnter(): void {
     const rng = this.game.rootRng.fork("title-stars");
@@ -53,6 +55,7 @@ export class TitleScene extends Scene {
           this.menu = new ListMenu([
             { label: "つづきから", value: "continue", disabled: !hasSave },
             { label: "はじめから", value: "new" },
+            { label: "せってい", value: "settings" },
           ]);
           if (!hasSave) this.menu.index = 1;
           this.phase = "menu";
@@ -69,6 +72,12 @@ export class TitleScene extends Scene {
         if (ev.item.value === "continue") {
           const state = GameState.load(this.game);
           if (state) this.startGame(state);
+          break;
+        }
+        if (ev.item.value === "settings") {
+          this.game.audio.playSe("decide");
+          this.settings = new SettingsMenu();
+          this.phase = "settings";
           break;
         }
         // はじめから: セーブがあれば上書き確認
@@ -94,6 +103,10 @@ export class TitleScene extends Scene {
           break;
         }
         this.startGame(GameState.fresh());
+        break;
+      }
+      case "settings": {
+        if (this.settings?.update(this.game, dt) === "close") this.phase = "menu";
         break;
       }
     }
@@ -207,6 +220,8 @@ export class TitleScene extends Scene {
       this.menu?.render(ctx, text, cx - 90, 216, 180);
     } else if (this.phase === "confirmNew") {
       this.confirmMenu?.render(ctx, text, cx - 170, 210, 340);
+    } else if (this.phase === "settings") {
+      this.settings?.render(this.game, ctx);
     }
 
     text.draw(ctx, "Phase 0 Prototype  v0.1.0", cx, UI_H - 22, {

@@ -19,6 +19,7 @@ import {
  * シーン側のインターフェース（playBgm/stopBgm/playSe）は Phase 0 から不変。
  */
 const FADE_SEC = 0.9;
+const SETTINGS_KEY = "machi-meikyu.audio";
 
 interface BgmVoice {
   source: AudioBufferSourceNode;
@@ -26,12 +27,16 @@ interface BgmVoice {
 }
 
 export class AudioManager {
-  bgmVolume = 0.55;
-  seVolume = 0.8;
+  /** 0..1。設定画面から調整・localStorage に保存される */
+  masterVolume = 0.8;
+  bgmVolume = 0.7;
+  seVolume = 0.85;
   /** 現在リクエストされている BGM の ID（デバッグ表示・シーンからの参照用） */
   currentBgm: string | null = null;
 
   private ctx: AudioContext | null = null;
+  /** 全体の最終段。masterBgm/masterSe がここに集まり destination へ */
+  private masterGain: GainNode | null = null;
   private masterBgm: GainNode | null = null;
   /** SE 用マスター（BGM とは独立。BGM を止めずに重ねて鳴らす） */
   private masterSe: GainNode | null = null;
@@ -45,6 +50,7 @@ export class AudioManager {
 
   constructor(private assets: AssetManager) {
     void this.assets;
+    this.loadSettings();
   }
 
   /** AudioContext を生成し、全 BGM を非同期にデコードしておく */
@@ -59,13 +65,20 @@ export class AudioManager {
       return;
     }
     this.ctx = new Ctor();
+
+    // masterBgm ┐          ┌ (destination)
+    // masterSe  ┴ masterGain┘
+    this.masterGain = this.ctx.createGain();
+    this.masterGain.gain.value = this.masterVolume;
+    this.masterGain.connect(this.ctx.destination);
+
     this.masterBgm = this.ctx.createGain();
     this.masterBgm.gain.value = this.bgmVolume;
-    this.masterBgm.connect(this.ctx.destination);
+    this.masterBgm.connect(this.masterGain);
 
     this.masterSe = this.ctx.createGain();
     this.masterSe.gain.value = this.seVolume;
-    this.masterSe.connect(this.ctx.destination);
+    this.masterSe.connect(this.masterGain);
 
     // SE 合成用の 1 秒ホワイトノイズを用意
     this.noiseBuffer = this.ctx.createBuffer(1, this.ctx.sampleRate, this.ctx.sampleRate);
@@ -188,17 +201,52 @@ export class AudioManager {
     }
   }
 
-  setBgmVolume(v: number): void {
-    this.bgmVolume = Math.max(0, Math.min(1, v));
-    if (this.masterBgm && this.ctx) {
-      this.masterBgm.gain.setTargetAtTime(this.bgmVolume, this.ctx.currentTime, 0.05);
+  setMasterVolume(v: number): void {
+    this.masterVolume = clamp01(v);
+    if (this.masterGain && this.ctx) {
+      this.masterGain.gain.setTargetAtTime(this.masterVolume, this.ctx.currentTime, 0.03);
     }
+    this.saveSettings();
+  }
+
+  setBgmVolume(v: number): void {
+    this.bgmVolume = clamp01(v);
+    if (this.masterBgm && this.ctx) {
+      this.masterBgm.gain.setTargetAtTime(this.bgmVolume, this.ctx.currentTime, 0.03);
+    }
+    this.saveSettings();
   }
 
   setSeVolume(v: number): void {
-    this.seVolume = Math.max(0, Math.min(1, v));
+    this.seVolume = clamp01(v);
     if (this.masterSe && this.ctx) {
-      this.masterSe.gain.setTargetAtTime(this.seVolume, this.ctx.currentTime, 0.05);
+      this.masterSe.gain.setTargetAtTime(this.seVolume, this.ctx.currentTime, 0.03);
+    }
+    this.saveSettings();
+  }
+
+  // --- 設定の永続化（セーブスロットとは別の localStorage キー） ---
+  private loadSettings(): void {
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      if (!raw) return;
+      const s = JSON.parse(raw) as Partial<Record<"master" | "bgm" | "se", number>>;
+      if (typeof s.master === "number") this.masterVolume = clamp01(s.master);
+      if (typeof s.bgm === "number") this.bgmVolume = clamp01(s.bgm);
+      if (typeof s.se === "number") this.seVolume = clamp01(s.se);
+    } catch {
+      /* 壊れていれば既定値のまま */
+    }
+  }
+
+  private saveSettings(): void {
+    try {
+      localStorage.setItem(
+        SETTINGS_KEY,
+        JSON.stringify({ master: this.masterVolume, bgm: this.bgmVolume, se: this.seVolume }),
+      );
+    } catch {
+      /* localStorage 不可でも動作は継続 */
     }
   }
 
@@ -248,4 +296,8 @@ export class AudioManager {
       /* 既に停止済みなら無視 */
     }
   }
+}
+
+function clamp01(v: number): number {
+  return Math.max(0, Math.min(1, v));
 }
