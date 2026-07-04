@@ -28,6 +28,8 @@ export interface RunState {
   seed: number;
   battleRng: Rng;
   lootRng: Rng;
+  /** この潜行で撃破済みの中ボスがいる階（再入場での再戦を防ぐ） */
+  midbossDefeated: Set<number>;
 }
 
 export interface GameStats {
@@ -277,6 +279,7 @@ export class GameState {
       seed: seedInt,
       battleRng: new Rng((seedInt ^ hashString("battle")) >>> 0),
       lootRng: new Rng((seedInt ^ hashString("loot")) >>> 0),
+      midbossDefeated: new Set<number>(),
     };
   }
 

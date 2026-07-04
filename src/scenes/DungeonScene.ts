@@ -7,6 +7,7 @@ import {
   ENCOUNTER_RATE,
   GRACE_AFTER_BATTLE,
   GRACE_FLOOR_START,
+  MIDBOSS_FLOOR,
   MIMIC_CHANCE,
   MIMIC_MIN_FLOOR,
   MINE_GEM_CHANCE,
@@ -19,6 +20,7 @@ import {
 import {
   enemiesForFloor,
   bossDef,
+  midbossDef,
   enemyById,
   pickEnemy,
   spawnEnemy,
@@ -74,6 +76,8 @@ export class DungeonScene extends Scene {
   private sparkTimer = 0;
   private pendingBattle: (() => void) | null = null;
   private leaving = false;
+  /** この階に入った直後に中ボス固定エンカウントを起こすか */
+  private forcedMidboss = false;
 
   constructor(
     private state: GameState,
@@ -93,6 +97,10 @@ export class DungeonScene extends Scene {
       .slice(1)
       .map((m) => new Follower(m, plan.entry.x, plan.entry.y));
     this.grace = GRACE_FLOOR_START;
+    // 中ボス階に初めて入った（この潜行でまだ倒していない）なら固定エンカウント
+    this.forcedMidboss =
+      this.floor === MIDBOSS_FLOOR &&
+      !(this.state.run?.midbossDefeated.has(this.floor) ?? false);
     this.game.audio.playBgm("dungeon");
   }
 
@@ -117,6 +125,17 @@ export class DungeonScene extends Scene {
         this.pendingBattle = null;
         start();
       }
+      return;
+    }
+
+    // 中ボス階に入った直後の固定エンカウント（バナー表示後に発動）
+    if (this.forcedMidboss && this.bannerTimer <= 1.4 && !this.message) {
+      this.forcedMidboss = false;
+      this.message = this.game.text.wrap(
+        "ひやりとした くうきが ながれる……\nはかばの ぬしが みちを ふさいでいる！",
+        40,
+      );
+      this.startBattle(false, midbossDef());
       return;
     }
 

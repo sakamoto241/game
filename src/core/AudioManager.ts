@@ -1,5 +1,12 @@
 import type { AssetManager } from "./AssetManager";
-import { BGM_SOURCES, SE_SOURCES, type AudioSource } from "../data/audioAssets";
+import {
+  BGM_SOURCES,
+  SE_FILE_SOURCES,
+  SE_RECIPES,
+  SE_FALLBACK,
+  type AudioSource,
+  type SeBlip,
+} from "../data/audioAssets";
 
 /**
  * サウンド管理（Web Audio API 実装）。
@@ -26,6 +33,10 @@ export class AudioManager {
 
   private ctx: AudioContext | null = null;
   private masterBgm: GainNode | null = null;
+  /** SE 用マスター（BGM とは独立。BGM を止めずに重ねて鳴らす） */
+  private masterSe: GainNode | null = null;
+  /** ホワイトノイズのバッファ（SE 合成で使い回す） */
+  private noiseBuffer: AudioBuffer | null = null;
   private buffers = new Map<string, AudioBuffer>();
   private current: BgmVoice | null = null;
   private unlocked = false;
@@ -52,7 +63,20 @@ export class AudioManager {
     this.masterBgm.gain.value = this.bgmVolume;
     this.masterBgm.connect(this.ctx.destination);
 
+    this.masterSe = this.ctx.createGain();
+    this.masterSe.gain.value = this.seVolume;
+    this.masterSe.connect(this.ctx.destination);
+
+    // SE 合成用の 1 秒ホワイトノイズを用意
+    this.noiseBuffer = this.ctx.createBuffer(1, this.ctx.sampleRate, this.ctx.sampleRate);
+    const data = this.noiseBuffer.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+
     for (const [id, src] of Object.entries(BGM_SOURCES)) {
+      void this.load(id, src);
+    }
+    // ファイル音源の SE があれば先読み（プロシージャル合成より優先される）
+    for (const [id, src] of Object.entries(SE_FILE_SOURCES)) {
       void this.load(id, src);
     }
   }
@@ -97,22 +121,84 @@ export class AudioManager {
     }
   }
 
-  playSe(id: string): void {
-    if (!this.ctx || !this.unlocked) return;
+  /**
+   * 効果音を再生する。BGM を止めず、複数同時（ポリフォニー）に鳴らせる。
+   * - ファイル音源が登録されていればそれを再生。
+   * - なければプロシージャル合成レシピ（SE_RECIPES）で生成。
+   * 各呼び出しは独立したノードを作り、鳴り終えたら自動で切り離される。
+   */
+  playSE(id: string): void {
+    if (!this.ctx || !this.masterSe || !this.unlocked) return;
+
+    // 1) ファイル音源（あれば優先）
     const buffer = this.buffers.get(id);
-    if (!buffer) return;
-    const src = this.ctx.createBufferSource();
-    src.buffer = buffer;
+    if (buffer) {
+      const src = this.ctx.createBufferSource();
+      src.buffer = buffer;
+      const g = this.ctx.createGain();
+      g.gain.value = SE_FILE_SOURCES[id]?.gain ?? 1;
+      src.connect(g).connect(this.masterSe);
+      src.start();
+      return;
+    }
+
+    // 2) プロシージャル合成
+    const recipe = SE_RECIPES[id] ?? SE_FALLBACK;
+    const now = this.ctx.currentTime;
+    for (const blip of recipe) this.playBlip(blip, now);
+  }
+
+  /** 後方互換のエイリアス（既存コードは playSe を呼んでいる） */
+  playSe(id: string): void {
+    this.playSE(id);
+  }
+
+  /** SE の 1 粒を合成再生する */
+  private playBlip(blip: SeBlip, when: number): void {
+    if (!this.ctx || !this.masterSe) return;
+    const t0 = when + blip.t0;
+    const t1 = t0 + blip.dur;
+
     const g = this.ctx.createGain();
-    g.gain.value = this.seVolume * (SE_SOURCES[id]?.gain ?? 1);
-    src.connect(g).connect(this.ctx.destination);
-    src.start();
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(blip.gain, t0 + 0.005); // 5ms アタック
+    g.gain.exponentialRampToValueAtTime(0.0001, t1); // 指数減衰
+    g.connect(this.masterSe);
+
+    if (blip.wave === "noise") {
+      const src = this.ctx.createBufferSource();
+      src.buffer = this.noiseBuffer;
+      // 中心周波数まわりのバンドパスで「シュッ」「ドン」を作る
+      const bp = this.ctx.createBiquadFilter();
+      bp.type = "bandpass";
+      bp.frequency.setValueAtTime(blip.f0, t0);
+      if (blip.f1 !== undefined) bp.frequency.exponentialRampToValueAtTime(Math.max(20, blip.f1), t1);
+      bp.Q.value = 0.8;
+      src.connect(bp).connect(g);
+      src.start(t0);
+      src.stop(t1 + 0.02);
+    } else {
+      const osc = this.ctx.createOscillator();
+      osc.type = blip.wave;
+      osc.frequency.setValueAtTime(blip.f0, t0);
+      if (blip.f1 !== undefined) osc.frequency.exponentialRampToValueAtTime(Math.max(20, blip.f1), t1);
+      osc.connect(g);
+      osc.start(t0);
+      osc.stop(t1 + 0.02);
+    }
   }
 
   setBgmVolume(v: number): void {
     this.bgmVolume = Math.max(0, Math.min(1, v));
     if (this.masterBgm && this.ctx) {
       this.masterBgm.gain.setTargetAtTime(this.bgmVolume, this.ctx.currentTime, 0.05);
+    }
+  }
+
+  setSeVolume(v: number): void {
+    this.seVolume = Math.max(0, Math.min(1, v));
+    if (this.masterSe && this.ctx) {
+      this.masterSe.gain.setTargetAtTime(this.seVolume, this.ctx.currentTime, 0.05);
     }
   }
 

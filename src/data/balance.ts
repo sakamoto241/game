@@ -45,7 +45,9 @@ export const FLEE_CHANCE = 0.65;
 export const GUARD_MULT = 0.5;
 
 // --- ダンジョン ---
-export const DUNGEON_MAX_FLOOR = 5;
+export const DUNGEON_MAX_FLOOR = 10;
+/** 中ボスが固定エンカウントする階 */
+export const MIDBOSS_FLOOR = 5;
 
 /** ワープ地点（チェックポイント）の間隔。1F と この倍数の階へ飛べる */
 export const CHECKPOINT_INTERVAL = 5;

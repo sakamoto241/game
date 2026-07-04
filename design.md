@@ -133,12 +133,15 @@
 
 ## 6. サウンド（実装済み）
 
-- AudioManager: Web Audio API。BGM のループ再生 + クロスフェード切替。
+- AudioManager: Web Audio API。BGM のループ再生 + クロスフェード切替（BGM/SE 独立マスター）。
+- BGM: 町 / ダンジョン / 通常戦闘(Ariadne) / ボス戦(Ayakashi) の4曲。
+  戦闘突入で battle/boss へ、戦闘終了で dungeon へ自動クロスフェード。
+- SE: 音源ファイル不要のプロシージャル合成（Web Audio のオシレータ+ノイズ+エンベロープ）。
+  playSE(id) は BGM を止めず重ねて鳴る（ポリフォニー）。レシピは audioAssets.ts にデータ定義。
+  ファイル音源を SE_FILE_SOURCES に登録すればそちらが優先。
 - 自動再生ポリシー対策: 最初のユーザー操作で AudioContext を resume（unlock）。
-- 音源は `src/assets/audio/*.ogg` を Vite が data: URI としてインライン化
-  （`assetsInlineLimit` を大きく設定）。→ 単一HTML(file://)でも BGM が鳴る。
-- 追加は `src/data/audioAssets.ts` に1行足すだけ（データ駆動）。町=village, ダンジョン=dungeon。
-- SE のインターフェース（playSe）は用意済み。音源を SE_SOURCES に足せば有効化。
+- 音源は `src/assets/audio/*.ogg,*.mp3` を Vite が data: URI としてインライン化。
+  → 単一HTML(file://)でも BGM/SE が鳴る。追加は audioAssets.ts に1行。
 
 ## 7. 既知の TODO（次 Phase 以降）
 

@@ -13,7 +13,7 @@ export default defineConfig({
   },
   // .ogg などの音声を data: URI としてバンドルに埋め込むため大きめに設定。
   // これで単一HTML(file://)でも BGM が鳴る（data: は file:// でも fetch 可能）。
-  assetsInlineLimit: 8 * 1024 * 1024,
+  assetsInlineLimit: 16 * 1024 * 1024,
   build: {
     target: "es2022",
   },

@@ -108,7 +108,9 @@ export class BattleScene extends Scene {
   override onEnter(): void {
     this.rng = this.state.run?.battleRng ?? this.game.rootRng.fork("battle-fallback");
     this.state.markSeen(this.enemy.def.id); // 図鑑: 目撃
-    this.game.audio.playBgm(this.enemy.def.boss ? "boss" : "battle");
+    // ボス・中ボスは専用テーマ、それ以外は通常戦闘テーマへクロスフェード
+    const bossTheme = this.enemy.def.boss || this.enemy.def.midboss;
+    this.game.audio.playBgm(bossTheme ? "boss" : "battle");
     this.queueMsgs([{ text: `${this.enemy.def.name}が あらわれた！` }], () =>
       this.startRound(),
     );
@@ -386,7 +388,9 @@ export class BattleScene extends Scene {
     let dmg = physDamage(m.atk, this.enemy.defense * this.enemyDefMult, this.rng);
     if (crit) dmg = Math.round(dmg * CRIT_MULT);
 
-    const msgs: QueuedMsg[] = [{ text: `${m.name}の こうげき！` }];
+    const msgs: QueuedMsg[] = [
+      { text: `${m.name}の こうげき！`, fx: () => this.game.audio.playSE("attack") },
+    ];
     if (crit) {
       msgs.push({
         text: "かいしんの いちげき！！",
@@ -410,7 +414,10 @@ export class BattleScene extends Scene {
       [
         {
           text: `${caster.name}は ${spell.name}を となえた！`,
-          fx: () => (this.spellFlash = 0.6),
+          fx: () => {
+            this.spellFlash = 0.6;
+            this.game.audio.playSE("spell");
+          },
         },
         {
           text: `${this.enemy.def.name}に ${dmg}の ダメージ！`,
@@ -519,10 +526,28 @@ export class BattleScene extends Scene {
     );
   }
 
+  /** ボス・中ボスからは逃げられない */
+  private get canFleeEnemy(): boolean {
+    return !this.enemy.def.boss && !this.enemy.def.midboss;
+  }
+
+  /** 敵の1ターンあたりの行動回数 */
+  private enemyActionCount(): number {
+    return this.enemy.def.boss ? bossActions(this.aliveCount()) : 1;
+  }
+
   private tryFlee(m: PartyMember): void {
-    const canFlee =
-      !this.enemy.def.boss &&
-      (m.cls.passive?.fleeAlways === true || this.rng.chance(FLEE_CHANCE));
+    if (!this.canFleeEnemy) {
+      this.queueMsgs(
+        [
+          { text: `${m.name}たちは にげだそうとした！` },
+          { text: "しかし にげられなかった！" },
+        ],
+        () => this.enemyPhase(this.enemyActionCount()),
+      );
+      return;
+    }
+    const canFlee = m.cls.passive?.fleeAlways === true || this.rng.chance(FLEE_CHANCE);
     if (canFlee) {
       this.queueMsgs([{ text: `${m.name}たちは にげだした！` }], () =>
         this.endBattle("fled"),
@@ -534,7 +559,7 @@ export class BattleScene extends Scene {
           { text: `${m.name}たちは にげだした！` },
           { text: "しかし まわりこまれてしまった！" },
         ],
-        () => this.enemyPhase(this.enemy.def.boss ? bossActions(this.aliveCount()) : 1),
+        () => this.enemyPhase(this.enemyActionCount()),
       );
     }
   }
@@ -560,6 +585,14 @@ export class BattleScene extends Scene {
       this.endEnemyPhase();
       return;
     }
+
+    // 中ボスなどの専用攻撃（確率発動・全体攻撃）
+    const sm = this.enemy.def.specialMove;
+    if (sm && this.rng.chance(sm.chance)) {
+      this.enemySpecialMove(remaining);
+      return;
+    }
+
     const target = this.rng.pick(alive)!;
     const def =
       (target.def + routeDefBonus(this.state.route)) *
@@ -604,6 +637,46 @@ export class BattleScene extends Scene {
           });
         }
       }
+    }
+    this.queueMsgs(msgs, () => {
+      if (this.aliveCount() === 0) this.defeat();
+      else this.enemyPhase(remaining - 1);
+    });
+  }
+
+  /** 敵の専用技（全体 or 単体の強攻撃 + 専用SE + 大きな演出） */
+  private enemySpecialMove(remaining: number): void {
+    const sm = this.enemy.def.specialMove!;
+    const targets = sm.all
+      ? this.members.filter((m) => m.alive)
+      : [this.rng.pick(this.members.filter((m) => m.alive))!];
+
+    const msgs: QueuedMsg[] = [
+      {
+        text: `${this.enemy.def.name}は「${sm.name}」を はなった！`,
+        fx: () => {
+          this.enemyLunge = 1;
+          this.spellFlash = 0.7;
+          this.shake = 8;
+          this.game.audio.playSE(sm.se);
+        },
+      },
+    ];
+    for (const target of targets) {
+      const def = (target.def + routeDefBonus(this.state.route)) * (this.defBuff.get(target.id) ?? 1);
+      let dmg = Math.round(physDamage(this.enemy.atk, def, this.rng) * sm.mult);
+      if (this.guarding.has(target.id)) dmg = Math.max(1, Math.round(dmg * GUARD_MULT));
+      msgs.push({
+        text: `${target.name}に ${dmg}の だいダメージ！`,
+        fx: () => {
+          target.damage(dmg);
+          this.redFlash = 0.7;
+          this.shake = 8;
+          this.popupAtMember(target, `-${dmg}`, "#ff6a6a");
+          this.game.audio.playSe("damage");
+          if (this.sleeping.has(target.id)) this.sleeping.delete(target.id);
+        },
+      });
     }
     this.queueMsgs(msgs, () => {
       if (this.aliveCount() === 0) this.defeat();
@@ -693,6 +766,26 @@ export class BattleScene extends Scene {
       msgs.push({ text: "どうくつに へいわが おとずれた……" });
       msgs.push({ text: "ふしぎな ちからが みんなを つつみこむ！" });
       this.queueMsgs(msgs, () => this.endBattle("bossVictory"));
+    } else if (e.def.midboss) {
+      // 中ボス撃破: 専用報酬 + この潜行で撃破済みに（bossDefeated は立てない）
+      this.state.run?.midbossDefeated.add(this.floor);
+      const bonus = e.def.bonusReward;
+      if (bonus) {
+        this.state.gold += bonus.gold;
+        for (const it of bonus.items) this.state.addItem(it.id, it.count);
+        const itemText = bonus.items
+          .map((it) => `${ITEMS[it.id].name}${it.count > 1 ? ` x${it.count}` : ""}`)
+          .join("、");
+        msgs.push({
+          text: `ふういんが とけた！ ${bonus.gold}ゴールドと ${itemText}を てにいれた！`,
+          fx: () => {
+            this.spellFlash = 0.7;
+            this.game.audio.playSe("chest");
+          },
+        });
+      }
+      msgs.push({ text: "したかいへの みちが ひらけた！" });
+      this.queueMsgs(msgs, () => this.endBattle("victory"));
     } else {
       this.queueMsgs(msgs, () => this.endBattle("victory"));
     }

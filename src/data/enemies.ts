@@ -28,6 +28,25 @@ export interface EnemyDef {
   special?: boolean;
   /** 攻撃時に状態異常を与える */
   inflict?: { status: "poison" | "sleep"; chance: number };
+  /**
+   * 中ボス。逃走不可・専用報酬あり・撃破しても bossDefeated は立てない
+   * （＝ゲームクリアの最終ボスとは区別する）。
+   */
+  midboss?: boolean;
+  /** 専用の強力な攻撃（全体攻撃・専用SE付き）。確率で発動 */
+  specialMove?: {
+    name: string;
+    /** 通常攻撃力に対する倍率 */
+    mult: number;
+    /** 発動確率 */
+    chance: number;
+    /** 鳴らす SE の id */
+    se: string;
+    /** パーティ全員が対象なら true */
+    all?: boolean;
+  };
+  /** 撃破時の追加報酬（中ボス用） */
+  bonusReward?: { gold: number; items: { id: ItemId; count: number }[] };
 }
 
 export const ENEMIES: EnemyDef[] = [
@@ -106,6 +125,34 @@ export const ENEMIES: EnemyDef[] = [
     special: true,
   },
   {
+    id: "yomimaru",
+    name: "墓守りの黄泉丸",
+    sprite: "battle.yomimaru",
+    floors: [5, 5],
+    hp: [140, 0],
+    atk: [22, 0],
+    def: [9, 0],
+    exp: [60, 0],
+    gold: [180, 0],
+    midboss: true,
+    special: true, // ランダム出現はしない（5F固定エンカウント）
+    specialMove: {
+      name: "しびれ ぶきの まいり",
+      mult: 1.6,
+      chance: 0.33,
+      se: "bossSpecial",
+      all: true,
+    },
+    drop: { item: "houseki", chance: 1, count: 1 },
+    bonusReward: {
+      gold: 120,
+      items: [
+        { id: "kouseki", count: 3 },
+        { id: "houseki", count: 1 },
+      ],
+    },
+  },
+  {
     id: "nushi",
     name: "どうくつのぬし",
     sprite: "battle.nushi",
@@ -176,6 +223,12 @@ export function bossDef(): EnemyDef {
   const boss = ENEMIES.find((e) => e.boss);
   if (!boss) throw new Error("ボスが定義されていません");
   return boss;
+}
+
+export function midbossDef(): EnemyDef {
+  const mb = ENEMIES.find((e) => e.midboss);
+  if (!mb) throw new Error("中ボスが定義されていません");
+  return mb;
 }
 
 export function enemyById(id: string): EnemyDef | undefined {

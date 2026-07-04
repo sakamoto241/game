@@ -599,6 +599,25 @@ const ORE_NODE = [
   "................",
 ];
 
+const YOMIMARU = [
+  "................",
+  "......oooo......",
+  ".....oKKKKo.....",
+  "....oKKKKKKo....",
+  "....oKeKKeKo....",
+  "....oKKKKKKo....",
+  "...ooKKooKKoo...",
+  "..oMMoKKKKoMMo..",
+  "..oMMMMMMMMMMo..",
+  "..oMMoMMMMoMMo..",
+  "...ooMMMMMMoo...",
+  "....oMMMMMMo....",
+  "....oMo..oMo....",
+  "....oo....oo....",
+  "................",
+  "................",
+];
+
 const NUSHI = [
   "................",
   ".oo..........oo.",
@@ -783,6 +802,7 @@ export function registerPixelArt(assets: AssetManager): void {
   def("battle.rat", grid(RAT));
   def("battle.ghost", grid(GHOST));
   def("battle.mimic", grid(MIMIC));
+  def("battle.yomimaru", grid(YOMIMARU, { M: "#6a4a7a", K: "#c9c2d8" }));
 
   // --- 装備オーバーレイ ---
   def("overlay.sword", grid(SWORD));
