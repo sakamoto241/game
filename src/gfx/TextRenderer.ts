@@ -17,7 +17,7 @@ export interface TextOptions {
 
 export class TextRenderer {
   fontFamily =
-    `'PixelMplus10', 'MS Gothic', 'Hiragino Kaku Gothic ProN', ` +
+    `'DotGothic16', 'PixelMplus10', 'MS Gothic', 'Hiragino Kaku Gothic ProN', ` +
     `'Noto Sans CJK JP', 'Noto Sans JP', sans-serif`;
 
   draw(
@@ -38,8 +38,16 @@ export class TextRenderer {
     ctx.font = `${bold ? "bold " : ""}${size}px ${this.fontFamily}`;
     ctx.textAlign = align;
     ctx.textBaseline = baseline;
+    // ドット文字を全周 1px で縁取り（背景に埋もれず輪郭がくっきり出る）
     if (shadow) {
-      ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+      ctx.fillStyle = "#12101a";
+      ctx.fillText(str, x - 1, y - 1);
+      ctx.fillText(str, x, y - 1);
+      ctx.fillText(str, x + 1, y - 1);
+      ctx.fillText(str, x - 1, y);
+      ctx.fillText(str, x + 1, y);
+      ctx.fillText(str, x - 1, y + 1);
+      ctx.fillText(str, x, y + 1);
       ctx.fillText(str, x + 1, y + 1);
     }
     ctx.fillStyle = color;

@@ -1,0 +1,13 @@
+/*
+ * DotGothic16（ドット系の日本語フォント）をバンドルに同梱する。
+ * TTF を import 経由で読ませることで Vite が data: URI としてインライン化し、
+ * 単一HTML（file://・オフライン）でも Google Fonts 無しで確実に効く。
+ * canvas 描画に使うため font-display: block でちらつきを抑える。
+ */
+@font-face {
+  font-family: "DotGothic16";
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url("../assets/fonts/DotGothic16.ttf") format("truetype");
+}

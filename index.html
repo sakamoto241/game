@@ -25,6 +25,16 @@
       }
       canvas {
         image-rendering: pixelated;
+        image-rendering: crisp-edges;
+      }
+      /* canvas 描画前に DotGothic16 を確実にロードさせる隠し要素 */
+      #app::after {
+        content: "\3042";
+        font-family: "DotGothic16";
+        position: absolute;
+        left: -9999px;
+        opacity: 0;
+        pointer-events: none;
       }
     </style>
   </head>
