@@ -9,6 +9,7 @@ import type { Scene } from "./Scene";
 import { SceneManager } from "./SceneManager";
 import { DebugOverlay } from "../debug/DebugOverlay";
 import { TextRenderer } from "../gfx/TextRenderer";
+import { loadRealArt } from "../data/realArt";
 
 /** ゲーム全体を流れるイベントの型定義。機能追加時はここへ足していく */
 export interface AppEvents extends Record<string, unknown> {
@@ -69,6 +70,8 @@ export class Game {
 
   async start(makeInitialScene: (game: Game) => Scene): Promise<void> {
     await this.assets.loadManifest();
+    // 本物のドット絵アセット（tileset/CharaMEL/ボス）を登録。コード製アートを上書きする
+    await loadRealArt(this.assets);
     this.audio.init();
     this.installAudioUnlock();
     this.scenes.replace(makeInitialScene(this), 0.6);

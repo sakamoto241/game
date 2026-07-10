@@ -138,6 +138,26 @@ export class AssetManager {
     this.pixelArts.set(id, canvas);
   }
 
+  /**
+   * 画像のサブ矩形をスプライトIDとして登録する（スプライトシート差し込み用）。
+   * コード製ピクセルアートより優先されるので、同じIDで呼べば見た目を差し替えられる。
+   */
+  defineImageSprite(
+    id: string,
+    img: HTMLImageElement,
+    sx: number,
+    sy: number,
+    sw: number,
+    sh: number,
+  ): void {
+    this.sheetSprites.set(id, { img, sx, sy, sw, sh });
+  }
+
+  /** 画像を1枚ロードする（realArt バンドルなどコード側の読み込み用） */
+  loadArtImage(url: string): Promise<HTMLImageElement> {
+    return loadImageElement(url);
+  }
+
   /** 本物の画像 or ピクセルアートを持っているか（プレースホルダーは含まない） */
   hasArt(id: string): boolean {
     return this.images.has(id) || this.sheetSprites.has(id) || this.pixelArts.has(id);

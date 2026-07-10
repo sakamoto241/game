@@ -1,5 +1,5 @@
 import type { AssetManager } from "../core/AssetManager";
-import { drawGroundShadow } from "../gfx/Shadow";
+import { drawCharacter } from "../gfx/CharSprite";
 import { TILE } from "../gfx/TileMap";
 import type { PartyMember } from "./PartyMember";
 import type { Dir } from "./Player";
@@ -64,13 +64,14 @@ export class Follower {
   }
 
   render(ctx: CanvasRenderingContext2D, assets: AssetManager): void {
-    const x = Math.round(this.px);
-    const y = Math.round(this.py);
-    drawGroundShadow(ctx, x + 8, y + 14.5, 5.2, 2.2, this.member.alive ? 0.28 : 0.14);
-    ctx.save();
-    if (!this.member.alive) ctx.globalAlpha = 0.45; // 戦闘不能はうっすら
-    assets.drawSprite(ctx, `chara.${this.member.classId}.${this.dir}`, x, y, TILE, TILE);
-    ctx.restore();
+    drawCharacter(
+      ctx,
+      assets,
+      `chara.${this.member.classId}.${this.dir}`,
+      this.px,
+      this.py,
+      this.member.alive ? 1 : 0.45, // 戦闘不能はうっすら
+    );
   }
 }
 

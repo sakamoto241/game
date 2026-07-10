@@ -44,41 +44,29 @@ export function drawBar(
   kind: "hp" | "mp" | "exp" = "hp",
 ): void {
   const r = Math.max(0, Math.min(1, ratio));
-  // 背景（凹み）
-  ctx.fillStyle = "rgba(8, 7, 18, 0.85)";
+  // SFC 風フラットゲージ: 黒背景 + 白枠 + ベタ塗り（立体感なし）
+  ctx.fillStyle = "#000000";
   ctx.fillRect(x, y, w, h);
-  ctx.strokeStyle = "rgba(227, 201, 139, 0.22)";
+  ctx.strokeStyle = "#ffffff";
   ctx.lineWidth = 1;
   ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
   if (r <= 0) return;
 
-  let top: string;
-  let bottom: string;
+  let fill: string;
   if (kind === "mp") {
-    top = "#7ab4f0";
-    bottom = "#3a6ab8";
+    fill = "#38a0f0";
   } else if (kind === "exp") {
-    top = "#e8cc70";
-    bottom = "#b0903a";
+    fill = "#f0c838";
   } else if (r > 0.5) {
-    top = "#7ade5c";
-    bottom = "#3a9a3a";
+    fill = "#3ac83a";
   } else if (r > 0.25) {
-    top = "#f0d05a";
-    bottom = "#c89a2e";
+    fill = "#f0c838";
   } else {
-    top = "#f0705a";
-    bottom = "#b83a2e";
+    fill = "#e83c2c";
   }
   const fillW = Math.max(1, Math.round((w - 2) * r));
-  const g = ctx.createLinearGradient(0, y, 0, y + h);
-  g.addColorStop(0, top);
-  g.addColorStop(1, bottom);
-  ctx.fillStyle = g;
+  ctx.fillStyle = fill;
   ctx.fillRect(x + 1, y + 1, fillW, h - 2);
-  // 上端ハイライト
-  ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
-  ctx.fillRect(x + 1, y + 1, fillW, 1);
 }
 
 /** 画面下部のメッセージウィンドウ（DQ風）。入力待ちカーソル付き */

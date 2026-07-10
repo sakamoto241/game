@@ -1,6 +1,6 @@
 import type { AssetManager } from "../core/AssetManager";
 import type { Input } from "../core/Input";
-import { drawGroundShadow } from "../gfx/Shadow";
+import { drawCharacter } from "../gfx/CharSprite";
 import { TILE, type TileDefs, type TileMap } from "../gfx/TileMap";
 import type { PartyMember } from "./PartyMember";
 
@@ -123,34 +123,13 @@ export class Player {
   }
 
   /**
-   * 描画。member を渡すと装備がキャラに一体化して反映される（DQ1/2 風）:
-   * 胴 = 鎧ティアで色替え / 盾・武器 = 方向別レイヤーを手元に重ねる。
+   * 描画。CharaMEL のドット絵キャラを使用する。
+   * 装備の武器/盾オーバーレイは CharaMEL 上で崩れるため描かない（強弱は UI で表現）。
+   * member は API 互換のため残すが、見た目には使わない。
    */
-  render(ctx: CanvasRenderingContext2D, assets: AssetManager, member?: PartyMember): void {
-    const x = Math.round(this.px);
-    const y = Math.round(this.py);
-
-    // 足元の接地影（歩行でわずかに沈む）
-    const bob = this.moving ? Math.abs(Math.sin(this.progress * Math.PI)) : 0;
-    drawGroundShadow(ctx, x + 8, y + 14.5, 5.4 - bob * 0.6, 2.3);
-
-    if (!member) {
-      assets.drawSprite(ctx, `hero.${this.dir}`, x, y, TILE, TILE);
-      return;
-    }
-    const { weapon, shield, armor } = member.equip;
-    // 体（鎧の色を反映）
-    const armorKey = armor ? armor.id : "base";
-    assets.drawSprite(ctx, `hero.body.${armorKey}.${this.dir}`, x, y, TILE, TILE);
-    // 盾（手元レイヤー）
-    if (shield) {
-      assets.drawSprite(ctx, `hero.shield.${shield.id}.${this.dir}`, x, y, TILE, TILE);
-    }
-    // 武器（剣/斧レイヤー）
-    if (weapon) {
-      const wk = weapon.id === "axe" ? "axe" : weapon.id;
-      assets.drawSprite(ctx, `hero.weapon.${wk}.${this.dir}`, x, y, TILE, TILE);
-    }
+  render(ctx: CanvasRenderingContext2D, assets: AssetManager, _member?: PartyMember): void {
+    void _member;
+    drawCharacter(ctx, assets, `hero.${this.dir}`, this.px, this.py);
   }
 }
 

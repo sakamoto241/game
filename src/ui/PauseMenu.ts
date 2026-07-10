@@ -1,5 +1,5 @@
 import type { Game } from "../core/Game";
-import { UI_W } from "../core/Renderer";
+import { UI_W, UI_H } from "../core/Renderer";
 import { ACHIEVEMENTS } from "../data/achievements";
 import { ENEMIES } from "../data/enemies";
 import { equipName } from "../data/equipment";
@@ -35,6 +35,7 @@ export class PauseMenu {
       { label: "どうぐ", value: "items" },
       { label: "ずかん", value: "dex" },
       { label: "じっせき", value: "achievements" },
+      { label: "セーブ", value: "save" },
       { label: "せってい", value: "settings" },
       { label: "とじる", value: "close" },
     ],
@@ -50,6 +51,8 @@ export class PauseMenu {
   private statusTarget: PartyMember | null = null;
   private pendingItem: ItemId | null = null;
   private info: string | null = null;
+  /** 手動セーブの結果トースト */
+  private saveToast: { msg: string; color: string; t: number } | null = null;
 
   constructor(
     private state: GameState,
@@ -58,6 +61,10 @@ export class PauseMenu {
 
   update(game: Game, dt: number): PauseMenuResult {
     const input = game.input;
+    if (this.saveToast) {
+      this.saveToast.t -= dt;
+      if (this.saveToast.t <= 0) this.saveToast = null;
+    }
     if (input.pressed("menu")) return "close";
 
     switch (this.phase) {
@@ -102,6 +109,9 @@ export class PauseMenu {
             `じっせき ${unlocked.length}/${ACHIEVEMENTS.length}`,
           );
           this.phase = "achievements";
+        }
+        if (ev.item.value === "save") {
+          this.doSave(game);
         }
         if (ev.item.value === "settings") {
           this.settings = new SettingsMenu();
@@ -297,9 +307,31 @@ export class PauseMenu {
     return null;
   }
 
+  /** 手動セーブを実行し、結果トーストを仕込む */
+  private doSave(game: Game): void {
+    let ok = true;
+    try {
+      this.state.save(game);
+    } catch {
+      ok = false;
+    }
+    game.audio.playSe(ok ? "decide" : "cancel");
+    this.saveToast = ok
+      ? { msg: "セーブしました！", color: "#8ef58e", t: 2 }
+      : { msg: "セーブできませんでした", color: "#ff6a6a", t: 2 };
+  }
+
   render(game: Game, ctx: CanvasRenderingContext2D): void {
     const text = game.text;
     const x = UI_W - 190;
+    if (this.saveToast) {
+      text.draw(ctx, this.saveToast.msg, UI_W / 2, UI_H - 40, {
+        size: 15,
+        align: "center",
+        bold: true,
+        color: this.saveToast.color,
+      });
+    }
 
     switch (this.phase) {
       case "root":
