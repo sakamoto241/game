@@ -1,0 +1,631 @@
+<title>こむぎ堂</title>
+<meta name="description" content="パンを焼いて売って、屋台から町いちばんのパン屋を目指す放置ゲーム">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&family=Zen+Maru+Gothic:wght@500;700&display=swap">
+<style>
+  :root {
+    --bg: #EDF1F5;
+    --text: #1E2A38;
+    --muted: #5B6978;
+    --panel: #FFFFFF;
+    --line: #D4DCE4;
+    --glass: #DCEAF2;
+    --wood: #A8683A;
+    --wood-dark: #7A4824;
+    --awning: #2F6FA8;
+    --accent: #2F6FA8;
+    --accent-ink: #FFFFFF;
+    --good: #2E8B57;
+    --soft: #F3F6F9;
+    --pop: "Mochiy Pop One", "Hiragino Maru Gothic ProN", system-ui, sans-serif;
+    --body: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #121820; --text: #E6EDF3; --muted: #95A4B4; --panel: #1B232D;
+      --line: #2E3A46; --glass: #213140; --accent: #6FA8DC; --accent-ink: #0E1620; --soft: #222B36;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #121820; --text: #E6EDF3; --muted: #95A4B4; --panel: #1B232D;
+    --line: #2E3A46; --glass: #213140; --accent: #6FA8DC; --accent-ink: #0E1620; --soft: #222B36;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    font-weight: 500;
+    padding-inline: 16px;
+    padding-block: 24px 48px;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; display: grid; gap: 20px; }
+
+  /* ---- ヘッダー（お金） ---- */
+  .top {
+    display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px;
+  }
+  .shopname { display: grid; gap: 2px; }
+  .shopname .rank { font-size: 13px; color: var(--muted); font-weight: 700; letter-spacing: .06em; }
+  .shopname h1 { margin: 0; font-family: var(--pop); font-weight: 400; font-size: clamp(24px, 5vw, 34px); line-height: 1.15; }
+  .shopname button.rename {
+    font: inherit; font-size: 12px; color: var(--muted); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; justify-self: start;
+  }
+  .money { text-align: right; display: grid; gap: 2px; }
+  .money .yen { font-family: var(--pop); font-size: clamp(30px, 7vw, 44px); line-height: 1; font-variant-numeric: tabular-nums; }
+  .money .yen small { font-size: .55em; margin-right: 2px; }
+  .money .rate { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+
+  .rename-form { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .main { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+  @media (max-width: 760px) { .main { grid-template-columns: minmax(0, 1fr); } }
+
+  /* ---- お店 ---- */
+  .store { display: grid; gap: 16px; }
+  .front {
+    position: relative;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  .awning {
+    height: 46px;
+    background: repeating-linear-gradient(90deg, var(--awning) 0 30px, #FFFFFF 30px 60px);
+    position: relative;
+    transition: background .6s;
+  }
+  .awning::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: -14px; height: 14px;
+    background:
+      radial-gradient(circle at 15px 0, var(--awning) 14px, transparent 15px) 0 0 / 60px 14px repeat-x,
+      radial-gradient(circle at 45px 0, #FFFFFF 14px, transparent 15px) 0 0 / 60px 14px repeat-x;
+  }
+  .window {
+    margin: 26px 18px 0;
+    background: var(--glass);
+    border: 6px solid var(--wood);
+    border-bottom: 0;
+    border-radius: 8px 8px 0 0;
+    padding: 12px 10px 0;
+    display: grid;
+    gap: 0;
+  }
+  .shelf {
+    display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px;
+    min-height: 44px; align-items: end;
+    border-bottom: 5px solid var(--wood-dark);
+    padding: 4px 2px 0;
+    margin-bottom: 10px;
+  }
+  .shelf svg { width: 100%; max-width: 40px; height: auto; justify-self: center; display: block; }
+  .shelf .pop-in { animation: popin .35s ease-out; }
+  @keyframes popin { from { transform: translateY(-8px) scale(.6); opacity: .3; } to { transform: none; opacity: 1; } }
+  .counter {
+    height: 22px; background: var(--wood); margin: 0 10px;
+    border-radius: 4px 4px 0 0;
+    box-shadow: inset 0 -6px 0 var(--wood-dark);
+  }
+  .empty-note {
+    position: absolute; left: 0; right: 0; top: 96px; text-align: center; color: var(--muted); font-size: 13px; pointer-events: none;
+  }
+  .guest {
+    position: absolute; top: 58px; right: 16px;
+    font: inherit; font-weight: 700; font-size: 14px;
+    padding: 8px 14px; border-radius: 99px; border: 0;
+    background: #F2C14E; color: #3A2A06; cursor: pointer;
+    box-shadow: 0 4px 0 #C2932A;
+    animation: bounce 1s ease-in-out infinite;
+  }
+  @keyframes bounce { 50% { transform: translateY(-4px); } }
+
+  .bake {
+    position: relative;
+    display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 16px;
+    width: 100%;
+    font: inherit; color: inherit; text-align: left;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 14px 18px;
+    cursor: pointer;
+    user-select: none; -webkit-user-select: none;
+    touch-action: manipulation;
+    overflow: hidden;
+  }
+  .bake .loaf { width: 84px; height: 64px; transition: transform .08s; }
+  .bake:active .loaf { transform: scale(.9); }
+  .bake b { font-family: var(--pop); font-weight: 400; font-size: 22px; display: block; }
+  .bake span { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+  .bake:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .float {
+    position: absolute; pointer-events: none;
+    font-family: var(--pop); font-size: 18px; color: var(--good);
+    animation: floatup .9s ease-out forwards;
+  }
+  @keyframes floatup { to { transform: translateY(-44px); opacity: 0; } }
+
+  .progress { display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
+  .progress .row { display: flex; justify-content: space-between; gap: 8px; }
+  .bar { height: 10px; border-radius: 99px; background: var(--line); overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--awning); border-radius: 99px; transition: width .3s; }
+
+  /* ---- メニュー ---- */
+  .side { display: grid; gap: 20px; }
+  .box { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px; display: grid; gap: 10px; }
+  .box h2 { margin: 0; font-family: var(--pop); font-weight: 400; font-size: 18px; }
+  .box h2 small { font-family: var(--body); font-size: 12px; color: var(--muted); font-weight: 700; margin-left: 6px; }
+  .item {
+    display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 12px; align-items: center;
+    padding: 8px; border-radius: 12px; background: var(--soft);
+  }
+  .item svg { width: 48px; height: 40px; }
+  .item .name { font-weight: 700; font-size: 15px; }
+  .item .name .own { color: var(--muted); font-weight: 700; font-size: 13px; margin-left: 4px; font-variant-numeric: tabular-nums; }
+  .item .desc { color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+  .item.locked { opacity: .6; }
+  .item.locked svg { filter: grayscale(1) brightness(.4); opacity: .5; }
+  .buy {
+    font: inherit; font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums;
+    min-width: 88px; padding: 8px 10px; border-radius: 10px; border: 0;
+    background: var(--accent); color: var(--accent-ink); cursor: pointer;
+  }
+  .buy:disabled { background: var(--line); color: var(--muted); cursor: default; }
+  .buy:focus-visible, .btn:focus-visible, input:focus-visible { outline: 3px solid #F2C14E; outline-offset: 2px; }
+  .none { color: var(--muted); font-size: 13px; margin: 0; }
+
+  .foot { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+  .btn {
+    font: inherit; font-weight: 700; font-size: 13px; padding: 7px 14px; border-radius: 10px;
+    border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer;
+  }
+  .btn.solid { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+  .btn.danger { background: #C0504D; color: #fff; border-color: transparent; }
+  input[type="text"] {
+    font: inherit; font-size: 16px; padding: 7px 12px; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--panel); color: var(--text); min-width: 0; width: 12em; max-width: 100%;
+  }
+  .reset-area { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    transform: translateX(-50%);
+    max-width: calc(100% - 32px);
+    background: var(--text); color: var(--bg);
+    padding: 10px 18px; border-radius: 12px; font-weight: 700; font-size: 14px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.2);
+    transition: opacity .3s;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .guest, .float, .shelf .pop-in { animation: none; }
+  }
+</style>
+
+<!-- パンの絵 -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-koppe" viewBox="0 0 48 40"><ellipse cx="24" cy="24" rx="21" ry="11" fill="#D8923F"/><ellipse cx="24" cy="21" rx="18" ry="7" fill="#E9AE58"/><path d="M10 21c8-3 20-3 28 0" stroke="#F6D79B" stroke-width="3" fill="none" stroke-linecap="round"/></symbol>
+    <symbol id="i-croissant" viewBox="0 0 48 40"><path d="M4 28c2-12 12-20 20-20s18 8 20 20c-5-3-9-4-12-3-2-5-5-7-8-7s-6 2-8 7c-3-1-7 0-12 3z" fill="#DE9A43"/><path d="M16 12l3 12M24 9v14M32 12l-3 12" stroke="#B26A26" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-melon" viewBox="0 0 48 40"><ellipse cx="24" cy="24" rx="19" ry="13" fill="#E8C567"/><path d="M11 17l26 14M9 25l20 10M17 12l24 13M37 17L11 31M39 25L19 35M31 12L7 25" stroke="#C9A040" stroke-width="1.6"/></symbol>
+    <symbol id="i-curry" viewBox="0 0 48 40"><ellipse cx="24" cy="24" rx="20" ry="12" fill="#A9652C"/><g fill="#E6B26A"><circle cx="14" cy="20" r="1.6"/><circle cx="22" cy="17" r="1.6"/><circle cx="31" cy="19" r="1.6"/><circle cx="18" cy="27" r="1.6"/><circle cx="27" cy="26" r="1.6"/><circle cx="35" cy="25" r="1.6"/></g></symbol>
+    <symbol id="i-shoku" viewBox="0 0 48 40"><path d="M8 36V18c0-8 6-12 16-12s16 4 16 12v18z" fill="#C98536"/><path d="M12 36V19c0-6 5-9 12-9s12 3 12 9v17z" fill="#FBEBCB"/></symbol>
+    <symbol id="i-cake" viewBox="0 0 48 40"><rect x="8" y="18" width="32" height="18" rx="3" fill="#FFF4EA"/><rect x="8" y="25" width="32" height="4" fill="#F29BAE"/><path d="M8 20c4 3 6 3 8 0 2 3 6 3 8 0 2 3 6 3 8 0 2 3 6 3 8 0" stroke="#FFFFFF" stroke-width="3" fill="none"/><circle cx="24" cy="13" r="5" fill="#E0394F"/><path d="M22 8l2 2 2-2" stroke="#3B8A4A" stroke-width="2" fill="none"/></symbol>
+    <symbol id="i-loaf" viewBox="0 0 84 64"><ellipse cx="42" cy="42" rx="38" ry="18" fill="#C9802F"/><ellipse cx="42" cy="36" rx="34" ry="16" fill="#E6A64E"/><path d="M22 30l8-8M36 28l8-8M50 30l8-8" stroke="#F8DDA6" stroke-width="4" stroke-linecap="round"/></symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <header class="top">
+    <div class="shopname">
+      <span class="rank" id="rank">やたい</span>
+      <h1 id="shop">こむぎ堂</h1>
+      <button class="rename" type="button" id="rename">お店の名前をかえる</button>
+      <form class="rename-form" id="rename-form" hidden>
+        <input type="text" id="rename-input" maxlength="12" aria-label="お店の名前" autocomplete="off">
+        <button class="btn solid" type="submit">けってい</button>
+        <button class="btn" type="button" id="rename-cancel">やめる</button>
+      </form>
+    </div>
+    <div class="money">
+      <div class="yen" aria-live="off"><small>¥</small><span id="yen">0</span></div>
+      <div class="rate" id="rate">1びょうで ¥0</div>
+    </div>
+  </header>
+
+  <div class="main">
+    <section class="store">
+      <div class="front">
+        <div class="awning" id="awning"></div>
+        <div class="window" id="window">
+          <div class="shelf" id="shelf-0"></div>
+          <div class="shelf" id="shelf-1"></div>
+          <div class="shelf" id="shelf-2"></div>
+        </div>
+        <div class="counter"></div>
+        <p class="empty-note" id="empty-note">たなは まだ からっぽ。まずは パンを焼こう</p>
+        <button class="guest" type="button" id="guest" hidden>おとくいさんが来た！</button>
+      </div>
+
+      <button class="bake" type="button" id="bake">
+        <svg class="loaf" viewBox="0 0 84 64" aria-hidden="true"><use href="#i-loaf"/></svg>
+        <div><b>パンを焼く</b><span id="tap">1回 ¥1</span></div>
+      </button>
+
+      <div class="progress">
+        <div class="row"><span id="next-label">つぎのお店まで</span><span id="next-num"></span></div>
+        <div class="bar"><i id="next-bar"></i></div>
+      </div>
+    </section>
+
+    <aside class="side">
+      <div class="box">
+        <h2>メニュー<small>ならべると 毎秒うれる</small></h2>
+        <div id="menu"></div>
+      </div>
+      <div class="box">
+        <h2>くふう<small>1回だけ買える</small></h2>
+        <div id="upgrades"></div>
+        <p class="none" id="no-upgrades">いまは まだ ありません。お店が育つと あらわれます。</p>
+      </div>
+    </aside>
+  </div>
+
+  <footer class="foot">
+    <span id="stats">これまでの売上 ¥0 ・ 焼いた回数 0回</span>
+    <div class="reset-area" id="reset-area"><button class="btn" type="button" id="reset">はじめから</button></div>
+  </footer>
+</div>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+(() => {
+  const SAVE_KEY = 'komugido-v1';
+
+  const BREADS = [
+    { id: 'koppe',     name: 'コッペパン',     base: 15,     rate: 0.5,  desc: 'ふかふかの定番。まずはここから' },
+    { id: 'croissant', name: 'クロワッサン',   base: 110,    rate: 3,    desc: 'バターの香りで お客さんが ふえる' },
+    { id: 'melon',     name: 'メロンパン',     base: 700,    rate: 14,   desc: 'サクサクの皮が 子どもに 大人気' },
+    { id: 'curry',     name: 'カレーパン',     base: 4000,   rate: 60,   desc: '揚げたてを ねらって 行列が できる' },
+    { id: 'shoku',     name: 'ふわふわ食パン', base: 22000,  rate: 260,  desc: '朝ごはん用に まとめ買い される' },
+    { id: 'cake',      name: 'いちごのケーキ', base: 130000, rate: 1200, desc: 'お祝いの日には これ' },
+  ];
+
+  const UPGRADES = [
+    { id: 'flour',   name: 'こだわり小麦粉',       desc: '焼くたびの売上が 2倍',                     cost: 100,     need: s => s.total >= 50,            fx: { tap: 2 } },
+    { id: 'jam',     name: 'コッペパンに ジャム',   desc: 'コッペパンの売上が 2倍',                   cost: 600,     need: s => s.owned.koppe >= 10,      fx: { bread: 'koppe', x: 2 } },
+    { id: 'mitten',  name: '職人のミトン',         desc: '焼くたびに 毎秒の売上の5%も もらえる',      cost: 2500,    need: s => s.total >= 1500,          fx: { tapPct: 0.05 } },
+    { id: 'butter',  name: '発酵バター',           desc: 'クロワッサンの売上が 2倍',                 cost: 6000,    need: s => s.owned.croissant >= 10,  fx: { bread: 'croissant', x: 2 } },
+    { id: 'cookie',  name: 'サクサク クッキー生地', desc: 'メロンパンの売上が 2倍',                   cost: 35000,   need: s => s.owned.melon >= 10,      fx: { bread: 'melon', x: 2 } },
+    { id: 'oven',    name: '大きな石窯',           desc: 'すべてのパンの売上が 1.5倍',               cost: 50000,   need: s => s.total >= 30000,         fx: { all: 1.5 } },
+    { id: 'sign',    name: '手書きの看板',         desc: '焼くたびの売上が 3倍',                     cost: 120000,  need: s => s.total >= 80000,         fx: { tap: 3 } },
+    { id: 'spice',   name: '自家製スパイス',       desc: 'カレーパンの売上が 2倍',                   cost: 200000,  need: s => s.owned.curry >= 10,      fx: { bread: 'curry', x: 2 } },
+    { id: 'milk',    name: '牧場の牛乳',           desc: 'ふわふわ食パンの売上が 2倍',               cost: 1100000, need: s => s.owned.shoku >= 10,      fx: { bread: 'shoku', x: 2 } },
+    { id: 'shop2',   name: '2号店を ひらく',        desc: 'すべてのパンの売上が 2倍',                 cost: 2000000, need: s => s.total >= 1000000,       fx: { all: 2 } },
+    { id: 'berry',   name: '朝どれ いちご',         desc: 'いちごのケーキの売上が 2倍',               cost: 6500000, need: s => s.owned.cake >= 10,       fx: { bread: 'cake', x: 2 } },
+  ];
+
+  const RANKS = [
+    { at: 0,       name: 'やたい',           color: '#8A6D4F' },
+    { at: 1000,    name: 'ちいさなパン屋',   color: '#2F6FA8' },
+    { at: 20000,   name: '町のパン屋',       color: '#2E8B57' },
+    { at: 300000,  name: '行列のできる店',   color: '#C0504D' },
+    { at: 5000000, name: '町いちばんの名店', color: '#6B4FA0' },
+    { at: 1e8,     name: 'パンの王国',       color: '#B8860B' },
+  ];
+
+  function newState() {
+    const owned = {}; BREADS.forEach(b => owned[b.id] = 0);
+    return { yen: 0, total: 0, taps: 0, owned, bought: [], shop: 'こむぎ堂', last: Date.now() };
+  }
+  function load() {
+    try {
+      const raw = localStorage.getItem(SAVE_KEY);
+      if (!raw) return null;
+      const s = Object.assign(newState(), JSON.parse(raw));
+      BREADS.forEach(b => { if (typeof s.owned[b.id] !== 'number') s.owned[b.id] = 0; });
+      return s;
+    } catch (e) { return null; }
+  }
+  function save() {
+    S.last = Date.now();
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) { /* 保存できなくても遊べる */ }
+  }
+
+  let S;
+  const $ = id => document.getElementById(id);
+
+  // ---- 数字の見せ方（1.2万、3.4億 など）----
+  function fmt(n) {
+    n = Math.floor(n);
+    if (n < 10000) return n.toLocaleString('ja-JP');
+    for (const [u, v] of [['京', 1e16], ['兆', 1e12], ['億', 1e8], ['万', 1e4]]) {
+      if (n >= v) {
+        const x = n / v;
+        let t = x < 10 ? x.toFixed(2) : x < 100 ? x.toFixed(1) : String(Math.floor(x));
+        if (t.includes('.')) t = t.replace(/0+$/, '').replace(/\.$/, '');
+        return t + u;
+      }
+    }
+  }
+  function fmtRate(n) { return n < 10 ? (Math.round(n * 10) / 10).toLocaleString('ja-JP') : fmt(n); }
+
+  // ---- 計算 ----
+  function mults() {
+    const m = { tap: 1, tapPct: 0, all: 1, bread: {} };
+    for (const id of S.bought) {
+      const u = UPGRADES.find(x => x.id === id); if (!u) continue;
+      if (u.fx.tap) m.tap *= u.fx.tap;
+      if (u.fx.tapPct) m.tapPct += u.fx.tapPct;
+      if (u.fx.all) m.all *= u.fx.all;
+      if (u.fx.bread) m.bread[u.fx.bread] = (m.bread[u.fx.bread] || 1) * u.fx.x;
+    }
+    return m;
+  }
+  function breadRate(b, m = mults()) { return b.rate * (m.bread[b.id] || 1) * m.all; }
+  function perSec(m = mults()) { return BREADS.reduce((sum, b) => sum + S.owned[b.id] * breadRate(b, m), 0); }
+  function tapValue(m = mults()) { return 1 * m.tap + perSec(m) * m.tapPct; }
+  function cost(b) { return Math.ceil(b.base * Math.pow(1.15, S.owned[b.id])); }
+  function rankIndex() { let i = 0; RANKS.forEach((r, k) => { if (S.total >= r.at) i = k; }); return i; }
+
+  function earn(n) { S.yen += n; S.total += n; }
+
+  // ---- 焼く ----
+  function bake(e) {
+    const v = tapValue();
+    earn(v); S.taps++;
+    const btn = $('bake');
+    const f = document.createElement('span');
+    f.className = 'float';
+    f.textContent = '+¥' + fmtRate(v);
+    const r = btn.getBoundingClientRect();
+    const x = e && e.clientX ? e.clientX - r.left : r.width * 0.25;
+    const y = e && e.clientY ? e.clientY - r.top : r.height * 0.3;
+    f.style.left = (x - 20) + 'px'; f.style.top = (y - 20) + 'px';
+    btn.appendChild(f);
+    setTimeout(() => f.remove(), 900);
+    const before = rankIndex();
+    render();
+    checkRank(before);
+  }
+
+  function buyBread(b) {
+    const c = cost(b);
+    if (S.yen < c) return;
+    S.yen -= c; S.owned[b.id]++;
+    if (S.owned[b.id] === 1) toast(`${b.name}を ならべはじめた！`);
+    save(); render(true);
+  }
+  function buyUpgrade(u) {
+    if (S.yen < u.cost || S.bought.includes(u.id)) return;
+    S.yen -= u.cost; S.bought.push(u.id);
+    toast(`「${u.name}」で お店が パワーアップ！`);
+    save(); render(true);
+  }
+
+  function checkRank(before) {
+    const now = rankIndex();
+    if (now > before) toast(`お店が「${RANKS[now].name}」に なった！`);
+  }
+
+  // ---- おとくいさん ----
+  let guestTimer = null, guestHide = null;
+  function scheduleGuest() {
+    clearTimeout(guestTimer);
+    guestTimer = setTimeout(() => {
+      if (S.total < 30) return scheduleGuest();
+      $('guest').hidden = false;
+      guestHide = setTimeout(() => { $('guest').hidden = true; scheduleGuest(); }, 9000);
+    }, 40000 + Math.random() * 50000);
+  }
+  function serveGuest() {
+    clearTimeout(guestHide);
+    $('guest').hidden = true;
+    const bonus = Math.max(50, perSec() * 30, tapValue() * 20);
+    const before = rankIndex();
+    earn(bonus);
+    toast(`おとくいさんが まとめ買い！ +¥${fmt(bonus)}`);
+    render(); checkRank(before); scheduleGuest();
+  }
+
+  // ---- おしらせ ----
+  let toastTimer = null;
+  function toast(text) {
+    const t = $('toast');
+    t.textContent = text; t.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.hidden = true; }, 2800);
+  }
+
+  // ---- 画面をつくる ----
+  const menuEls = {}, upEls = {};
+  function buildLists() {
+    const menu = $('menu');
+    menu.style.display = 'grid'; menu.style.gap = '8px';
+    BREADS.forEach(b => {
+      const row = document.createElement('div');
+      row.className = 'item';
+      row.innerHTML = `<svg viewBox="0 0 48 40" aria-hidden="true"><use href="#i-${b.id}"/></svg>
+        <div><div class="name"><span class="nm"></span><span class="own"></span></div><div class="desc"></div></div>
+        <button class="buy" type="button"></button>`;
+      row.querySelector('.buy').addEventListener('click', () => buyBread(b));
+      menu.appendChild(row);
+      menuEls[b.id] = row;
+    });
+    const ups = $('upgrades');
+    ups.style.display = 'grid'; ups.style.gap = '8px';
+    UPGRADES.forEach(u => {
+      const row = document.createElement('div');
+      row.className = 'item';
+      row.style.gridTemplateColumns = 'minmax(0, 1fr) auto';
+      row.innerHTML = `<div><div class="name">${u.name}</div><div class="desc">${u.desc}</div></div>
+        <button class="buy" type="button">¥${fmt(u.cost)}</button>`;
+      row.querySelector('.buy').addEventListener('click', () => buyUpgrade(u));
+      ups.appendChild(row);
+      upEls[u.id] = row;
+    });
+  }
+
+  let shelfKey = '';
+  function renderShelf(animate) {
+    // たなは 3だん×8こ。パンの種類ごとに 4こまで ならべる
+    const icons = [];
+    BREADS.forEach(b => { for (let i = 0; i < Math.min(4, S.owned[b.id]); i++) icons.push(b.id); });
+    const key = icons.join(',');
+    if (key === shelfKey) return;
+    const prev = shelfKey.split(',').filter(Boolean).length;
+    shelfKey = key;
+    for (let r = 0; r < 3; r++) {
+      const shelf = $('shelf-' + r);
+      shelf.innerHTML = '';
+      icons.slice(r * 8, r * 8 + 8).forEach((id, k) => {
+        const idx = r * 8 + k;
+        const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        s.setAttribute('viewBox', '0 0 48 40');
+        s.setAttribute('aria-hidden', 'true');
+        if (animate && idx >= prev - 1) s.classList.add('pop-in');
+        s.innerHTML = `<use href="#i-${id}"/>`;
+        shelf.appendChild(s);
+      });
+    }
+    $('empty-note').hidden = icons.length > 0;
+  }
+
+  function render(animate) {
+    const m = mults();
+    const ps = perSec(m);
+    $('yen').textContent = fmt(S.yen);
+    $('rate').textContent = `1びょうで ¥${fmtRate(ps)}`;
+    $('tap').textContent = `1回 ¥${fmtRate(tapValue(m))}`;
+    $('shop').textContent = S.shop;
+    $('stats').textContent = `これまでの売上 ¥${fmt(S.total)} ・ 焼いた回数 ${S.taps.toLocaleString('ja-JP')}回`;
+
+    const ri = rankIndex();
+    $('rank').textContent = RANKS[ri].name;
+    document.documentElement.style.setProperty('--awning', RANKS[ri].color);
+    const next = RANKS[ri + 1];
+    if (next) {
+      $('next-label').textContent = `つぎは「${next.name}」`;
+      $('next-num').textContent = `あと ¥${fmt(next.at - S.total)}`;
+      $('next-bar').style.width = Math.min(100, (S.total - RANKS[ri].at) / (next.at - RANKS[ri].at) * 100) + '%';
+    } else {
+      $('next-label').textContent = 'さいこうの お店に なった！';
+      $('next-num').textContent = '';
+      $('next-bar').style.width = '100%';
+    }
+
+    // メニュー：持っているもの ＋ つぎの1つ は見せる。その先は「？？？」で1つだけ
+    let shownLocked = false;
+    BREADS.forEach((b, i) => {
+      const row = menuEls[b.id];
+      const unlocked = S.owned[b.id] > 0 || i === 0 || S.owned[BREADS[i - 1].id] > 0 || S.total >= b.base * 0.5;
+      if (!unlocked && shownLocked) { row.hidden = true; return; }
+      row.hidden = false;
+      if (!unlocked) shownLocked = true;
+      row.classList.toggle('locked', !unlocked);
+      row.querySelector('.nm').textContent = unlocked ? b.name : '？？？';
+      row.querySelector('.own').textContent = S.owned[b.id] > 0 ? `×${S.owned[b.id]}` : '';
+      row.querySelector('.desc').textContent = unlocked
+        ? `${b.desc}（1こで 毎秒 ¥${fmtRate(breadRate(b, m))}）`
+        : 'まだ ひみつの パン';
+      const btn = row.querySelector('.buy');
+      const c = cost(b);
+      btn.textContent = `¥${fmt(c)}`;
+      btn.disabled = !unlocked || S.yen < c;
+      btn.setAttribute('aria-label', unlocked ? `${b.name}を ¥${fmt(c)}で 買う` : 'まだ買えません');
+    });
+
+    let anyUp = false;
+    UPGRADES.forEach(u => {
+      const row = upEls[u.id];
+      const show = !S.bought.includes(u.id) && u.need(S);
+      row.hidden = !show;
+      if (show) { anyUp = true; row.querySelector('.buy').disabled = S.yen < u.cost; }
+    });
+    $('no-upgrades').hidden = anyUp;
+
+    renderShelf(animate);
+  }
+
+  // ---- お店の名前 ----
+  function openRename() {
+    $('rename').hidden = true; $('shop').hidden = true;
+    $('rename-form').hidden = false;
+    $('rename-input').value = S.shop; $('rename-input').focus();
+  }
+  function closeRename() {
+    $('rename').hidden = false; $('shop').hidden = false; $('rename-form').hidden = true;
+  }
+
+  // ---- はじめから ----
+  function showResetConfirm() {
+    const area = $('reset-area');
+    area.innerHTML = '';
+    const t = document.createElement('span'); t.textContent = 'お金も お店も ぜんぶ消えます。いい？';
+    const yes = document.createElement('button'); yes.className = 'btn danger'; yes.type = 'button'; yes.textContent = 'はじめから';
+    const no = document.createElement('button'); no.className = 'btn'; no.type = 'button'; no.textContent = 'やめる';
+    yes.onclick = () => { S = newState(); shelfKey = '_'; save(); restoreReset(); render(); toast('あたらしい やたいから スタート！'); };
+    no.onclick = restoreReset;
+    area.append(t, yes, no); no.focus();
+  }
+  function restoreReset() {
+    $('reset-area').innerHTML = '<button class="btn" type="button" id="reset">はじめから</button>';
+    $('reset').onclick = showResetConfirm;
+  }
+
+  // ---- 起動 ----
+  function start(data) {
+    S = (data && data.state) || load() || newState();
+
+    // るすばん中の売上（半分・さいだい8時間）
+    const away = (Date.now() - S.last) / 1000;
+    if (away > 30) {
+      const gain = perSec() * Math.min(away, 8 * 3600) * 0.5;
+      if (gain >= 1) { earn(gain); setTimeout(() => toast(`るすばん中に ¥${fmt(gain)} 売れたよ`), 400); }
+    }
+    S.last = Date.now();
+
+    buildLists();
+    $('bake').addEventListener('click', bake);
+    $('guest').addEventListener('click', serveGuest);
+    $('rename').addEventListener('click', openRename);
+    $('rename-cancel').addEventListener('click', closeRename);
+    $('rename-form').addEventListener('submit', e => {
+      e.preventDefault();
+      S.shop = $('rename-input').value.trim() || 'こむぎ堂';
+      closeRename(); save(); render();
+    });
+    $('reset').onclick = showResetConfirm;
+
+    // 0.1秒ごとに 売上をたす
+    let prev = performance.now();
+    setInterval(() => {
+      const now = performance.now();
+      const dt = Math.min((now - prev) / 1000, 60);
+      prev = now;
+      const before = rankIndex();
+      earn(perSec() * dt);
+      render();
+      checkRank(before);
+    }, 100);
+    setInterval(save, 5000);
+    document.addEventListener('visibilitychange', save);
+    window.addEventListener('pagehide', save);
+    scheduleGuest();
+
+    if (window.claude?.hot && typeof window.claude.hot.snapshot === 'function') {
+      window.claude.hot.snapshot(() => ({ state: S }));
+    }
+    render();
+  }
+
+  window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>
