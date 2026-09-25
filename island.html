@@ -1,0 +1,2246 @@
+<title>こもれび島ぐらし</title>
+<meta name="description" content="本物の時間と季節で動く、どうぶつたちとの島ぐらしゲーム">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kiwi+Maru:wght@400;500&family=M+PLUS+Rounded+1c:wght@500;700;800&display=swap">
+<style>
+  /* 島の世界で固定した配色（ライト/ダーク共通） */
+  :root {
+    color-scheme: light;
+    --paper: #FFF8E7;
+    --paper-2: #F6EACB;
+    --ink: #5A4632;
+    --muted: #8F7A60;
+    --leaf: #3FA34D;
+    --leaf-d: #2D7A38;
+    --sky: #7CC6E8;
+    --line: #E3D2AC;
+    --accent: #F2A93B;
+    --round: "M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", system-ui, sans-serif;
+    --maru: "Kiwi Maru", "Hiragino Maru Gothic ProN", serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; margin: 0; overflow: hidden; overscroll-behavior: none; background: #3E9FD1; }
+  body { font-family: var(--round); color: var(--ink); -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  #world { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  button { font-family: inherit; }
+
+  /* 上のHUD */
+  .top {
+    position: fixed; left: 10px; right: 10px; top: calc(8px + env(safe-area-inset-top, 0px));
+    display: flex; justify-content: space-between; align-items: start; gap: 8px; pointer-events: none;
+  }
+  .clock {
+    background: var(--paper); border-radius: 18px; padding: 6px 14px 7px;
+    box-shadow: 0 3px 0 rgba(90,70,50,.18); line-height: 1.15; text-align: center;
+  }
+  .clock .time { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+  .clock .date { font-size: 12px; font-weight: 700; color: var(--muted); }
+  .purse {
+    background: var(--paper); border-radius: 99px; padding: 7px 14px; font-weight: 800; font-size: 16px;
+    box-shadow: 0 3px 0 rgba(90,70,50,.18); display: flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums;
+  }
+  .purse i { width: 18px; height: 18px; border-radius: 0 60% 0 60%; background: var(--leaf); display: inline-block; transform: rotate(-10deg); box-shadow: inset -3px -3px 0 var(--leaf-d); }
+  .topright { display: grid; gap: 6px; justify-items: end; }
+  .small-btn {
+    pointer-events: auto; border: 0; cursor: pointer;
+    background: var(--paper); color: var(--ink); border-radius: 99px; padding: 6px 12px; font-weight: 700; font-size: 12px;
+    box-shadow: 0 3px 0 rgba(90,70,50,.18);
+  }
+
+  /* 下の操作 */
+  .controls {
+    position: fixed; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    display: grid; justify-items: end; gap: 10px; pointer-events: none;
+  }
+  .tools { display: flex; gap: 6px; pointer-events: auto; background: rgba(255,248,231,.85); padding: 6px; border-radius: 16px; box-shadow: 0 3px 0 rgba(90,70,50,.18); }
+  .tool {
+    width: 46px; height: 46px; border-radius: 12px; border: 2px solid transparent; background: #fff; cursor: pointer;
+    display: grid; place-items: center; padding: 0; position: relative;
+  }
+  .tool canvas { width: 34px; height: 34px; }
+  .tool.on { border-color: var(--accent); background: #FFF1D6; }
+  .tool[disabled] { opacity: .35; cursor: default; }
+  .tool small { position: absolute; bottom: -2px; left: 0; right: 0; font-size: 9px; font-weight: 800; color: var(--muted); }
+  .row-btns { display: flex; gap: 10px; align-items: end; pointer-events: auto; }
+  .a-btn {
+    width: 78px; height: 78px; border-radius: 50%; border: 0; cursor: pointer;
+    background: radial-gradient(circle at 40% 35%, #FFD47A, var(--accent)); color: #fff;
+    font-weight: 800; font-size: 30px; box-shadow: 0 5px 0 #B87618; text-shadow: 0 2px 0 rgba(0,0,0,.15);
+  }
+  .a-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #B87618; }
+  .pocket-btn {
+    height: 50px; padding: 0 16px; border-radius: 25px; border: 0; cursor: pointer;
+    background: var(--paper); color: var(--ink); font-weight: 800; font-size: 14px; box-shadow: 0 4px 0 rgba(90,70,50,.22);
+  }
+  .a-hint { pointer-events: none; background: rgba(90,70,50,.78); color: #fff; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 99px; }
+  .tool:focus-visible, .a-btn:focus-visible, .pocket-btn:focus-visible, .small-btn:focus-visible, .btn:focus-visible, .slot:focus-visible, .choice:focus-visible { outline: 3px solid #fff; outline-offset: 2px; box-shadow: 0 0 0 5px var(--accent); }
+
+  /* 会話 */
+  .dialog {
+    position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+    width: min(620px, calc(100% - 24px));
+    background: var(--paper); border-radius: 26px 26px 30px 30px; padding: 26px 22px 18px;
+    box-shadow: 0 6px 0 rgba(90,70,50,.2), 0 10px 30px rgba(0,0,0,.2);
+    cursor: pointer; z-index: 20;
+  }
+  .dialog .name {
+    position: absolute; top: -16px; left: 26px; padding: 5px 16px; border-radius: 99px;
+    font-weight: 800; font-size: 15px; color: #fff; transform: rotate(-3deg);
+  }
+  .dialog .text { font-family: var(--maru); font-size: 18px; line-height: 1.7; min-height: 3.4em; white-space: pre-wrap; }
+  .dialog .next { position: absolute; right: 22px; bottom: 10px; color: var(--accent); font-size: 14px; animation: bob .8s ease-in-out infinite; }
+  @keyframes bob { 50% { transform: translateY(3px); } }
+  .choices { position: fixed; right: 16px; bottom: calc(150px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 8px; z-index: 21; justify-items: end; }
+  .choice {
+    border: 0; cursor: pointer; background: var(--paper); color: var(--ink); font-weight: 800; font-size: 15px;
+    padding: 10px 18px; border-radius: 99px; box-shadow: 0 4px 0 rgba(90,70,50,.22); text-align: left;
+  }
+  .choice:hover { background: #FFF1D6; }
+
+  .toast {
+    position: fixed; left: 50%; top: calc(76px + env(safe-area-inset-top, 0px)); transform: translateX(-50%);
+    background: rgba(90,70,50,.88); color: #fff; font-weight: 700; font-size: 14px; padding: 8px 16px; border-radius: 99px;
+    max-width: calc(100% - 32px); text-align: center; z-index: 30; pointer-events: none;
+  }
+
+  /* パネル */
+  .overlay { position: fixed; inset: 0; background: rgba(40,30,20,.35); display: grid; place-items: center; padding: 16px; z-index: 25; }
+  .panel {
+    width: min(560px, 100%); max-height: calc(100% - 16px); overflow: auto;
+    background: var(--paper); border-radius: 24px; padding: 20px; box-shadow: 0 8px 0 rgba(90,70,50,.2);
+    display: grid; gap: 14px;
+  }
+  .panel h2 { margin: 0; font-family: var(--maru); font-weight: 500; font-size: 24px; text-align: center; text-wrap: balance; }
+  .panel p { margin: 0; text-align: center; color: var(--muted); font-size: 14px; line-height: 1.6; }
+  .grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+  .slot {
+    aspect-ratio: 1; border-radius: 16px; border: 2px solid var(--line); background: #fff; cursor: pointer; padding: 0;
+    display: grid; place-items: center; position: relative;
+  }
+  .slot canvas { width: 70%; height: 70%; }
+  .slot .n { position: absolute; right: 5px; bottom: 2px; font-size: 12px; font-weight: 800; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .slot.sel { border-color: var(--accent); background: #FFF1D6; }
+  .slot.empty { background: var(--paper-2); cursor: default; }
+  .detail { min-height: 44px; text-align: center; font-weight: 700; font-size: 15px; }
+  .detail small { display: block; color: var(--muted); font-weight: 500; font-size: 13px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .btn {
+    border: 0; cursor: pointer; font-weight: 800; font-size: 15px; padding: 11px 18px; border-radius: 99px;
+    background: var(--leaf); color: #fff; box-shadow: 0 4px 0 var(--leaf-d);
+  }
+  .btn.ghost { background: #fff; color: var(--ink); box-shadow: 0 4px 0 var(--line); }
+  .btn[disabled] { opacity: .45; cursor: default; }
+  .list { display: grid; gap: 8px; }
+  .li {
+    display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 12px; align-items: center;
+    background: #fff; border-radius: 16px; padding: 8px 10px; border: 2px solid var(--line);
+  }
+  .li canvas { width: 44px; height: 44px; }
+  .li b { display: block; font-size: 15px; }
+  .li span { font-size: 12.5px; color: var(--muted); }
+  .li .btn { padding: 8px 14px; font-size: 14px; }
+  .tabs { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+  .tab { border: 0; cursor: pointer; padding: 7px 14px; border-radius: 99px; background: #fff; color: var(--ink); font-weight: 800; font-size: 13px; box-shadow: 0 3px 0 var(--line); }
+  .tab.on { background: var(--accent); color: #fff; box-shadow: 0 3px 0 #B87618; }
+  .dex { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+  .dx { background: #fff; border-radius: 14px; border: 2px solid var(--line); padding: 6px; text-align: center; font-size: 12px; font-weight: 700; }
+  .dx canvas { width: 48px; height: 48px; display: block; margin: 0 auto; }
+  .dx.no { color: var(--muted); background: var(--paper-2); }
+
+  /* タイトル */
+  .title {
+    position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 16px;
+    background: linear-gradient(#8FD3F0, #D9F1D0 70%, #9ACF7A);
+  }
+  .title .panel { text-align: center; }
+  .logo { font-family: var(--maru); font-size: clamp(34px, 9vw, 52px); color: var(--leaf-d); line-height: 1.15; margin: 0; letter-spacing: .04em; }
+  .logo small { display: block; font-size: .36em; color: var(--muted); letter-spacing: .3em; margin-top: 6px; }
+  .field { display: grid; gap: 6px; text-align: left; font-weight: 800; font-size: 14px; }
+  .field input {
+    font: inherit; font-size: 17px; font-weight: 700; padding: 10px 14px; border-radius: 14px; border: 2px solid var(--line); background: #fff; color: var(--ink);
+  }
+  .field input:focus-visible { outline: none; border-color: var(--accent); }
+  .swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+  .sw { width: 36px; height: 36px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 2px var(--line); cursor: pointer; padding: 0; }
+  .sw.on { box-shadow: 0 0 0 3px var(--accent); }
+  .sw:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+  @media (max-width: 420px) { .tool { width: 40px; height: 40px; } .a-btn { width: 70px; height: 70px; } }
+</style>
+
+<canvas id="world"></canvas>
+
+<div class="top" id="hud" hidden>
+  <div class="clock"><div class="time" id="time">12:00</div><div class="date" id="date"></div></div>
+  <div class="topright">
+    <div class="purse"><i aria-hidden="true"></i><span id="leaf">0</span></div>
+    <button class="small-btn" id="sound-btn" type="button">音：オン</button>
+    <button class="small-btn" id="dex-btn" type="button">図かん</button>
+  </div>
+</div>
+
+<div class="controls" id="controls" hidden>
+  <div class="a-hint" id="a-hint" hidden></div>
+  <div class="tools" id="tools"></div>
+  <div class="row-btns">
+    <button class="pocket-btn" id="pocket-btn" type="button">ポケット</button>
+    <button class="a-btn" id="a-btn" type="button" aria-label="Aボタン">A</button>
+  </div>
+</div>
+
+<div class="dialog" id="dialog" hidden>
+  <div class="name" id="d-name"></div>
+  <div class="text" id="d-text"></div>
+  <div class="next" id="d-next">▼</div>
+</div>
+<div class="choices" id="choices" hidden></div>
+<div class="toast" id="toast" hidden></div>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="panel" id="panel"></div>
+</div>
+
+<div class="title" id="title">
+  <div class="panel" id="title-panel"></div>
+</div>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const cv = $('world'), ctx = cv.getContext('2d');
+const T = 32;                 // 1マスの大きさ
+const MW = 64, MH = 52;       // 島の広さ（マス）
+const SAVE_KEY = 'komorebi-island-v1';
+
+// =============== 乱数・ノイズ ===============
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function strSeed(s) { let h = 2166136261; for (const ch of String(s)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const rand = (a, b) => a + Math.random() * (b - a);
+const pick = (arr, r = Math.random) => arr[Math.floor(r() * arr.length)];
+function noise2(seed) {
+  const r = mulberry(seed); const g = [];
+  for (let i = 0; i < 20 * 20; i++) g.push(r());
+  const at = (x, y) => g[((y % 20 + 20) % 20) * 20 + ((x % 20 + 20) % 20)];
+  return (x, y) => {
+    const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
+    const s = t => t * t * (3 - 2 * t);
+    return lerp(lerp(at(xi, yi), at(xi + 1, yi), s(xf)), lerp(at(xi, yi + 1), at(xi + 1, yi + 1), s(xf)), s(yf));
+  };
+}
+
+// =============== 時間・季節 ===============
+const WEEK = ['日', '月', '火', '水', '木', '金', '土'];
+function now() { return new Date(); }
+function dayKey(d = now()) { return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; }
+function season(m = now().getMonth() + 1) { return m >= 3 && m <= 5 ? 'spring' : m >= 6 && m <= 8 ? 'summer' : m >= 9 && m <= 11 ? 'autumn' : 'winter'; }
+function inHours(h, [a, b]) { return a <= b ? (h >= a && h < b) : (h >= a || h < b); }
+function inMonths(m, ms) { return ms === 'all' || ms.includes(m); }
+const range = (a, b) => { const r = []; for (let i = a; i <= b; i++) r.push(((i - 1) % 12) + 1); return r; };
+
+// =============== アイテム ===============
+const FRUITS = {
+  apple:  { name: 'りんご', color: '#E0413A' },
+  peach:  { name: 'もも', color: '#F4A3A0' },
+  orange: { name: 'オレンジ', color: '#F29B2B' },
+  pear:   { name: 'なし', color: '#D8D15A' },
+  cherry: { name: 'さくらんぼ', color: '#C8203B' },
+};
+const BUGS = [
+  { id: 'b_monshiro', name: 'モンシロチョウ', price: 160, months: [1, 2, 3, 4, 5, 6, 9, 10, 11, 12], hours: [4, 19], where: 'flower', color: '#F7F4E8', kind: 'butterfly' },
+  { id: 'b_ageha',    name: 'アゲハチョウ', price: 240, months: range(3, 9), hours: [4, 19], where: 'fly', color: '#F2CB3A', kind: 'butterfly' },
+  { id: 'b_oomurasaki', name: 'オオムラサキ', price: 3000, months: range(6, 8), hours: [8, 19], where: 'fly', color: '#6A4BC4', kind: 'butterfly', rare: true },
+  { id: 'b_mitsubachi', name: 'ミツバチ', price: 200, months: range(3, 7), hours: [8, 17], where: 'flower', color: '#E8B83A', kind: 'bee' },
+  { id: 'b_tentou',   name: 'テントウムシ', price: 200, months: [3, 4, 5, 6, 10], hours: [8, 17], where: 'flower', color: '#D8312B', kind: 'lady' },
+  { id: 'b_ginyanma', name: 'ギンヤンマ', price: 230, months: range(4, 10), hours: [8, 19], where: 'fly', color: '#4FA3C8', kind: 'dragon' },
+  { id: 'b_akiakane', name: 'アキアカネ', price: 500, months: range(9, 11), hours: [8, 19], where: 'fly', color: '#D64B2B', kind: 'dragon' },
+  { id: 'b_hotaru',   name: 'ホタル', price: 300, months: [6], hours: [19, 4], where: 'fly', color: '#D8F25A', kind: 'firefly' },
+  { id: 'b_aburazemi', name: 'アブラゼミ', price: 250, months: range(7, 8), hours: [8, 17], where: 'tree', color: '#6B4A2E', kind: 'cicada' },
+  { id: 'b_kabuto',   name: 'カブトムシ', price: 1350, months: range(7, 8), hours: [17, 8], where: 'tree', color: '#5A3218', kind: 'beetle' },
+  { id: 'b_kuwagata', name: 'ノコギリクワガタ', price: 2000, months: range(7, 8), hours: [17, 8], where: 'tree', color: '#7A3A1C', kind: 'stag', rare: true },
+  { id: 'b_koorogi',  name: 'コオロギ', price: 130, months: range(9, 11), hours: [17, 8], where: 'ground', color: '#3A2A1C', kind: 'cricket' },
+  { id: 'b_suzumushi', name: 'スズムシ', price: 430, months: range(9, 10), hours: [17, 8], where: 'ground', color: '#2B2418', kind: 'cricket' },
+  { id: 'b_dango',    name: 'ダンゴムシ', price: 250, months: [1, 2, 3, 4, 5, 6, 9, 10, 11, 12], hours: [23, 16], where: 'ground', color: '#5C6068', kind: 'pill' },
+  { id: 'b_ari',      name: 'アリ', price: 80, months: 'all', hours: [0, 24], where: 'ground', color: '#1E1A18', kind: 'ant' },
+  { id: 'b_yadokari', name: 'ヤドカリ', price: 1000, months: 'all', hours: [19, 8], where: 'beach', color: '#E0A070', kind: 'crab' },
+];
+const FISH = [
+  { id: 'f_oikawa',  name: 'オイカワ', price: 200, loc: 'river', size: 2, months: 'all', hours: [0, 24], w: 10, color: '#8FB0C8' },
+  { id: 'f_funa',    name: 'フナ', price: 160, loc: 'river', size: 2, months: 'all', hours: [0, 24], w: 10, color: '#8E8A62' },
+  { id: 'f_koi',     name: 'コイ', price: 300, loc: 'river', size: 4, months: 'all', hours: [0, 24], w: 6, color: '#C98A4A' },
+  { id: 'f_bass',    name: 'ブラックバス', price: 400, loc: 'river', size: 4, months: 'all', hours: [0, 24], w: 6, color: '#5E7A4A' },
+  { id: 'f_namazu',  name: 'ナマズ', price: 800, loc: 'river', size: 4, months: range(5, 10), hours: [16, 9], w: 4, color: '#6A5E48' },
+  { id: 'f_ayu',     name: 'アユ', price: 900, loc: 'river', size: 2, months: range(7, 9), hours: [0, 24], w: 4, color: '#9DB08A' },
+  { id: 'f_nijimasu', name: 'ニジマス', price: 800, loc: 'river', size: 3, months: [3, 4, 5, 9, 10, 11], hours: [16, 9], w: 4, color: '#B89AA8' },
+  { id: 'f_iwana',   name: 'イワナ', price: 3000, loc: 'river', size: 3, months: [3, 4, 5, 6, 9, 10, 11], hours: [16, 9], w: 1.2, color: '#7E8A6A', rare: true },
+  { id: 'f_aji',     name: 'アジ', price: 150, loc: 'sea', size: 2, months: 'all', hours: [0, 24], w: 10, color: '#9FB2B0' },
+  { id: 'f_suzuki',  name: 'スズキ', price: 400, loc: 'sea', size: 5, months: 'all', hours: [0, 24], w: 6, color: '#A9B8C2' },
+  { id: 'f_karei',   name: 'カレイ', price: 300, loc: 'sea', size: 3, months: [10, 11, 12, 1, 2, 3, 4], hours: [0, 24], w: 6, color: '#8A7658' },
+  { id: 'f_ika',     name: 'イカ', price: 500, loc: 'sea', size: 3, months: [12, 1, 2, 3, 4, 5, 6, 7, 8], hours: [0, 24], w: 5, color: '#E8D4CC' },
+  { id: 'f_tako',    name: 'タコ', price: 1200, loc: 'sea', size: 3, months: [9, 10, 11, 12, 1, 3, 4, 5, 6, 7], hours: [0, 24], w: 3, color: '#C8584A' },
+  { id: 'f_madai',   name: 'マダイ', price: 3000, loc: 'sea', size: 4, months: 'all', hours: [0, 24], w: 2, color: '#E77B86', rare: true },
+  { id: 'f_fugu',    name: 'フグ', price: 5000, loc: 'sea', size: 3, months: [11, 12, 1, 2], hours: [21, 4], w: 1.5, color: '#C9B77A', rare: true },
+  { id: 'f_tatsu',   name: 'タツノオトシゴ', price: 1100, loc: 'sea', size: 1, months: range(4, 11), hours: [0, 24], w: 3, color: '#E0B04A' },
+  { id: 'f_same',    name: 'サメ', price: 15000, loc: 'sea', size: 6, months: range(6, 9), hours: [16, 9], w: .6, color: '#6E7F8C', rare: true },
+];
+const FOSSILS = [
+  { id: 'x_ammo', name: 'アンモナイト', price: 1100 },
+  { id: 'x_sanyo', name: 'さんようちゅう', price: 1300 },
+  { id: 'x_tsume', name: 'きょうりゅうのツメ', price: 1600 },
+  { id: 'x_same', name: 'サメのは', price: 1000 },
+  { id: 'x_kohaku', name: 'こはく', price: 1200 },
+  { id: 'x_atama', name: 'きょうりゅうのあたま', price: 4000 },
+];
+const FURN = [
+  { id: 'u_woodchair', name: '木のイス', kind: 'chair', color: '#B98452', price: 400 },
+  { id: 'u_logbench', name: '丸太のベンチ', kind: 'log', color: '#8C5E34', price: 600 },
+  { id: 'u_stonestool', name: '石のスツール', kind: 'stone', color: '#9A9EA4', price: 300 },
+  { id: 'u_branchbox', name: '枝のかご', kind: 'box', color: '#A8784A', price: 200 },
+  { id: 'u_fruitbasket', name: 'くだものかご', kind: 'basket', color: '#C98A4A', price: 600 },
+  { id: 'u_ironlamp', name: 'てつのランプ', kind: 'lamp', color: '#6A6E74', price: 1200 },
+  { id: 'u_table_white', name: '白いテーブル', kind: 'table', color: '#F2EEE6', price: 1200 },
+  { id: 'u_lamp_moon', name: '月のランプ', kind: 'lamp', color: '#F4E28A', price: 1800 },
+  { id: 'u_plant', name: 'かんようしょくぶつ', kind: 'plant', color: '#3E9A4A', price: 900 },
+  { id: 'u_shelf', name: '本だな', kind: 'shelf', color: '#9A6A3E', price: 2400 },
+  { id: 'u_sofa', name: 'ブルーのソファ', kind: 'sofa', color: '#5C8FD1', price: 3000 },
+  { id: 'u_radio', name: 'ラジオ', kind: 'radio', color: '#C8503E', price: 1500 },
+  { id: 'u_tv', name: 'ブラウンのテレビ', kind: 'tv', color: '#7A5A3E', price: 2800 },
+  { id: 'u_clock', name: 'はしら時計', kind: 'clock', color: '#8A5A34', price: 3200 },
+  { id: 'u_aqua', name: '小さな水そう', kind: 'aqua', color: '#7CC6E8', price: 2000 },
+  { id: 'u_rug', name: 'みどりのラグ', kind: 'rug', color: '#7DBF6A', price: 800 },
+  { id: 'u_bed', name: 'ピンクのベッド', kind: 'bed', color: '#F2A6B8', price: 4000 },
+  { id: 'u_chair_red', name: '赤いイス', kind: 'chair', color: '#D8483A', price: 1000 },
+  { id: 'u_stool', name: '黄色いスツール', kind: 'stone', color: '#F2C84A', price: 700 },
+  { id: 'u_lantern', name: 'ちょうちん', kind: 'lamp', color: '#E2584A', price: 1100 },
+];
+const SHOP_FURN = FURN.filter(f => f.price >= 700).map(f => f.id);
+const SHIRTS = [
+  { id: 's_red', name: 'あかいTシャツ', color: '#E0554A', price: 600 },
+  { id: 's_blue', name: 'あおいTシャツ', color: '#4F86D6', price: 600 },
+  { id: 's_yellow', name: 'きいろいTシャツ', color: '#F2C84A', price: 600 },
+  { id: 's_green', name: 'みどりのパーカー', color: '#5DAE62', price: 900 },
+  { id: 's_pink', name: 'ももいろのシャツ', color: '#F29AB8', price: 700 },
+  { id: 's_navy', name: 'マリンボーダー', color: '#2F4B7A', price: 800, stripe: true },
+  { id: 's_white', name: 'しろいシャツ', color: '#F4F4F0', price: 600 },
+];
+const RECIPES = [
+  { id: 'u_woodchair', need: { wood: 4 } },
+  { id: 'u_logbench', need: { wood: 6 } },
+  { id: 'u_stonestool', need: { stone: 3 } },
+  { id: 'u_branchbox', need: { branch: 5 } },
+  { id: 'u_fruitbasket', need: { NATIVE: 5, branch: 2 } },
+  { id: 'u_ironlamp', need: { iron: 2, wood: 2 } },
+];
+
+const ITEMS = {};
+for (const [k, f] of Object.entries(FRUITS)) ITEMS['fr_' + k] = { name: f.name, cat: 'fruit', price: 100, stack: 10, color: f.color };
+for (const b of BUGS) ITEMS[b.id] = { ...b, cat: 'bug', stack: 1 };
+for (const f of FISH) ITEMS[f.id] = { ...f, cat: 'fish', stack: 1 };
+for (const f of FOSSILS) ITEMS[f.id] = { ...f, cat: 'fossil', stack: 1 };
+for (const f of FURN) ITEMS[f.id] = { ...f, cat: 'furn', stack: 1, price: Math.round(f.price / 4) };
+for (const s of SHIRTS) ITEMS[s.id] = { ...s, cat: 'shirt', stack: 1, price: Math.round(s.price / 4) };
+Object.assign(ITEMS, {
+  branch: { name: '木の枝', cat: 'mat', price: 5, stack: 30 },
+  stone:  { name: '石', cat: 'mat', price: 10, stack: 30 },
+  iron:   { name: 'てっこうせき', cat: 'mat', price: 375, stack: 30 },
+  wood:   { name: 'もくざい', cat: 'mat', price: 60, stack: 30 },
+  weed:   { name: 'ざっそう', cat: 'mat', price: 10, stack: 30 },
+  sh_hotate: { name: 'ホタテ', cat: 'shell', price: 80, stack: 10, color: '#F2D9B8' },
+  sh_sakura: { name: 'さくらがい', cat: 'shell', price: 60, stack: 10, color: '#F7C3CF' },
+  sh_maki:   { name: 'まきがい', cat: 'shell', price: 100, stack: 10, color: '#E8C89A' },
+  sh_sango:  { name: 'サンゴ', cat: 'shell', price: 500, stack: 10, color: '#F07A6A' },
+  coconut:   { name: 'ココナッツ', cat: 'fruit', price: 250, stack: 10, color: '#7A5A34' },
+  leafbag:   { name: 'リーフぶくろ', cat: 'money', price: 0, stack: 1 },
+});
+const SHOP_BUYBACK = id => ITEMS[id].cat === 'furn' || ITEMS[id].cat === 'shirt';
+const priceOf = id => ITEMS[id].cat === 'fruit' && id === 'fr_' + (G && G.native) ? 100 : ITEMS[id].price;
+
+// =============== どうぶつたち ===============
+const VILLAGERS = [
+  { id: 'moka', name: 'モカ', species: 'bear', body: '#B5835A', inner: '#E8C9A7', shirt: '#6FA8DC', voice: 150, pers: 'lazy', tail: 'だモ', likes: 'fruit', color: '#B5835A' },
+  { id: 'minto', name: 'ミント', species: 'rabbit', body: '#F4F1EC', inner: '#F7C6CF', shirt: '#8BD17C', voice: 460, pers: 'peppy', tail: 'ぴょん', likes: 'bug', color: '#5DAE62' },
+  { id: 'kuroe', name: 'クロエ', species: 'cat', body: '#4A4A56', inner: '#7A7A88', shirt: '#E06C9F', voice: 330, pers: 'snooty', tail: 'にゃ', likes: 'shell', color: '#C85A8A' },
+  { id: 'kero', name: 'ケロスケ', species: 'frog', body: '#6BBF59', inner: '#D6F0B8', shirt: '#F2B43C', voice: 250, pers: 'jock', tail: 'ケロ', likes: 'fish', color: '#4F9A40' },
+];
+const NPC = {
+  marin: { name: 'マリン', color: '#8A6A9A', voice: 380 },  // ラッコの店員
+  genbu: { name: 'ゲンブ', color: '#5A7A5A', voice: 110 },  // カメの館長
+};
+const LIKES_LABEL = { fruit: 'くだもの', bug: 'むし', shell: 'かいがら', fish: 'さかな' };
+
+// =============== セーブデータ ===============
+let G = null;     // ゲームの状態（保存される）
+let W = null;     // 島の地形・置物（シードから毎回つくる）
+function defaultSave(opts) {
+  return {
+    v: 1, seed: Math.floor(Math.random() * 1e9), native: pick(Object.keys(FRUITS)),
+    name: opts.name, island: opts.island, hair: opts.hair, shirt: opts.shirt,
+    x: 0, y: 0, face: 'down', leaf: 1000,
+    pockets: Array(20).fill(null), tools: { net: true, rod: true, shovel: false, axe: false }, tool: 'hand',
+    room: [], museum: { bug: {}, fish: {}, fossil: {} },
+    vill: Object.fromEntries(VILLAGERS.map(v => [v.id, { friend: 0, lastTalk: '', lastGift: '', lastPresent: '' }])),
+    day: null, started: Date.now(), met: false,
+  };
+}
+function save() { if (!G) return; G.x = player.x; G.y = player.y; G.face = player.face; try { localStorage.setItem(SAVE_KEY, JSON.stringify(G)); } catch (e) {} }
+function loadSave() { try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)); return s && s.v === 1 ? s : null; } catch (e) { return null; } }
+
+// =============== 島をつくる ===============
+const SEA = 0, SAND = 1, GRASS = 2, RIVER = 3, BRIDGE = 4, PATH = 5;
+function genWorld(seed) {
+  const r = mulberry(seed);
+  const n1 = noise2(seed + 1), n2 = noise2(seed + 2);
+  const tile = [];
+  for (let y = 0; y < MH; y++) {
+    tile.push([]);
+    for (let x = 0; x < MW; x++) {
+      const nx = (x - MW / 2) / (MW / 2 - 5), ny = (y - MH / 2) / (MH / 2 - 5);
+      const d = Math.pow(Math.abs(nx), 2.6) + Math.pow(Math.abs(ny), 2.6);
+      const nz = (n1(x / 6, y / 6) - 0.5) * 0.5 + (n2(x / 2.5, y / 2.5) - 0.5) * 0.12;
+      const v = d + nz;
+      tile[y].push(v < 0.78 ? GRASS : v < 1 ? SAND : SEA);
+    }
+  }
+  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) if (x < 3 || y < 3 || x >= MW - 3 || y >= MH - 3) tile[y][x] = SEA;
+  // 川（北から南へ）
+  let rx = Math.floor(MW * (0.52 + (r() - 0.5) * 0.1));
+  const riverX = [];
+  for (let y = 0; y < MH; y++) {
+    rx += Math.round((n1(y / 5, 3) - 0.5) * 1.6);
+    rx = clamp(rx, Math.floor(MW * 0.42), Math.floor(MW * 0.62));
+    riverX.push(rx);
+    for (let k = 0; k < 2; k++) if (tile[y][rx + k] !== SEA) tile[y][rx + k] = RIVER;
+  }
+  // 橋
+  const bridges = [];
+  for (const fy of [0.33, 0.66]) {
+    let by = Math.floor(MH * fy);
+    const bx = riverX[by];
+    if (tile[by][bx] === RIVER) {
+      for (let k = -1; k <= 2; k++) if (tile[by][bx + k] === RIVER) tile[by][bx + k] = BRIDGE;
+      bridges.push({ x: bx, y: by });
+    }
+  }
+  const occ = Array.from({ length: MH }, () => Array(MW).fill(null));
+  const isGrass = (x, y) => tile[y] && tile[y][x] === GRASS && !occ[y][x];
+  function areaFree(x, y, w, h, m) {
+    for (let j = y - m; j < y + h + m; j++) for (let i = x - m; i < x + w + m; i++) if (!isGrass(i, j)) return false;
+    return true;
+  }
+  const buildings = [];
+  function place(kind, w, h, px, py, extra) {
+    for (let rad = 0; rad < 30; rad++) {
+      for (let a = 0; a < Math.max(1, rad * 8); a++) {
+        const ang = a / Math.max(1, rad * 8) * Math.PI * 2;
+        const x = Math.round(px + Math.cos(ang) * rad), y = Math.round(py + Math.sin(ang) * rad);
+        if (areaFree(x, y, w, h + 2, 1)) {
+          const b = { kind, x, y, w, h, door: { x: x + Math.floor(w / 2), y: y + h }, ...extra };
+          for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) occ[j][i] = b;
+          // 入口の前は道にする
+          for (let j = y + h; j < y + h + 2; j++) for (let i = x + Math.floor(w / 2) - 1; i <= x + Math.floor(w / 2) + 1; i++) if (tile[j][i] === GRASS) tile[j][i] = PATH;
+          buildings.push(b);
+          return b;
+        }
+      }
+    }
+    // 見つからなければ 島じゅうを さがす（すき間を ゆるめて）
+    for (let y = 4; y < MH - h - 6; y++) for (let x = 4; x < MW - w - 4; x++) {
+      if (areaFree(x, y, w, h + 1, 0)) {
+        const b = { kind, x, y, w, h, door: { x: x + Math.floor(w / 2), y: y + h }, ...extra };
+        for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) occ[j][i] = b;
+        if (tile[y + h][b.door.x] === GRASS) tile[y + h][b.door.x] = PATH;
+        buildings.push(b);
+        return b;
+      }
+    }
+    return null;
+  }
+  const midRiver = riverX[Math.floor(MH / 2)];
+  const leftC = Math.floor((midRiver + 6) / 2), rightC = Math.floor((midRiver + 2 + MW - 6) / 2);
+  // 広場
+  const plaza = { x: leftC - 2, y: Math.floor(MH * 0.45) };
+  for (let j = plaza.y - 2; j <= plaza.y + 2; j++) for (let i = plaza.x - 3; i <= plaza.x + 3; i++) if (tile[j] && tile[j][i] === GRASS) tile[j][i] = PATH;
+  for (let j = plaza.y - 2; j <= plaza.y + 2; j++) for (let i = plaza.x - 3; i <= plaza.x + 3; i++) if (occ[j]) occ[j][i] = 'plaza';
+  place('museum', 5, 3, leftC - 1, Math.floor(MH * 0.22));
+  place('shop', 4, 3, leftC + 4, Math.floor(MH * 0.62));
+  place('house', 3, 3, rightC, Math.floor(MH * 0.42), { owner: 'player' });
+  const vPos = [[leftC - 7, MH * 0.36], [leftC - 6, MH * 0.7], [rightC - 3, MH * 0.2], [rightC + 3, MH * 0.68]];
+  VILLAGERS.forEach((v, i) => place('vhouse', 3, 3, vPos[i][0], Math.floor(vPos[i][1]), { vid: v.id }));
+  for (let j = plaza.y - 2; j <= plaza.y + 2; j++) for (let i = plaza.x - 3; i <= plaza.x + 3; i++) if (occ[j] && occ[j][i] === 'plaza') occ[j][i] = null;
+
+  // 木・石・花
+  const trees = [], rocks = [], flowers = [];
+  let fruitCount = 0;
+  const near = (x, y, list, d) => list.some(o => Math.abs(o.x - x) < d && Math.abs(o.y - y) < d);
+  const nearB = (x, y) => buildings.some(b => x >= b.x - 2 && x < b.x + b.w + 2 && y >= b.y - 2 && y < b.y + b.h + 3);
+  const nearPlaza = (x, y) => Math.abs(x - plaza.x) <= 4 && Math.abs(y - plaza.y) <= 3;
+  for (let tries = 0; tries < 3000 && trees.length < 95; tries++) {
+    const x = Math.floor(r() * MW), y = Math.floor(r() * MH);
+    if (!isGrass(x, y) || nearB(x, y) || nearPlaza(x, y) || near(x, y, trees, 2)) continue;
+    if (tile[y + 1] && tile[y + 1][x] !== GRASS) continue;
+    const fruit = fruitCount < 16 && r() < 0.25;
+    if (fruit) fruitCount++;
+    const t = { x, y, kind: fruit ? 'fruit' : (r() < 0.22 ? 'pine' : 'tree'), idx: trees.length };
+    trees.push(t); occ[y][x] = t;
+  }
+  for (let tries = 0; tries < 800 && trees.filter(t => t.kind === 'palm').length < 9; tries++) {
+    const x = Math.floor(r() * MW), y = Math.floor(r() * MH);
+    if (tile[y][x] !== SAND || occ[y][x] || near(x, y, trees, 3)) continue;
+    let landN = 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (tile[y + dy] && (tile[y + dy][x + dx] === SAND || tile[y + dy][x + dx] === GRASS)) landN++;
+    if (landN < 3) continue;
+    const t = { x, y, kind: 'palm', idx: trees.length };
+    trees.push(t); occ[y][x] = t;
+  }
+  for (let tries = 0; tries < 800 && rocks.length < 6; tries++) {
+    const x = Math.floor(r() * MW), y = Math.floor(r() * MH);
+    if (!isGrass(x, y) || nearB(x, y) || near(x, y, rocks, 8) || nearPlaza(x, y)) continue;
+    const k = { x, y, idx: rocks.length, type: 'rock' };
+    rocks.push(k); occ[y][x] = k;
+  }
+  const FL = ['#F26D6D', '#F7D24A', '#FFFFFF', '#F59AC4', '#9B7BE0', '#F2994A'];
+  for (let c = 0; c < 22; c++) {
+    const cx = Math.floor(r() * MW), cy = Math.floor(r() * MH), col = pick(FL, r);
+    for (let k = 0; k < 6; k++) {
+      const x = cx + Math.floor(r() * 4) - 1, y = cy + Math.floor(r() * 3) - 1;
+      if (isGrass(x, y) && !nearB(x, y) && !flowers.some(f => f.x === x && f.y === y)) flowers.push({ x, y, color: col, ph: r() * 6 });
+    }
+  }
+  return { tile, occ, buildings, trees, rocks, flowers, bridges, plaza, riverX, seed };
+}
+const tileAt = (x, y) => (W.tile[y] && W.tile[y][x] !== undefined) ? W.tile[y][x] : SEA;
+const isWater = t => t === SEA || t === RIVER;
+const isLand = t => t === SAND || t === GRASS || t === PATH || t === BRIDGE;
+
+// =============== 毎日の島 ===============
+function dailyReset(force) {
+  const key = dayKey();
+  if (G.day && G.day.key === key && !force) return false;
+  const r = mulberry(strSeed(key) ^ G.seed);
+  const free = [];
+  const freeSand = [];
+  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) {
+    if (W.occ[y][x]) continue;
+    const t = W.tile[y][x];
+    if (t === GRASS && !W.buildings.some(b => x >= b.x - 1 && x <= b.x + b.w && y >= b.y - 1 && y <= b.y + b.h + 1)) free.push({ x, y });
+    if (t === SAND) freeSand.push({ x, y });
+  }
+  const take = (list) => { const i = Math.floor(r() * list.length); return list.splice(i, 1)[0]; };
+  const drops = [], weeds = [], digs = [];
+  for (let i = 0; i < 6; i++) { const p = take(free); drops.push({ ...p, id: 'branch' }); }
+  for (let i = 0; i < 7; i++) { const p = take(free); weeds.push(p); }
+  const shells = ['sh_hotate', 'sh_hotate', 'sh_sakura', 'sh_sakura', 'sh_maki', 'sh_sango'];
+  for (let i = 0; i < 6; i++) { const p = take(freeSand); if (p) drops.push({ ...p, id: pick(shells, r) }); }
+  for (let i = 0; i < 4; i++) { const p = take(free); digs.push({ ...p, kind: 'fossil' }); }
+  const pm = take(free); digs.push({ ...pm, kind: 'money' });
+  const wr = r();
+  const weather = wr < 0.55 ? 'sunny' : wr < 0.8 ? 'cloudy' : 'rain';
+  // お店
+  const furn = [...SHOP_FURN].sort(() => r() - 0.5).slice(0, 4);
+  const shirts = [...SHIRTS.map(s => s.id)].sort(() => r() - 0.5).slice(0, 2);
+  // 住人のお願い
+  const v = pick(VILLAGERS, r);
+  const wants = ['fr_' + G.native, 'branch', 'sh_hotate', 'wood', 'stone', 'f_funa', 'f_aji', 'b_ari'];
+  const request = { vid: v.id, want: pick(wants, r), reward: pick(SHOP_FURN, r), done: false };
+  G.day = { key, drops, weeds, digs, weather, shop: [...furn, ...shirts], fruitTaken: {}, shaken: {}, rockHits: {}, chops: {}, request, bagTrees: Math.floor(r() * W.trees.length) };
+  return true;
+}
+
+// =============== プレイヤー ===============
+const player = { x: 0, y: 0, face: 'down', walk: 0, moving: false, running: false, act: null, actT: 0, scene: 'island' };
+let room = null;   // 家の中の状態
+const ROOM_W = 9, ROOM_H = 8;
+
+// =============== 入力 ===============
+const keys = {};
+const joy = { on: false, id: null, ox: 0, oy: 0, x: 0, y: 0 };
+window.addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
+  keys[k] = true;
+  if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
+  if (e.repeat) return;
+  if (k === ' ' || k === 'enter' || k === 'z') pressA();
+  if (k === 'i' || k === 'e') { if (!$('overlay').hidden) closePanel(); else if (canAct()) openPockets(); }
+  if (k === 'escape' && !$('overlay').hidden) closePanel();
+  const toolKeys = { '1': 'hand', '2': 'net', '3': 'rod', '4': 'shovel', '5': 'axe' };
+  if (toolKeys[k] && canAct()) setTool(toolKeys[k]);
+});
+window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; joy.on = false; });
+cv.addEventListener('pointerdown', e => {
+  if (!canAct() && !dialogOpen()) return;
+  if (dialogOpen()) { advanceDialog(); return; }
+  Object.assign(joy, { on: true, id: e.pointerId, ox: e.clientX, oy: e.clientY, x: e.clientX, y: e.clientY });
+  try { cv.setPointerCapture(e.pointerId); } catch (err) {}
+});
+cv.addEventListener('pointermove', e => { if (joy.on && e.pointerId === joy.id) { joy.x = e.clientX; joy.y = e.clientY; } });
+const endJoy = e => { if (e.pointerId === joy.id) { const tap = Math.hypot(joy.x - joy.ox, joy.y - joy.oy) < 8; joy.on = false; if (tap && canAct()) { /* タップだけなら何もしない */ } } };
+cv.addEventListener('pointerup', endJoy);
+cv.addEventListener('pointercancel', endJoy);
+$('a-btn').addEventListener('click', () => pressA());
+
+function inputVec() {
+  let x = 0, y = 0;
+  if (keys['a'] || keys['arrowleft']) x -= 1;
+  if (keys['d'] || keys['arrowright']) x += 1;
+  if (keys['w'] || keys['arrowup']) y -= 1;
+  if (keys['s'] || keys['arrowdown']) y += 1;
+  let run = keys['shift'];
+  if (joy.on) {
+    const dx = joy.x - joy.ox, dy = joy.y - joy.oy, len = Math.hypot(dx, dy);
+    if (len > 8) { x = dx / len; y = dy / len; run = len > 60; }
+  }
+  const l = Math.hypot(x, y);
+  if (l > 1) { x /= l; y /= l; }
+  return { x, y, run };
+}
+
+// =============== 音 ===============
+let actx = null, soundOn = true;
+function audio() {
+  if (!soundOn) return null;
+  if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { soundOn = false; return null; } }
+  if (actx.state === 'suspended') actx.resume();
+  return actx;
+}
+function tone(freq, dur, type = 'sine', vol = 0.06, when = 0, slide = 0) {
+  const a = audio(); if (!a) return;
+  const t0 = a.currentTime + when;
+  const o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t0);
+  if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(40, freq * slide), t0 + dur);
+  g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g).connect(a.destination); o.start(t0); o.stop(t0 + dur + 0.02);
+}
+const SFX = {
+  pick: () => { tone(880, .08, 'triangle', .06); tone(1320, .1, 'triangle', .05, .06); },
+  shake: () => { for (let i = 0; i < 5; i++) tone(rand(300, 500), .05, 'triangle', .03, i * .04); },
+  splash: () => tone(600, .25, 'sine', .05, 0, .3),
+  hit: () => tone(180, .12, 'square', .04, 0, .6),
+  dig: () => { tone(140, .1, 'triangle', .05); tone(110, .12, 'triangle', .05, .08); },
+  catch: () => [523, 659, 784, 1046].forEach((f, i) => tone(f, .18, 'triangle', .06, i * .09)),
+  coin: () => { tone(1320, .08, 'square', .03); tone(1760, .12, 'square', .03, .07); },
+  nibble: () => tone(700, .06, 'sine', .04, 0, .7),
+  bite: () => tone(420, .3, 'sine', .07, 0, .4),
+  swing: () => tone(500, .12, 'sine', .03, 0, 1.8),
+  door: () => { tone(392, .12, 'triangle', .05); tone(523, .16, 'triangle', .05, .1); },
+};
+function voiceBlip(ch, base) {
+  if (!soundOn || /[\s、。！？…ー]/.test(ch)) return;
+  const code = ch.charCodeAt(0);
+  tone(base * (1 + ((code * 37) % 13) / 26), .055, 'triangle', .035);
+}
+$('sound-btn').addEventListener('click', () => { soundOn = !soundOn; $('sound-btn').textContent = soundOn ? '音：オン' : '音：オフ'; });
+
+// =============== 会話 ===============
+let dq = [];            // 会話の待ち行列
+let dCur = null, dShown = 0, dTimer = 0;
+function dialogOpen() { return !$('dialog').hidden || !$('choices').hidden; }
+function canAct() { return G && !dialogOpen() && $('overlay').hidden && $('title').hidden; }
+function say(speaker, lines, choices) {
+  // speaker: { name, color, voice }
+  lines.forEach((text, i) => dq.push({ speaker, text, choices: i === lines.length - 1 ? choices : null }));
+  if (!dCur) nextLine();
+}
+function nextLine() {
+  dCur = dq.shift() || null;
+  $('choices').hidden = true; $('choices').innerHTML = '';
+  if (!dCur) { $('dialog').hidden = true; return; }
+  $('dialog').hidden = false;
+  const nm = $('d-name');
+  nm.textContent = dCur.speaker.name; nm.style.background = dCur.speaker.color;
+  nm.hidden = !dCur.speaker.name;
+  dShown = 0; dTimer = 0;
+  $('d-text').textContent = '';
+  $('d-next').hidden = true;
+}
+function updateDialog(dt) {
+  if (!dCur) return;
+  if (dShown < dCur.text.length) {
+    dTimer += dt;
+    while (dTimer > 0.035 && dShown < dCur.text.length) {
+      dTimer -= 0.035;
+      const ch = dCur.text[dShown++];
+      if (dShown % 2 === 1) voiceBlip(ch, dCur.speaker.voice || 300);
+    }
+    $('d-text').textContent = dCur.text.slice(0, dShown);
+    if (dShown >= dCur.text.length) finishLine();
+  }
+}
+function finishLine() {
+  dShown = dCur.text.length;
+  $('d-text').textContent = dCur.text;
+  if (dCur.choices) showChoices(dCur.choices);
+  else $('d-next').hidden = false;
+}
+function advanceDialog() {
+  if (!dCur) return;
+  if (dShown < dCur.text.length) { finishLine(); return; }
+  if (dCur.choices) return;
+  nextLine();
+}
+function showChoices(choices) {
+  const box = $('choices');
+  box.innerHTML = '';
+  choices.forEach(c => {
+    const b = document.createElement('button');
+    b.className = 'choice'; b.type = 'button'; b.textContent = c.label;
+    b.addEventListener('click', e => { e.stopPropagation(); dCur = null; dq = []; $('dialog').hidden = true; box.hidden = true; c.fn && c.fn(); });
+    box.appendChild(b);
+  });
+  box.hidden = false;
+  box.querySelector('button').focus();
+}
+$('dialog').addEventListener('click', () => advanceDialog());
+
+let toastT = null;
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2200); }
+
+// =============== ポケット ===============
+function addItem(id, n = 1) {
+  const st = ITEMS[id].stack;
+  for (let k = 0; k < n; k++) {
+    let placed = false;
+    if (st > 1) for (const s of G.pockets) if (s && s.id === id && s.n < st) { s.n++; placed = true; break; }
+    if (!placed) {
+      const i = G.pockets.findIndex(s => !s);
+      if (i < 0) return k;
+      G.pockets[i] = { id, n: 1 };
+    }
+  }
+  return n;
+}
+function countItem(id) { return G.pockets.reduce((n, s) => n + (s && s.id === id ? s.n : 0), 0); }
+function removeItem(id, n = 1) {
+  for (let i = G.pockets.length - 1; i >= 0 && n > 0; i--) {
+    const s = G.pockets[i];
+    if (s && s.id === id) { const k = Math.min(n, s.n); s.n -= k; n -= k; if (s.n <= 0) G.pockets[i] = null; }
+  }
+}
+function pocketsFull() { return !G.pockets.some(s => !s); }
+function canAdd(id) { return !pocketsFull() || (ITEMS[id].stack > 1 && G.pockets.some(s => s && s.id === id && s.n < ITEMS[id].stack)); }
+function give(id, n = 1, msg) {
+  if (id === 'leafbag') { G.leaf += 1000; SFX.coin(); toast('1,000 リーフ 手に入れた！'); updateHud(); return true; }
+  const got = addItem(id, n);
+  if (got <= 0) { toast('ポケットが いっぱい！'); return false; }
+  SFX.pick();
+  toast(msg || `${ITEMS[id].name}${got > 1 ? ' ×' + got : ''} を 手に入れた！`);
+  save();
+  return true;
+}
+
+// =============== アイコンを描く ===============
+function drawIcon(c, id, s) {
+  const it = ITEMS[id]; if (!it) return;
+  c.save();
+  c.translate(s / 2, s / 2);
+  const k = s / 40;
+  c.scale(k, k);
+  c.lineCap = 'round'; c.lineJoin = 'round';
+  switch (it.cat) {
+    case 'fruit':
+      if (id === 'coconut') { c.fillStyle = '#7A5A34'; c.beginPath(); c.arc(0, 2, 13, 0, 7); c.fill(); c.fillStyle = '#5A3E22'; for (const [x, y] of [[-4, -2], [3, -3], [0, 3]]) { c.beginPath(); c.arc(x, y, 2, 0, 7); c.fill(); } break; }
+      c.fillStyle = it.color; c.beginPath(); c.arc(0, 3, 13, 0, 7); c.fill();
+      c.fillStyle = 'rgba(255,255,255,.35)'; c.beginPath(); c.arc(-5, -2, 4, 0, 7); c.fill();
+      c.strokeStyle = '#6B4A2E'; c.lineWidth = 2.5; c.beginPath(); c.moveTo(0, -9); c.lineTo(1, -15); c.stroke();
+      c.fillStyle = '#4FA34A'; c.beginPath(); c.ellipse(6, -13, 6, 3, -0.4, 0, 7); c.fill();
+      break;
+    case 'bug': drawBugShape(c, it, 0, 0, 1.6, 0); break;
+    case 'fish': drawFishIcon(c, it); break;
+    case 'fossil':
+      c.fillStyle = '#E8D9B8'; c.strokeStyle = '#B8A07A'; c.lineWidth = 2;
+      c.beginPath(); c.ellipse(0, 0, 15, 11, 0.3, 0, 7); c.fill(); c.stroke();
+      c.strokeStyle = '#A88A5E'; c.beginPath(); c.arc(0, 0, 6, 0, 5); c.stroke(); c.beginPath(); c.arc(0, 0, 2.5, 0, 5); c.stroke();
+      break;
+    case 'shell':
+      c.fillStyle = it.color; c.beginPath(); c.moveTo(0, 12); c.lineTo(-13, -4); c.quadraticCurveTo(0, -18, 13, -4); c.closePath(); c.fill();
+      c.strokeStyle = 'rgba(120,80,60,.35)'; c.lineWidth = 1.5; for (let i = -2; i <= 2; i++) { c.beginPath(); c.moveTo(0, 11); c.lineTo(i * 5, -9); c.stroke(); }
+      break;
+    case 'mat':
+      if (id === 'branch') { c.strokeStyle = '#8A5E34'; c.lineWidth = 4; c.beginPath(); c.moveTo(-13, 10); c.lineTo(12, -10); c.moveTo(0, 0); c.lineTo(8, 6); c.stroke(); }
+      else if (id === 'stone') { c.fillStyle = '#9EA2A8'; c.beginPath(); c.ellipse(0, 2, 13, 10, 0, 0, 7); c.fill(); c.fillStyle = '#C4C8CE'; c.beginPath(); c.ellipse(-4, -2, 5, 3, 0, 0, 7); c.fill(); }
+      else if (id === 'iron') { c.fillStyle = '#5E6268'; c.beginPath(); c.moveTo(-12, 8); c.lineTo(-6, -10); c.lineTo(10, -8); c.lineTo(13, 8); c.closePath(); c.fill(); c.fillStyle = '#D9A26A'; c.fillRect(-3, -3, 5, 4); }
+      else if (id === 'wood') { c.fillStyle = '#B98452'; c.fillRect(-13, -7, 26, 14); c.fillStyle = '#E3C090'; c.beginPath(); c.ellipse(13, 0, 4, 7, 0, 0, 7); c.fill(); }
+      else if (id === 'weed') { c.strokeStyle = '#4F9A40'; c.lineWidth = 3.5; for (const a of [-0.6, -0.2, 0.2, 0.6]) { c.beginPath(); c.moveTo(0, 12); c.quadraticCurveTo(a * 10, 0, a * 20, -12); c.stroke(); } }
+      break;
+    case 'furn': c.translate(-16, -16); drawFurniture(c, it, 0, 0, 32); break;
+    case 'shirt':
+      c.fillStyle = it.color; c.strokeStyle = 'rgba(90,70,50,.35)'; c.lineWidth = 1.5;
+      c.beginPath(); c.moveTo(-8, -12); c.lineTo(-16, -6); c.lineTo(-12, 0); c.lineTo(-9, -2); c.lineTo(-9, 13); c.lineTo(9, 13); c.lineTo(9, -2); c.lineTo(12, 0); c.lineTo(16, -6); c.lineTo(8, -12); c.quadraticCurveTo(0, -6, -8, -12); c.fill(); c.stroke();
+      if (it.stripe) { c.fillStyle = '#fff'; for (let y = -6; y < 12; y += 5) c.fillRect(-9, y, 18, 2); }
+      break;
+    case 'money':
+      c.fillStyle = '#C9A064'; c.beginPath(); c.ellipse(0, 4, 13, 11, 0, 0, 7); c.fill(); c.fillStyle = '#A07A44'; c.fillRect(-5, -9, 10, 5);
+      c.fillStyle = '#3FA34D'; c.beginPath(); c.ellipse(0, 4, 5, 3, -0.6, 0, 7); c.fill();
+      break;
+  }
+  c.restore();
+}
+function iconCanvas(id, size = 44) {
+  const c = document.createElement('canvas');
+  const d = Math.min(2, window.devicePixelRatio || 1);
+  c.width = size * d; c.height = size * d;
+  const x = c.getContext('2d'); x.scale(d, d);
+  drawIcon(x, id, size);
+  return c;
+}
+function toolIcon(tool, size = 34) {
+  const c = document.createElement('canvas');
+  const d = Math.min(2, window.devicePixelRatio || 1);
+  c.width = size * d; c.height = size * d;
+  const x = c.getContext('2d'); x.scale(d, d); x.translate(size / 2, size / 2); x.scale(size / 34, size / 34);
+  x.lineCap = 'round'; x.lineJoin = 'round';
+  if (tool === 'hand') { x.fillStyle = '#F2C9A0'; x.beginPath(); x.arc(0, 2, 9, 0, 7); x.fill(); for (let i = -1; i <= 2; i++) { x.fillRect(-7 + i * 4, -10, 3.4, 10); } }
+  if (tool === 'net') { x.strokeStyle = '#8A5E34'; x.lineWidth = 3; x.beginPath(); x.moveTo(-12, 12); x.lineTo(2, -2); x.stroke(); x.strokeStyle = '#9AA0A8'; x.lineWidth = 2; x.beginPath(); x.arc(7, -7, 8, 0, 7); x.stroke(); x.fillStyle = 'rgba(200,220,235,.6)'; x.fill(); }
+  if (tool === 'rod') { x.strokeStyle = '#8A5E34'; x.lineWidth = 3; x.beginPath(); x.moveTo(-12, 12); x.lineTo(12, -12); x.stroke(); x.strokeStyle = '#999'; x.lineWidth = 1; x.beginPath(); x.moveTo(12, -12); x.lineTo(12, 6); x.stroke(); x.fillStyle = '#E0413A'; x.beginPath(); x.arc(12, 7, 3, 0, 7); x.fill(); }
+  if (tool === 'shovel') { x.strokeStyle = '#8A5E34'; x.lineWidth = 3; x.beginPath(); x.moveTo(-10, -12); x.lineTo(4, 4); x.stroke(); x.fillStyle = '#9AA0A8'; x.beginPath(); x.ellipse(8, 8, 6, 8, -0.8, 0, 7); x.fill(); }
+  if (tool === 'axe') { x.strokeStyle = '#8A5E34'; x.lineWidth = 3; x.beginPath(); x.moveTo(-10, 12); x.lineTo(8, -10); x.stroke(); x.fillStyle = '#9AA0A8'; x.beginPath(); x.moveTo(2, -12); x.lineTo(14, -6); x.lineTo(8, 4); x.closePath(); x.fill(); }
+  return c;
+}
+
+// =============== 家具を描く ===============
+function drawFurniture(c, f, x, y, s) {
+  const k = s / 32;
+  c.save(); c.translate(x, y); c.scale(k, k);
+  const col = f.color;
+  const dark = 'rgba(0,0,0,.18)';
+  c.lineJoin = 'round';
+  switch (f.kind) {
+    case 'chair':
+      c.fillStyle = col; c.fillRect(8, 4, 16, 10); c.fillRect(7, 14, 18, 7);
+      c.fillStyle = dark; c.fillRect(7, 19, 18, 2); c.fillRect(8, 21, 3, 8); c.fillRect(21, 21, 3, 8); break;
+    case 'log':
+      c.fillStyle = col; c.fillRect(2, 12, 28, 12); c.fillStyle = '#E3C090'; c.beginPath(); c.ellipse(29, 18, 3, 6, 0, 0, 7); c.fill(); c.fillStyle = dark; c.fillRect(2, 21, 28, 3); break;
+    case 'stone':
+      c.fillStyle = col; c.beginPath(); c.ellipse(16, 20, 11, 9, 0, 0, 7); c.fill(); c.fillStyle = 'rgba(255,255,255,.3)'; c.beginPath(); c.ellipse(13, 16, 5, 3, 0, 0, 7); c.fill(); break;
+    case 'box':
+      c.fillStyle = col; c.fillRect(6, 10, 20, 16); c.strokeStyle = 'rgba(0,0,0,.25)'; c.lineWidth = 1.5; for (let i = 8; i < 26; i += 4) { c.beginPath(); c.moveTo(i, 10); c.lineTo(i, 26); c.stroke(); } break;
+    case 'basket':
+      c.fillStyle = col; c.beginPath(); c.moveTo(5, 16); c.lineTo(27, 16); c.lineTo(24, 28); c.lineTo(8, 28); c.closePath(); c.fill();
+      for (const [fx, fc] of [[11, '#E0413A'], [17, '#F29B2B'], [22, '#D8D15A']]) { c.fillStyle = fc; c.beginPath(); c.arc(fx, 14, 4, 0, 7); c.fill(); } break;
+    case 'lamp':
+      c.fillStyle = '#6A5A4A'; c.fillRect(14, 14, 4, 14); c.fillRect(10, 27, 12, 3);
+      c.fillStyle = col; c.beginPath(); c.moveTo(8, 16); c.lineTo(24, 16); c.lineTo(20, 4); c.lineTo(12, 4); c.closePath(); c.fill(); break;
+    case 'table':
+      c.fillStyle = col; c.fillRect(3, 8, 26, 12); c.fillStyle = dark; c.fillRect(3, 18, 26, 2); c.fillRect(5, 20, 3, 9); c.fillRect(24, 20, 3, 9); break;
+    case 'plant':
+      c.fillStyle = '#C8784A'; c.fillRect(10, 20, 12, 10);
+      c.fillStyle = col; for (const [px, py, r] of [[16, 12, 7], [10, 15, 5], [22, 15, 5], [16, 5, 5]]) { c.beginPath(); c.arc(px, py, r, 0, 7); c.fill(); } break;
+    case 'shelf':
+      c.fillStyle = col; c.fillRect(4, 1, 24, 29); c.fillStyle = '#5A3E22'; c.fillRect(6, 3, 20, 7); c.fillRect(6, 12, 20, 7); c.fillRect(6, 21, 20, 7);
+      const bc = ['#D8483A', '#4F86D6', '#F2C84A', '#5DAE62'];
+      for (let i = 0; i < 7; i++) { c.fillStyle = bc[i % 4]; c.fillRect(7 + i * 2.7, 4 + (i % 2), 2.2, 6); c.fillStyle = bc[(i + 2) % 4]; c.fillRect(7 + i * 2.7, 13, 2.2, 6); } break;
+    case 'sofa':
+      c.fillStyle = col; c.fillRect(2, 8, 28, 10); c.fillRect(2, 16, 28, 10); c.fillStyle = dark; c.fillRect(2, 8, 4, 18); c.fillRect(26, 8, 4, 18); c.fillRect(2, 24, 28, 2); break;
+    case 'radio':
+      c.fillStyle = col; c.fillRect(5, 12, 22, 14); c.fillStyle = '#EDE3D0'; c.beginPath(); c.arc(12, 19, 4, 0, 7); c.fill(); c.fillStyle = '#333'; c.fillRect(19, 16, 6, 2); c.fillRect(19, 20, 6, 2); c.strokeStyle = '#555'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(22, 12); c.lineTo(26, 3); c.stroke(); break;
+    case 'tv':
+      c.fillStyle = col; c.fillRect(4, 6, 24, 20); c.fillStyle = '#2E3A44'; c.fillRect(7, 9, 15, 14); c.fillStyle = 'rgba(160,220,255,.35)'; c.fillRect(8, 10, 5, 4); c.fillStyle = '#DDD'; c.beginPath(); c.arc(25, 12, 1.6, 0, 7); c.arc(25, 18, 1.6, 0, 7); c.fill(); break;
+    case 'clock':
+      c.fillStyle = col; c.fillRect(9, 0, 14, 30); c.fillStyle = '#F4EEDD'; c.beginPath(); c.arc(16, 8, 5, 0, 7); c.fill(); c.strokeStyle = '#333'; c.lineWidth = 1; c.beginPath(); c.moveTo(16, 8); c.lineTo(16, 5); c.moveTo(16, 8); c.lineTo(18, 9); c.stroke(); c.fillStyle = '#E3C060'; c.beginPath(); c.arc(16, 21, 3, 0, 7); c.fill(); break;
+    case 'aqua':
+      c.fillStyle = '#6A5A4A'; c.fillRect(4, 24, 24, 5); c.fillStyle = col; c.fillRect(4, 8, 24, 16); c.fillStyle = '#E0843A'; c.beginPath(); c.ellipse(13, 16, 4, 2.5, 0, 0, 7); c.fill(); c.fillStyle = '#4FA34A'; c.fillRect(22, 14, 2, 10); break;
+    case 'rug':
+      c.fillStyle = col; c.beginPath(); c.ellipse(16, 20, 15, 9, 0, 0, 7); c.fill(); c.strokeStyle = 'rgba(255,255,255,.45)'; c.lineWidth = 1.5; c.beginPath(); c.ellipse(16, 20, 11, 6, 0, 0, 7); c.stroke(); break;
+    case 'bed':
+      c.fillStyle = '#9A6A3E'; c.fillRect(3, 2, 26, 6); c.fillStyle = '#FFFFFF'; c.fillRect(4, 8, 24, 8); c.fillStyle = col; c.fillRect(4, 13, 24, 16); c.fillStyle = dark; c.fillRect(4, 27, 24, 2); break;
+  }
+  c.restore();
+}
+
+// =============== 虫・魚の形 ===============
+function drawBugShape(c, b, x, y, s, flap) {
+  c.save(); c.translate(x, y); c.scale(s, s);
+  const col = b.color;
+  if (b.kind === 'butterfly') {
+    const w = 0.4 + Math.abs(Math.sin(flap)) * 0.6;
+    c.fillStyle = col; c.strokeStyle = 'rgba(0,0,0,.35)'; c.lineWidth = 0.8;
+    for (const sx of [-1, 1]) { c.save(); c.scale(sx * w, 1); c.beginPath(); c.ellipse(4, -3, 5, 4, -0.4, 0, 7); c.fill(); c.stroke(); c.beginPath(); c.ellipse(3.5, 3, 3.5, 3, 0.4, 0, 7); c.fill(); c.stroke(); c.restore(); }
+    c.fillStyle = '#222'; c.fillRect(-0.8, -5, 1.6, 10);
+  } else if (b.kind === 'dragon') {
+    c.fillStyle = 'rgba(220,240,255,.7)';
+    for (const sy of [-1, 1]) { c.beginPath(); c.ellipse(-1, sy * 4 * (0.6 + Math.abs(Math.sin(flap * 2)) * 0.4), 2, 5, sy * 0.3, 0, 7); c.fill(); c.beginPath(); c.ellipse(2, sy * 4 * (0.6 + Math.abs(Math.cos(flap * 2)) * 0.4), 2, 5, -sy * 0.3, 0, 7); c.fill(); }
+    c.fillStyle = col; c.fillRect(-8, -1, 14, 2); c.beginPath(); c.arc(7, 0, 2, 0, 7); c.fill();
+  } else if (b.kind === 'bee' || b.kind === 'firefly') {
+    c.fillStyle = 'rgba(230,240,255,.8)'; c.beginPath(); c.ellipse(-1, -4, 3, 2, -0.5, 0, 7); c.ellipse(2, -4, 3, 2, 0.5, 0, 7); c.fill();
+    c.fillStyle = b.kind === 'bee' ? col : '#3A2A1C'; c.beginPath(); c.ellipse(0, 0, 5, 3.4, 0, 0, 7); c.fill();
+    if (b.kind === 'bee') { c.fillStyle = '#222'; c.fillRect(-1.5, -3, 1.6, 6); c.fillRect(1.5, -3, 1.6, 6); }
+    else { c.fillStyle = col; c.shadowColor = col; c.shadowBlur = 8; c.beginPath(); c.arc(-3, 0, 2.5, 0, 7); c.fill(); c.shadowBlur = 0; }
+  } else if (b.kind === 'lady') {
+    c.fillStyle = col; c.beginPath(); c.arc(0, 0, 4.5, 0, 7); c.fill(); c.fillStyle = '#222'; c.fillRect(-0.4, -4.5, 0.8, 9); c.beginPath(); c.arc(-2, -1, 1, 0, 7); c.arc(2, 1.5, 1, 0, 7); c.arc(0, -4.5, 2, 0, 7); c.fill();
+  } else if (b.kind === 'crab') {
+    c.fillStyle = '#E8D0B0'; c.beginPath(); c.arc(0, -1, 5, 0, 7); c.fill(); c.strokeStyle = '#B88A60'; c.lineWidth = 1; c.beginPath(); c.arc(0, -1, 3, 0, 5); c.stroke();
+    c.fillStyle = col; c.beginPath(); c.ellipse(0, 3, 4, 2, 0, 0, 7); c.fill();
+  } else if (b.kind === 'ant') {
+    c.fillStyle = col; for (const [px, r] of [[-3, 1.8], [0, 1.4], [3, 2]]) { c.beginPath(); c.arc(px, 0, r, 0, 7); c.fill(); }
+  } else if (b.kind === 'pill') {
+    c.fillStyle = col; c.beginPath(); c.ellipse(0, 0, 4.5, 3, 0, 0, 7); c.fill(); c.strokeStyle = 'rgba(255,255,255,.3)'; c.lineWidth = 0.6; for (let i = -3; i <= 3; i += 1.5) { c.beginPath(); c.moveTo(i, -3); c.lineTo(i, 3); c.stroke(); }
+  } else {
+    // カブト・クワガタ・セミ・コオロギ
+    c.fillStyle = col; c.beginPath(); c.ellipse(0, 1, 4, 5.5, 0, 0, 7); c.fill();
+    c.fillStyle = 'rgba(255,255,255,.2)'; c.beginPath(); c.ellipse(-1.3, 0, 1.2, 3, 0, 0, 7); c.fill();
+    c.fillStyle = col;
+    if (b.kind === 'beetle') { c.fillRect(-0.8, -9, 1.6, 5); c.fillRect(-2, -9, 4, 1.4); }
+    if (b.kind === 'stag') { c.strokeStyle = col; c.lineWidth = 1.3; c.beginPath(); c.moveTo(-1.5, -4); c.quadraticCurveTo(-4, -8, -1, -10); c.moveTo(1.5, -4); c.quadraticCurveTo(4, -8, 1, -10); c.stroke(); }
+    if (b.kind === 'cicada') { c.fillStyle = 'rgba(220,235,245,.6)'; c.beginPath(); c.ellipse(-2.5, 2, 2.5, 6, 0.2, 0, 7); c.ellipse(2.5, 2, 2.5, 6, -0.2, 0, 7); c.fill(); }
+    if (b.kind === 'cricket') { c.strokeStyle = col; c.lineWidth = 0.8; c.beginPath(); c.moveTo(-1, -4); c.lineTo(-4, -10); c.moveTo(1, -4); c.lineTo(4, -10); c.stroke(); }
+  }
+  c.restore();
+}
+function drawFishIcon(c, f) {
+  const L = 14 + f.size * 2.4;
+  c.fillStyle = f.color;
+  if (f.id === 'f_ika') { c.beginPath(); c.moveTo(0, -14); c.lineTo(8, -2); c.lineTo(6, 6); c.lineTo(-6, 6); c.lineTo(-8, -2); c.closePath(); c.fill(); c.strokeStyle = f.color; c.lineWidth = 2; for (let i = -4; i <= 4; i += 2.6) { c.beginPath(); c.moveTo(i, 6); c.lineTo(i * 1.2, 14); c.stroke(); } return; }
+  if (f.id === 'f_tako') { c.beginPath(); c.arc(0, -4, 9, Math.PI, 0); c.lineTo(9, 2); c.lineTo(-9, 2); c.fill(); c.strokeStyle = f.color; c.lineWidth = 2.5; for (let i = -7; i <= 7; i += 3.5) { c.beginPath(); c.moveTo(i, 2); c.quadraticCurveTo(i * 1.4, 9, i * 0.8, 13); c.stroke(); } c.fillStyle = '#222'; c.beginPath(); c.arc(-3, -3, 1.5, 0, 7); c.arc(3, -3, 1.5, 0, 7); c.fill(); return; }
+  if (f.id === 'f_tatsu') { c.strokeStyle = f.color; c.lineWidth = 5; c.beginPath(); c.moveTo(2, -12); c.quadraticCurveTo(-6, -2, 2, 4); c.quadraticCurveTo(6, 10, -2, 12); c.stroke(); c.fillStyle = f.color; c.beginPath(); c.ellipse(5, -12, 5, 3, 0.3, 0, 7); c.fill(); return; }
+  c.beginPath(); c.moveTo(L / 2, 0); c.quadraticCurveTo(0, -L * 0.36, -L / 2 + 5, 0); c.quadraticCurveTo(0, L * 0.36, L / 2, 0); c.fill();
+  c.beginPath(); c.moveTo(-L / 2 + 6, 0); c.lineTo(-L / 2 - 2, -6); c.lineTo(-L / 2 - 2, 6); c.closePath(); c.fill();
+  c.fillStyle = 'rgba(255,255,255,.3)'; c.beginPath(); c.ellipse(0, -2, L * 0.25, 2.5, 0, 0, 7); c.fill();
+  c.fillStyle = '#222'; c.beginPath(); c.arc(L / 2 - 5, -2, 1.6, 0, 7); c.fill();
+}
+
+// =============== キャラクターを描く ===============
+function drawChar(c, x, y, o) {
+  // o: { type: 'human'|species, face, walk, body, inner, shirt, hair, action, actT, sleep }
+  const f = o.face;
+  const bob = o.moving ? Math.abs(Math.sin(o.walk * 2)) * 2 : 0;
+  c.save(); c.translate(x, y - bob);
+  // 影
+  c.fillStyle = 'rgba(0,0,0,.18)'; c.beginPath(); c.ellipse(0, bob + 1, 10, 4, 0, 0, 7); c.fill();
+  // 足
+  const lg = o.moving ? Math.sin(o.walk * 2) * 3 : 0;
+  c.fillStyle = o.type === 'human' ? '#5A4632' : o.body;
+  c.beginPath(); c.ellipse(-4, -2 + lg * (f === 'left' || f === 'right' ? 0 : 0.3), 3.2, 3, 0, 0, 7); c.fill();
+  c.beginPath(); c.ellipse(4, -2 - lg * 0.3, 3.2, 3, 0, 0, 7); c.fill();
+  // 体（服）
+  c.fillStyle = o.shirt;
+  c.beginPath(); c.moveTo(-8, -4); c.lineTo(8, -4); c.lineTo(6, -16); c.lineTo(-6, -16); c.closePath(); c.fill();
+  if (o.stripe) { c.fillStyle = 'rgba(255,255,255,.85)'; c.fillRect(-7, -9, 14, 1.6); c.fillRect(-6.5, -13, 13, 1.6); }
+  // 腕
+  c.fillStyle = o.type === 'human' ? '#F2C9A0' : o.body;
+  if (f !== 'up') { c.beginPath(); c.arc(-8, -9 + (o.moving ? lg * 0.5 : 0), 2.6, 0, 7); c.arc(8, -9 - (o.moving ? lg * 0.5 : 0), 2.6, 0, 7); c.fill(); }
+  // 頭
+  const hy = -27;
+  const skin = o.type === 'human' ? '#F6D2AE' : o.body;
+  // 耳
+  c.fillStyle = o.body || skin;
+  if (o.type === 'bear') { c.beginPath(); c.arc(-9, hy - 9, 4.5, 0, 7); c.arc(9, hy - 9, 4.5, 0, 7); c.fill(); c.fillStyle = o.inner; c.beginPath(); c.arc(-9, hy - 9, 2.3, 0, 7); c.arc(9, hy - 9, 2.3, 0, 7); c.fill(); }
+  if (o.type === 'rabbit') { for (const s of [-1, 1]) { c.fillStyle = o.body; c.beginPath(); c.ellipse(s * 5, hy - 16, 3.6, 9, s * 0.15, 0, 7); c.fill(); c.fillStyle = o.inner; c.beginPath(); c.ellipse(s * 5, hy - 15, 1.8, 6.5, s * 0.15, 0, 7); c.fill(); } }
+  if (o.type === 'cat') { for (const s of [-1, 1]) { c.fillStyle = o.body; c.beginPath(); c.moveTo(s * 11, hy - 3); c.lineTo(s * 9, hy - 16); c.lineTo(s * 2, hy - 9); c.fill(); c.fillStyle = o.inner; c.beginPath(); c.moveTo(s * 9, hy - 5); c.lineTo(s * 8.5, hy - 12); c.lineTo(s * 4, hy - 8); c.fill(); } }
+  c.fillStyle = skin;
+  c.beginPath(); c.ellipse(0, hy, 12.5, 11.5, 0, 0, 7); c.fill();
+  if (o.type === 'frog') { c.fillStyle = o.body; c.beginPath(); c.arc(-6, hy - 9, 5, 0, 7); c.arc(6, hy - 9, 5, 0, 7); c.fill(); }
+  // 髪（人間）
+  if (o.type === 'human') {
+    c.fillStyle = o.hair;
+    if (f === 'up') { c.beginPath(); c.ellipse(0, hy - 1, 13, 12, 0, 0, 7); c.fill(); }
+    else {
+      c.beginPath(); c.ellipse(0, hy - 5, 13, 8.5, 0, Math.PI, 0); c.fill();
+      c.beginPath(); c.moveTo(-13, hy - 5); c.quadraticCurveTo(-12, hy + 4, -9, hy + 5); c.lineTo(-8, hy - 3); c.fill();
+      c.beginPath(); c.moveTo(13, hy - 5); c.quadraticCurveTo(12, hy + 4, 9, hy + 5); c.lineTo(8, hy - 3); c.fill();
+      if (f === 'left') { c.beginPath(); c.ellipse(4, hy - 2, 9, 9, 0, 0, 7); c.fill(); }
+      if (f === 'right') { c.beginPath(); c.ellipse(-4, hy - 2, 9, 9, 0, 0, 7); c.fill(); }
+    }
+  }
+  // 顔
+  if (f !== 'up') {
+    const ex = f === 'left' ? -4 : f === 'right' ? 4 : 0;
+    const shut = o.sleep || (Math.sin(performance.now() / 700 + x) > 0.985);
+    if (o.type !== 'human' && o.type !== 'frog') { c.fillStyle = o.inner; c.beginPath(); c.ellipse(ex * 0.8, hy + 4, 5.5, 4, 0, 0, 7); c.fill(); }
+    c.fillStyle = '#2A2018';
+    const eyes = f === 'down' ? [-5, 5] : f === 'left' ? [-7, 1] : [-1, 7];
+    const eyeY = o.type === 'frog' ? hy - 9 : hy - 1;
+    for (const e of eyes) {
+      if (o.type === 'frog') { c.fillStyle = '#fff'; c.beginPath(); c.arc(e, eyeY, 3.2, 0, 7); c.fill(); c.fillStyle = '#2A2018'; }
+      if (shut) { c.fillRect(e - 2, eyeY, 4, 1.4); }
+      else { c.beginPath(); c.ellipse(e, eyeY, 1.8, 2.4, 0, 0, 7); c.fill(); c.fillStyle = '#fff'; c.beginPath(); c.arc(e + 0.6, eyeY - 0.9, 0.7, 0, 7); c.fill(); c.fillStyle = '#2A2018'; }
+    }
+    // 口・鼻
+    if (o.type === 'human') { c.fillStyle = 'rgba(230,120,110,.4)'; c.beginPath(); c.arc(-7 + ex, hy + 3, 2, 0, 7); c.arc(7 + ex, hy + 3, 2, 0, 7); c.fill(); c.strokeStyle = '#8A4A3A'; c.lineWidth = 1; c.beginPath(); c.arc(ex, hy + 4, 2, 0.2, Math.PI - 0.2); c.stroke(); }
+    else if (o.type === 'frog') { c.strokeStyle = '#2A4A20'; c.lineWidth = 1.3; c.beginPath(); c.arc(ex, hy + 1, 6, 0.3, Math.PI - 0.3); c.stroke(); }
+    else { c.fillStyle = '#3A2A20'; c.beginPath(); c.ellipse(ex * 0.8, hy + 2.5, 2, 1.4, 0, 0, 7); c.fill(); if (o.type === 'cat') { c.strokeStyle = 'rgba(0,0,0,.4)'; c.lineWidth = 0.7; for (const s of [-1, 1]) { c.beginPath(); c.moveTo(ex + s * 4, hy + 3); c.lineTo(ex + s * 11, hy + 1.5); c.moveTo(ex + s * 4, hy + 4); c.lineTo(ex + s * 11, hy + 5); c.stroke(); } } }
+  }
+  c.restore();
+}
+
+// 持っている道具（プレイヤーの手元）
+function drawHeldTool(c, x, y, face, tool, act, t) {
+  if (tool === 'hand') return;
+  c.save(); c.translate(x, y - 12);
+  const dirs = { down: [0, 1], up: [0, -1], left: [-1, 0], right: [1, 0] };
+  const [dx, dy] = dirs[face];
+  let ang = Math.atan2(dy, dx);
+  let swing = 0;
+  if (act && (act === 'net' || act === 'axe' || act === 'shovel')) swing = Math.sin(Math.min(1, t / 0.3) * Math.PI) * 1.2 - 0.6;
+  c.rotate(ang + swing);
+  c.strokeStyle = '#8A5E34'; c.lineWidth = 2.4; c.lineCap = 'round';
+  c.beginPath(); c.moveTo(4, 6); c.lineTo(22, 0); c.stroke();
+  if (tool === 'net') { c.strokeStyle = '#9AA0A8'; c.lineWidth = 1.6; c.beginPath(); c.arc(28, 0, 6, 0, 7); c.stroke(); c.fillStyle = 'rgba(220,235,245,.5)'; c.fill(); }
+  if (tool === 'rod') { c.beginPath(); c.moveTo(22, 0); c.lineTo(32, -4); c.stroke(); }
+  if (tool === 'shovel') { c.fillStyle = '#9AA0A8'; c.beginPath(); c.ellipse(26, 0, 5, 4, 0, 0, 7); c.fill(); }
+  if (tool === 'axe') { c.fillStyle = '#9AA0A8'; c.beginPath(); c.moveTo(20, -2); c.lineTo(27, -7); c.lineTo(27, 3); c.closePath(); c.fill(); }
+  c.restore();
+}
+
+// =============== 地形の絵（最初に1回だけ描く） ===============
+let terrainCanvas = null, terrainSeason = '';
+function seasonColors(se) {
+  return {
+    spring: { grass: '#92CF6A', grass2: '#84C25E', tuft: '#6FAF4E' },
+    summer: { grass: '#6FC04F', grass2: '#62B345', tuft: '#4E9A38' },
+    autumn: { grass: '#B6C45C', grass2: '#A8B851', tuft: '#8C9A3E' },
+    winter: { grass: '#EEF3F6', grass2: '#E2EAF0', tuft: '#CBD7E0' },
+  }[se];
+}
+function buildTerrain() {
+  const se = season();
+  terrainSeason = se;
+  const col = seasonColors(se);
+  const c = document.createElement('canvas');
+  c.width = MW * T; c.height = MH * T;
+  const g = c.getContext('2d');
+  const r = mulberry(W.seed + 99);
+  g.fillStyle = '#3D9BD0'; g.fillRect(0, 0, c.width, c.height);
+  // 浅い海
+  g.fillStyle = '#5BB6DE';
+  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) {
+    if (W.tile[y][x] !== SEA) continue;
+    let near = false;
+    for (let j = -2; j <= 2 && !near; j++) for (let i = -2; i <= 2; i++) if (isLand(tileAt(x + i, y + j)) || tileAt(x + i, y + j) === RIVER) { near = true; break; }
+    if (near) roundRect(g, x * T - 6, y * T - 6, T + 12, T + 12, 14);
+  }
+  const land = t => t === SAND || t === GRASS || t === PATH || t === BRIDGE || t === RIVER;
+  // 砂浜
+  g.fillStyle = '#F1DFAE';
+  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) if (land(W.tile[y][x])) roundRect(g, x * T - 5, y * T - 5, T + 10, T + 10, 12);
+  // 草地
+  g.fillStyle = col.grass;
+  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) {
+    const t = W.tile[y][x];
+    if (t === GRASS || t === PATH || (t === RIVER && [[1, 0], [-1, 0]].some(([i]) => tileAt(x + i, y) === GRASS || tileAt(x + i, y) === PATH)) || (t === BRIDGE)) roundRect(g, x * T - 3, y * T - 3, T + 6, T + 6, 10);
+  }
+  // 草の模様
+  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) {
+    if (W.tile[y][x] !== GRASS) continue;
+    g.fillStyle = col.grass2;
+    if (r() < 0.5) g.fillRect(x * T + r() * 24, y * T + r() * 24, 6, 6);
+    g.strokeStyle = col.tuft; g.lineWidth = 1.5;
+    if (r() < 0.35) { const tx = x * T + 6 + r() * 20, ty = y * T + 8 + r() * 18; g.beginPath(); g.moveTo(tx - 3, ty); g.lineTo(tx - 1, ty - 5); g.moveTo(tx, ty); g.lineTo(tx + 1, ty - 6); g.moveTo(tx + 3, ty); g.lineTo(tx + 4, ty - 4); g.stroke(); }
+  }
+  // 砂の粒
+  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) if (W.tile[y][x] === SAND) { g.fillStyle = 'rgba(200,170,110,.35)'; for (let k = 0; k < 3; k++) g.fillRect(x * T + r() * 30, y * T + r() * 30, 2, 2); }
+  // 川
+  g.fillStyle = '#C9B98A';
+  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) if (W.tile[y][x] === RIVER || W.tile[y][x] === BRIDGE) roundRect(g, x * T - 3, y * T - 1, T + 6, T + 2, 8);
+  g.fillStyle = '#58B4DA';
+  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) if (W.tile[y][x] === RIVER || W.tile[y][x] === BRIDGE) roundRect(g, x * T, y * T - 2, T, T + 4, 6);
+  // 道
+  g.fillStyle = se === 'winter' ? '#D8D2C6' : '#DCC28E';
+  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) if (W.tile[y][x] === PATH) roundRect(g, x * T - 1, y * T - 1, T + 2, T + 2, 8);
+  g.fillStyle = 'rgba(160,120,70,.25)';
+  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) if (W.tile[y][x] === PATH) for (let k = 0; k < 2; k++) g.fillRect(x * T + r() * 28, y * T + r() * 28, 3, 2);
+  // 橋
+  for (const b of W.bridges) {
+    const xs = []; for (let i = -1; i <= 2; i++) if (W.tile[b.y][b.x + i] === BRIDGE) xs.push(b.x + i);
+    const x0 = Math.min(...xs) * T - 6, x1 = (Math.max(...xs) + 1) * T + 6;
+    g.fillStyle = '#A8784A'; g.fillRect(x0, b.y * T + 4, x1 - x0, T - 8);
+    g.fillStyle = '#8A5E34'; for (let x = x0 + 4; x < x1; x += 8) g.fillRect(x, b.y * T + 4, 2, T - 8);
+    g.fillStyle = '#6E4A2A'; g.fillRect(x0, b.y * T + 2, x1 - x0, 3); g.fillRect(x0, b.y * T + T - 5, x1 - x0, 3);
+  }
+  // 広場のタイル
+  const p = W.plaza;
+  g.fillStyle = 'rgba(255,255,255,.18)';
+  for (let j = -2; j <= 2; j++) for (let i = -3; i <= 3; i++) if ((i + j) % 2 === 0 && W.tile[p.y + j] && W.tile[p.y + j][p.x + i] === PATH) g.fillRect((p.x + i) * T + 4, (p.y + j) * T + 4, T - 8, T - 8);
+  terrainCanvas = c;
+}
+function roundRect(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); g.fill(); }
+
+// =============== 虫・魚の生き物 ===============
+let bugs = [], shadows = [], fishing = null, particles = [];
+function availableBugs() {
+  const d = now(), m = d.getMonth() + 1, h = d.getHours();
+  return BUGS.filter(b => inMonths(m, b.months) && inHours(h, b.hours) && !(G.day.weather === 'rain' && (b.kind === 'butterfly' || b.kind === 'bee' || b.kind === 'dragon')));
+}
+function availableFish(loc) {
+  const d = now(), m = d.getMonth() + 1, h = d.getHours();
+  return FISH.filter(f => f.loc === loc && inMonths(m, f.months) && inHours(h, f.hours));
+}
+function weightedPick(list, wf) { let s = list.reduce((n, x) => n + wf(x), 0), r = Math.random() * s; for (const x of list) { r -= wf(x); if (r < 0) return x; } return list[0]; }
+function spawnBug() {
+  const list = availableBugs(); if (!list.length) return;
+  const b = weightedPick(list, x => x.rare ? 0.4 : x.price > 900 ? 1 : 3);
+  const cx = player.x / T, cy = player.y / T;
+  for (let tries = 0; tries < 30; tries++) {
+    const tx = Math.floor(cx + rand(-11, 11)), ty = Math.floor(cy + rand(-8, 8));
+    if (Math.abs(tx - cx) < 4 && Math.abs(ty - cy) < 3) continue;
+    const t = tileAt(tx, ty);
+    let ok = false, x = tx * T + 16, y = ty * T + 16, anchor = null;
+    if (b.where === 'fly') ok = isLand(t);
+    if (b.where === 'flower') { const f = W.flowers.find(f => Math.abs(f.x - tx) < 3 && Math.abs(f.y - ty) < 3); if (f) { ok = true; x = f.x * T + 16; y = f.y * T + 18; anchor = f; } }
+    if (b.where === 'tree') { const tr = W.trees.find(tr => tr.kind !== 'palm' && Math.abs(tr.x - tx) < 3 && Math.abs(tr.y - ty) < 3); if (tr) { ok = true; x = tr.x * T + 16; y = tr.y * T + 10; anchor = tr; } }
+    if (b.where === 'ground') ok = t === GRASS && !W.occ[ty][tx];
+    if (b.where === 'beach') ok = t === SAND && !W.occ[ty][tx];
+    if (!ok) continue;
+    if (bugs.some(o => Math.hypot(o.x - x, o.y - y) < 30)) continue;
+    bugs.push({ b, x, y, hx: x, hy: y, t: rand(0, 6), anchor, flee: false, vx: 0, vy: 0, life: rand(60, 120) });
+    return;
+  }
+}
+function spawnShadow() {
+  const cx = player.x / T, cy = player.y / T;
+  for (let tries = 0; tries < 40; tries++) {
+    const tx = Math.floor(cx + rand(-11, 11)), ty = Math.floor(cy + rand(-8, 8));
+    const t = tileAt(tx, ty);
+    if (!isWater(t)) continue;
+    if (Math.abs(tx - cx) < 2 && Math.abs(ty - cy) < 2) continue;
+    const loc = t === RIVER ? 'river' : 'sea';
+    // 海は岸の近くだけ
+    if (loc === 'sea') { let near = false; for (let j = -3; j <= 3 && !near; j++) for (let i = -3; i <= 3; i++) if (isLand(tileAt(tx + i, ty + j))) { near = true; break; } if (!near) continue; }
+    const list = availableFish(loc); if (!list.length) continue;
+    const f = weightedPick(list, x => x.w);
+    if (shadows.some(s => Math.hypot(s.x - (tx * T + 16), s.y - (ty * T + 16)) < 50)) continue;
+    shadows.push({ f, x: tx * T + 16, y: ty * T + 16, t: rand(0, 6), dir: rand(0, 6), loc, state: 'swim', life: rand(60, 140) });
+    return;
+  }
+}
+function waterAtPx(x, y) { return isWater(tileAt(Math.floor(x / T), Math.floor(y / T))); }
+
+// =============== 世界の当たり判定 ===============
+function blockedTile(tx, ty) {
+  if (player.scene === 'room') {
+    if (tx < 0 || ty < 2 || tx >= ROOM_W || ty >= ROOM_H) return true;
+    return room.occ[ty][tx] != null;
+  }
+  const t = tileAt(tx, ty);
+  if (!isLand(t)) return true;
+  const o = W.occ[ty][tx];
+  return !!o;
+}
+function blockedAt(px, py) {
+  const r = 8;
+  for (const [ox, oy] of [[-r, -4], [r, -4], [-r, 4], [r, 4]]) if (blockedTile(Math.floor((px + ox) / T), Math.floor((py + oy) / T))) return true;
+  return false;
+}
+
+// =============== 前にあるもの ===============
+const DIRS = { down: [0, 1], up: [0, -1], left: [-1, 0], right: [1, 0] };
+function frontPoint(d = 22) { const [dx, dy] = DIRS[player.face]; return { x: player.x + dx * d, y: player.y + dy * d }; }
+function frontTile() { const p = frontPoint(); return { x: Math.floor(p.x / T), y: Math.floor(p.y / T) }; }
+function villagerNear() {
+  const p = frontPoint(18);
+  let best = null, bd = 30;
+  for (const v of villagerStates) { if (!v.out) continue; const d = Math.hypot(v.x - p.x, v.y - p.y); if (d < bd) { bd = d; best = v; } }
+  return best;
+}
+function dropAt(tx, ty) { return G.day.drops.findIndex(d => d.x === tx && d.y === ty); }
+function weedAt(tx, ty) { return G.day.weeds.findIndex(d => d.x === tx && d.y === ty); }
+function digAt(tx, ty) { return G.day.digs.findIndex(d => d.x === tx && d.y === ty); }
+
+// =============== Aボタン ===============
+function contextLabel() {
+  if (!canAct()) return '';
+  if (fishing) return fishing.state === 'bite' ? '今だ！' : 'つりざおを上げる';
+  if (player.scene === 'room') {
+    const ft = frontTile();
+    if (ft.y >= ROOM_H || (ft.y === ROOM_H - 1 && player.face === 'down' && Math.floor(player.y / T) === ROOM_H - 1 && ft.x === 4)) return 'そとへ出る';
+    if (ft.y === ROOM_H && ft.x === 4) return 'そとへ出る';
+    const o = room.occ[ft.y] && room.occ[ft.y][ft.x];
+    if (o === 'bench') return 'DIYする';
+    if (o) return '家具を見る';
+    return '';
+  }
+  if (villagerNear()) return '話す';
+  const ft = frontTile(), me = { x: Math.floor(player.x / T), y: Math.floor(player.y / T) };
+  const b = W.buildings.find(b => b.door.x === ft.x && (b.door.y === ft.y || b.door.y - 1 === ft.y) && player.face === 'up');
+  if (b) return { museum: 'はくぶつかんに入る', shop: 'よろず屋に入る', house: '家に入る', vhouse: 'ノックする' }[b.kind];
+  if (dropAt(me.x, me.y) >= 0 || dropAt(ft.x, ft.y) >= 0) return 'ひろう';
+  if (weedAt(me.x, me.y) >= 0 || weedAt(ft.x, ft.y) >= 0) return 'ざっそうをぬく';
+  const o = W.occ[ft.y] && W.occ[ft.y][ft.x];
+  const tool = G.tool;
+  if (tool === 'net') return 'あみをふる';
+  if (tool === 'rod') { const tp = castTarget(); return tp ? 'つりざおを投げる' : ''; }
+  if (tool === 'shovel') { if (digAt(ft.x, ft.y) >= 0) return 'ほる'; if (o && o.type === 'rock') return '石をたたく'; return ''; }
+  if (tool === 'axe') { if (o && o.kind && o.kind !== 'palm' && W.trees.includes(o)) return '木を切る'; return ''; }
+  if (o && W.trees.includes(o)) return '木をゆらす';
+  return '';
+}
+function pressA() {
+  audio();
+  if (dialogOpen()) { advanceDialog(); return; }
+  if (!canAct()) return;
+  if (fishing) { reelIn(); return; }
+  if (player.act) return;
+  if (player.scene === 'room') { roomAction(); return; }
+
+  const v = villagerNear();
+  if (v) { talkTo(v); return; }
+  const ft = frontTile(), me = { x: Math.floor(player.x / T), y: Math.floor(player.y / T) };
+  const b = W.buildings.find(b => b.door.x === ft.x && (b.door.y === ft.y || b.door.y - 1 === ft.y) && player.face === 'up');
+  if (b) { enterBuilding(b); return; }
+  for (const p of [me, ft]) {
+    const di = dropAt(p.x, p.y);
+    if (di >= 0) { const d = G.day.drops[di]; if (give(d.id)) { G.day.drops.splice(di, 1); pop(p.x * T + 16, p.y * T + 16, '#fff'); } return; }
+    const wi = weedAt(p.x, p.y);
+    if (wi >= 0) { if (give('weed')) { G.day.weeds.splice(wi, 1); pop(p.x * T + 16, p.y * T + 16, '#6FAF4E'); } return; }
+  }
+  const o = W.occ[ft.y] && W.occ[ft.y][ft.x];
+  const tool = G.tool;
+  if (tool === 'net') { player.act = 'net'; player.actT = 0; SFX.swing(); return; }
+  if (tool === 'rod') { castRod(); return; }
+  if (tool === 'shovel') {
+    const di = digAt(ft.x, ft.y);
+    if (di >= 0) { player.act = 'shovel'; player.actT = 0; SFX.dig(); const d = G.day.digs[di]; setTimeout(() => digUp(di, d), 250); return; }
+    if (o && o.type === 'rock') { hitRock(o); return; }
+    return;
+  }
+  if (tool === 'axe' && o && W.trees.includes(o) && o.kind !== 'palm') { chopTree(o); return; }
+  if (o && W.trees.includes(o)) { shakeTree(o); return; }
+}
+
+function pop(x, y, color) { for (let i = 0; i < 8; i++) particles.push({ x, y, vx: rand(-50, 50), vy: rand(-80, -20), life: .5, max: .5, color, s: rand(2, 4) }); }
+function freeSpotNear(tx, ty) {
+  for (let rad = 1; rad < 4; rad++) for (let j = -rad; j <= rad; j++) for (let i = -rad; i <= rad; i++) {
+    const x = tx + i, y = ty + j;
+    if (!isLand(tileAt(x, y)) || W.occ[y][x] || dropAt(x, y) >= 0 || weedAt(x, y) >= 0 || digAt(x, y) >= 0) continue;
+    if (Math.random() < 0.5) return { x, y };
+  }
+  return null;
+}
+function shakeTree(tr) {
+  player.act = 'shake'; player.actT = 0; SFX.shake();
+  tr.shakeT = 0.5;
+  const day = G.day;
+  if (tr.kind === 'fruit' && !day.fruitTaken[tr.idx]) {
+    day.fruitTaken[tr.idx] = true;
+    for (let i = 0; i < 3; i++) { const p = freeSpotNear(tr.x, tr.y + 1); if (p) day.drops.push({ ...p, id: 'fr_' + G.native }); }
+    toast(`${FRUITS[G.native].name}が 落ちてきた！`);
+  } else if (tr.kind === 'palm' && !day.fruitTaken[tr.idx]) {
+    day.fruitTaken[tr.idx] = true;
+    for (let i = 0; i < 2; i++) { const p = freeSpotNear(tr.x, tr.y + 1); if (p) day.drops.push({ ...p, id: 'coconut' }); }
+  } else if (!day.shaken[tr.idx]) {
+    day.shaken[tr.idx] = true;
+    if (tr.idx === day.bagTrees) { const p = freeSpotNear(tr.x, tr.y + 1); if (p) { day.drops.push({ ...p, id: 'leafbag' }); toast('なにか 落ちてきた！'); } }
+    else if (Math.random() < 0.45) { const p = freeSpotNear(tr.x, tr.y + 1); if (p) day.drops.push({ ...p, id: 'branch' }); }
+  }
+  // 木にとまっていた虫は逃げる
+  for (const b of bugs) if (b.anchor === tr) b.flee = true;
+  save();
+}
+function hitRock(rk) {
+  player.act = 'shovel'; player.actT = 0; SFX.hit();
+  const n = G.day.rockHits[rk.idx] || 0;
+  rk.shakeT = 0.3;
+  if (n >= 5) { toast('もう なにも出ない みたい'); return; }
+  G.day.rockHits[rk.idx] = n + 1;
+  const roll = Math.random();
+  const id = roll < 0.18 ? 'iron' : 'stone';
+  if (roll > 0.9) { G.leaf += 100; SFX.coin(); toast('100 リーフが 出てきた！'); updateHud(); save(); return; }
+  give(id);
+}
+function chopTree(tr) {
+  player.act = 'axe'; player.actT = 0; SFX.hit();
+  tr.shakeT = 0.4;
+  const n = G.day.chops[tr.idx] || 0;
+  if (n >= 3) { toast('今日は もう 切れない みたい'); return; }
+  G.day.chops[tr.idx] = n + 1;
+  give('wood');
+}
+function digUp(di, d) {
+  G.day.digs.splice(di, 1);
+  if (d.kind === 'money') { G.leaf += 1000; SFX.coin(); toast('光る地面から 1,000 リーフ！'); updateHud(); save(); return; }
+  const fossils = FOSSILS.filter(f => f.id !== 'x_atama' || Math.random() < 0.3);
+  const f = pick(fossils);
+  give(f.id, 1, `${f.name}（化石）を ほりだした！`);
+}
+
+// ---- 釣り ----
+function castTarget() {
+  const [dx, dy] = DIRS[player.face];
+  for (const dist of [48, 64, 36, 80]) {
+    const x = player.x + dx * dist, y = player.y + dy * dist - (dy === 0 ? 6 : 0);
+    if (waterAtPx(x, y)) return { x, y };
+  }
+  return null;
+}
+function castRod() {
+  const tp = castTarget();
+  if (!tp) { toast('水のほうを 向いて投げよう'); return; }
+  SFX.splash();
+  fishing = { x: tp.x, y: tp.y, state: 'float', t: 0, fish: null, nibbles: 0, wait: rand(1, 3) };
+  pop(tp.x, tp.y, 'rgba(255,255,255,.9)');
+}
+function reelIn() {
+  const F = fishing;
+  if (F.state === 'bite') {
+    const f = F.fish.f;
+    shadows = shadows.filter(s => s !== F.fish);
+    fishing = null;
+    if (!canAdd(f.id)) { toast('ポケットが いっぱいで 逃がした…'); return; }
+    addItem(f.id);
+    SFX.catch();
+    const line = catchLine(f, 'fish');
+    say({ name: '', color: '#fff' }, [line]);
+    save();
+    return;
+  }
+  if (F.fish && F.state !== 'approach') { F.fish.state = 'flee'; toast('逃げられた…'); }
+  else if (F.fish) F.fish.state = 'swim';
+  fishing = null;
+}
+function catchLine(it, kind) {
+  const quips = {
+    f_same: 'サメを つりあげた！ こわ〜！', f_madai: 'マダイを つりあげた！ めでたい！', f_fugu: 'フグを つりあげた！ ぷくっとふくれた！',
+    f_koi: 'コイを つりあげた！ 恋のよかん？', f_tako: 'タコを つりあげた！ 8本足で じたばた！', f_iwana: 'イワナを つりあげた！ 渓流の女王！',
+    b_kabuto: 'カブトムシを つかまえた！ 夏の王様だ！', b_kuwagata: 'ノコギリクワガタを つかまえた！ かっこいい〜！', b_oomurasaki: 'オオムラサキを つかまえた！ 日本の国蝶！',
+    b_ari: 'アリを つかまえた！ ちいさいけど 力もち！', b_hotaru: 'ホタルを つかまえた！ 光ってる…！',
+  };
+  if (quips[it.id]) return quips[it.id];
+  return kind === 'fish' ? `${it.name}を つりあげた！` : `${it.name}を つかまえた！`;
+}
+function updateFishing(dt) {
+  const F = fishing; if (!F) return;
+  F.t += dt;
+  if (F.state === 'float') {
+    F.wait -= dt;
+    if (F.wait <= 0 && !F.fish) {
+      let best = null, bd = 150;
+      for (const s of shadows) { if (s.state !== 'swim') continue; const d = Math.hypot(s.x - F.x, s.y - F.y); if (d < bd) { bd = d; best = s; } }
+      if (best) { F.fish = best; best.state = 'approach'; F.state = 'approach'; }
+      else F.wait = rand(1, 2);
+    }
+  } else if (F.state === 'approach') {
+    const s = F.fish;
+    const a = Math.atan2(F.y - s.y, F.x - s.x);
+    s.dir = a;
+    const d = Math.hypot(F.x - s.x, F.y - s.y);
+    const target = 6 + s.f.size * 2;
+    if (d > target) { s.x += Math.cos(a) * 22 * dt; s.y += Math.sin(a) * 22 * dt; }
+    else { F.state = 'nibble'; F.nibbles = Math.floor(rand(1, 4)); F.next = rand(0.8, 1.5); }
+  } else if (F.state === 'nibble') {
+    F.next -= dt;
+    if (F.next <= 0) {
+      if (F.nibbles > 0) { F.nibbles--; F.dip = 0.25; SFX.nibble(); F.next = rand(0.9, 1.6); }
+      else { F.state = 'bite'; F.biteT = 0.7; F.dip = 0.7; SFX.bite(); pop(F.x, F.y, 'rgba(255,255,255,.9)'); try { navigator.vibrate && navigator.vibrate(80); } catch (e) {} }
+    }
+  } else if (F.state === 'bite') {
+    F.biteT -= dt;
+    if (F.biteT <= 0) { F.fish.state = 'flee'; fishing = null; toast('逃げられた…'); }
+  }
+  if (F.dip) F.dip = Math.max(0, F.dip - dt);
+}
+
+// ---- 虫とり ----
+function tryNet() {
+  const p = frontPoint(24);
+  for (const b of bugs) {
+    if (b.flee) continue;
+    if (Math.hypot(b.x - p.x, b.y - (p.y - 8)) < 30) {
+      bugs = bugs.filter(x => x !== b);
+      if (!canAdd(b.b.id)) { toast('ポケットが いっぱいで 逃がした…'); return; }
+      addItem(b.b.id);
+      SFX.catch();
+      say({ name: '', color: '#fff' }, [catchLine(b.b, 'bug')]);
+      save();
+      return;
+    }
+  }
+}
+
+// =============== 住人 ===============
+let villagerStates = [];
+function initVillagers() {
+  villagerStates = VILLAGERS.map(v => {
+    const h = W.buildings.find(b => b.vid === v.id);
+    const hx = (h.door.x) * T + 16, hy = (h.door.y + 1) * T + 16;
+    return { v, home: h, x: hx, y: hy, face: 'down', walk: 0, moving: false, tx: hx, ty: hy, wait: rand(1, 4), out: true, talkT: 0 };
+  });
+}
+function villagerAwake() { const h = now().getHours(); return h >= 6 && h < 22; }
+function updateVillagers(dt) {
+  const awake = villagerAwake();
+  for (const s of villagerStates) {
+    s.out = awake && player.scene === 'island';
+    if (!s.out) continue;
+    if (s.talkT > 0) { s.talkT -= dt; s.moving = false; continue; }
+    s.wait -= dt;
+    const dx = s.tx - s.x, dy = s.ty - s.y, d = Math.hypot(dx, dy);
+    if (d > 2) {
+      const sp = 38 * dt;
+      const nx = s.x + dx / d * Math.min(sp, d), ny = s.y + dy / d * Math.min(sp, d);
+      if (!blockedForNpc(nx, ny) && Math.hypot(nx - player.x, ny - player.y) > 18) { s.x = nx; s.y = ny; s.moving = true; s.walk += dt * 8; s.face = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'); }
+      else { s.tx = s.x; s.ty = s.y; s.moving = false; }
+    } else {
+      s.moving = false;
+      if (s.wait <= 0) {
+        s.wait = rand(2, 7);
+        const home = s.home;
+        for (let k = 0; k < 10; k++) {
+          const tx = (home.door.x + Math.floor(rand(-7, 8))) * T + 16, ty = (home.door.y + Math.floor(rand(-4, 7))) * T + 16;
+          if (!blockedForNpc(tx, ty)) { s.tx = tx; s.ty = ty; break; }
+        }
+      }
+    }
+  }
+}
+function blockedForNpc(px, py) {
+  const tx = Math.floor(px / T), ty = Math.floor(py / T);
+  const t = tileAt(tx, ty);
+  if (!isLand(t) || W.occ[ty][tx]) return true;
+  return false;
+}
+
+// ---- 会話の中身 ----
+function linesFor(v) {
+  const d = now(), h = d.getHours(), se = season(), wt = G.day.weather;
+  const P = G.name, I = G.island, tl = v.tail;
+  const vs = G.vill[v.id];
+  const greet = h < 11 ? 'おはよう' : h < 18 ? 'こんにちは' : 'こんばんは';
+  const pers = {
+    lazy: [
+      `${greet}、${P}〜。おなかすいたなぁ、${tl}`,
+      `ひなたぼっこしてたら ねむくなっちゃった${tl}…`,
+      `${FRUITS[G.native].name}って あまくて すきなん${tl}`,
+      `${I}島の 空気は おいしいん${tl}。深呼吸〜`,
+      `きょうは なんにも しない日なん${tl}`,
+    ],
+    peppy: [
+      `わぁ、${P}ちゃん！ ${greet}${tl}！`,
+      `ねぇねぇ、きのう すっごい きれいな チョウチョを見たんだ${tl}！`,
+      `${I}島で いちばん おしゃれなのは わたし${tl}！ …たぶん！`,
+      `走ってたら 楽しくなっちゃった${tl}！`,
+      `あたらしい 服が ほしいな${tl}〜`,
+    ],
+    snooty: [
+      `あら、${P}。${greet}${tl}。`,
+      `その服、なかなか いいじゃない${tl}。`,
+      `波の音を聞きながら 貝がらを ながめるのが すきなの${tl}。`,
+      `わたしの 家の インテリア、今度 見せてあげても いい${tl}。`,
+      `${I}島の 夕日は ちょっとだけ ほめてあげる${tl}。`,
+    ],
+    jock: [
+      `おう ${P}！ ${greet}${tl}！ 今日も きたえてるか？`,
+      `川で でっかい 魚の 影を見た${tl}！ つりざお 持ってこいよ！`,
+      `ジャンプ 100回 やったら おなか すいた${tl}！`,
+      `島を 1周 走ってきた${tl}！ 気持ちいいぞ！`,
+      `つりは 心のトレーニング なんだ${tl}！`,
+    ],
+  }[v.pers];
+  const ctx2 = [];
+  if (wt === 'rain') ctx2.push(v.pers === 'jock' ? `雨の日は カエルの ぼくが いちばん 元気${tl}！` : `雨だね${tl}。かさ 持ってくれば よかった…`);
+  if (wt === 'sunny' && h >= 9 && h < 17) ctx2.push(`いい 天気だね${tl}！ 虫とり びより${tl}`);
+  if (h >= 20) ctx2.push(`もう こんな 時間${tl}… そろそろ 家に 帰らなきゃ`);
+  if (se === 'spring') ctx2.push(`桜が きれいな 季節${tl}〜`);
+  if (se === 'summer') ctx2.push(`夏は 夜の 虫とりが 楽しい${tl}！ カブトムシ とか！`);
+  if (se === 'autumn') ctx2.push(`葉っぱが 色づいてきた${tl}。秋だね`);
+  if (se === 'winter') ctx2.push(`さむい〜！ 雪だるま つくりたい${tl}`);
+  if (vs.friend >= 40) ctx2.push(`${P}と いると なんだか 楽しい${tl}。ずっと ${I}島に いてね`);
+  if (vs.friend < 5) ctx2.push(`まだ ${P}のこと あんまり 知らない${tl}。よろしくね`);
+  const all = [...pers, ...ctx2];
+  return pick(all);
+}
+
+function talkTo(s) {
+  const v = s.v;
+  s.talkT = 6;
+  s.face = Math.abs(player.x - s.x) > Math.abs(player.y - s.y) ? (player.x > s.x ? 'right' : 'left') : (player.y > s.y ? 'down' : 'up');
+  const vs = G.vill[v.id];
+  const sp = { name: v.name, color: v.color, voice: v.voice };
+  const today = G.day.key;
+  const first = vs.lastTalk !== today;
+  if (first) { vs.lastTalk = today; vs.friend = Math.min(100, vs.friend + 3); }
+  const lines = [linesFor(v)];
+  // 仲良しなら プレゼント
+  if (first && vs.friend >= 25 && vs.lastPresent !== today && Math.random() < 0.4) {
+    vs.lastPresent = today;
+    const gift = Math.random() < 0.5 ? pick(SHOP_FURN) : pick(SHIRTS).id;
+    lines.push(`そうだ、${G.name}に これ あげる${v.tail}！`);
+    say(sp, lines, null);
+    setTimeout(() => { if (give(gift, 1, `${v.name}から ${ITEMS[gift].name}を もらった！`)) {} }, 50);
+    save();
+    return;
+  }
+  say(sp, lines, [
+    { label: 'プレゼントをあげる', fn: () => giftMenu(s) },
+    { label: 'なにか こまってる？', fn: () => requestTalk(s) },
+    { label: 'またね', fn: () => { say(sp, [pick([`またね${v.tail}〜！`, `じゃあね${v.tail}！`, `また 話そう${v.tail}`])]); } },
+  ]);
+  save();
+}
+function requestTalk(s) {
+  const v = s.v, sp = { name: v.name, color: v.color, voice: v.voice };
+  const rq = G.day.request;
+  if (rq.vid !== v.id || rq.done) { say(sp, [rq.done && rq.vid === v.id ? `この前は ありがとう${v.tail}！ たすかった！` : `ううん、とくに ない${v.tail}。ありがと！`]); return; }
+  const need = ITEMS[rq.want].name;
+  if (countItem(rq.want) > 0) {
+    say(sp, [`じつは ${need}が ほしいんだ${v.tail}… あっ、持ってる！？`], [
+      { label: `${need}を あげる`, fn: () => {
+        removeItem(rq.want);
+        rq.done = true;
+        G.vill[v.id].friend = Math.min(100, G.vill[v.id].friend + 8);
+        say(sp, [`ほんとに？ ありがとう${v.tail}！ お礼に これ あげる！`]);
+        setTimeout(() => give(rq.reward, 1, `お礼に ${ITEMS[rq.reward].name}を もらった！`), 50);
+        save();
+      } },
+      { label: 'やっぱり やめる', fn: () => say(sp, [`そっか… 気が向いたら おねがい${v.tail}`]) },
+    ]);
+  } else say(sp, [`じつは ${need}が ほしいんだ${v.tail}…`, `もし 手に入ったら 持ってきてくれる？`]);
+}
+function giftMenu(s) {
+  openPockets({ mode: 'gift', title: `${s.v.name}に なにをあげる？`, onPick: (idx) => {
+    const it = G.pockets[idx]; if (!it) return;
+    const v = s.v, sp = { name: v.name, color: v.color, voice: v.voice };
+    const vs = G.vill[v.id];
+    const item = ITEMS[it.id];
+    const today = G.day.key;
+    if (vs.lastGift === today) { say(sp, [`もう 今日は たくさん もらった${v.tail}！ また 今度ね`]); return; }
+    removeItem(it.id);
+    vs.lastGift = today;
+    let line;
+    if (it.id === 'weed') { vs.friend = Math.max(0, vs.friend - 2); line = `え… ざっそう${v.tail}…？`; }
+    else if (item.cat === v.likes || (v.likes === 'shell' && item.cat === 'shell')) { vs.friend = Math.min(100, vs.friend + 10); line = `わぁっ！ ${item.name}！ ぼく/わたし こういうの 大すき${v.tail}！`.replace('ぼく/わたし', v.pers === 'jock' || v.pers === 'lazy' ? 'ぼく' : 'わたし'); }
+    else if (item.cat === 'furn' || item.cat === 'shirt') { vs.friend = Math.min(100, vs.friend + 6); line = `${item.name}！ すてき${v.tail}、大切にするね！`; }
+    else { vs.friend = Math.min(100, vs.friend + 4); line = `${item.name}を くれるの？ ありがとう${v.tail}！`; }
+    SFX.pick();
+    say(sp, [line]);
+    save();
+  } });
+}
+
+// =============== 建物 ===============
+function enterBuilding(b) {
+  SFX.door();
+  if (b.kind === 'house') { enterRoom(); return; }
+  if (b.kind === 'vhouse') {
+    const v = VILLAGERS.find(v => v.id === b.vid);
+    if (!villagerAwake()) say({ name: '', color: '#fff' }, [`${v.name}の家だ。`, `…Zzz　ねているみたい。`]);
+    else say({ name: '', color: '#fff' }, [`${v.name}の家だ。`, `るすみたい。島の どこかに いるのかな？`]);
+    return;
+  }
+  if (b.kind === 'shop') { shopTalk(); return; }
+  if (b.kind === 'museum') { museumTalk(); return; }
+}
+function shopOpen() { const h = now().getHours(); return h >= 8 && h < 22; }
+function shopTalk() {
+  const sp = { name: NPC.marin.name, color: NPC.marin.color, voice: NPC.marin.voice };
+  if (!shopOpen()) { say({ name: '', color: '#fff' }, ['よろず屋は しまっている。', '（えいぎょう時間 8:00〜22:00）']); return; }
+  say(sp, [`いらっしゃいませ〜！ よろず屋へ ようこそ${G.met ? '' : '。わたし、店員の マリンです'}！`], [
+    { label: '買いにきた', fn: openShopBuy },
+    { label: '売りにきた', fn: () => openPockets({ mode: 'sell', title: '売るものを えらんでね' }) },
+    { label: 'なんでもない', fn: () => say(sp, ['またどうぞ〜！']) },
+  ]);
+}
+function museumTalk() {
+  const sp = { name: NPC.genbu.name, color: NPC.genbu.color, voice: NPC.genbu.voice };
+  const donatable = G.pockets.map((s, i) => ({ s, i })).filter(({ s }) => s && ['bug', 'fish', 'fossil'].includes(ITEMS[s.id].cat) && !G.museum[ITEMS[s.id].cat][s.id]);
+  const uniq = []; for (const d of donatable) if (!uniq.some(u => u.s.id === d.s.id)) uniq.push(d);
+  const choices = [];
+  if (uniq.length) choices.push({ label: `寄付する（${uniq.length}しゅるい）`, fn: () => {
+    const names = [];
+    for (const { s } of uniq) { const cat = ITEMS[s.id].cat; G.museum[cat][s.id] = true; names.push(ITEMS[s.id].name); removeItem(s.id); }
+    SFX.catch();
+    say(sp, [`ほっほう！ ${names.slice(0, 3).join('、')}${names.length > 3 ? ' など' : ''}… すばらしい！`, 'さっそく てんじ しておこう。ありがとう、ありがとう。']);
+    save();
+  } });
+  choices.push({ label: 'てんじを見る', fn: () => openDex() });
+  choices.push({ label: 'なんでもない', fn: () => say(sp, ['いつでも おいで。ほっほう。']) });
+  say(sp, [uniq.length ? 'ほっほう、なにか めずらしいものを 持っているようじゃな。' : `ようこそ はくぶつかんへ。館長の ゲンブじゃ。`, '虫や 魚や 化石を 寄付してくれると うれしいのう。'], choices);
+}
+
+// =============== 家の中 ===============
+function enterRoom() {
+  player.scene = 'room';
+  room = { occ: Array.from({ length: ROOM_H }, () => Array(ROOM_W).fill(null)) };
+  room.occ[2][1] = 'bench';
+  for (const it of G.room) if (room.occ[it.y] && room.occ[it.y][it.x] == null) room.occ[it.y][it.x] = it;
+  player.outside = { x: player.x, y: player.y };
+  player.x = 4 * T + 16; player.y = (ROOM_H - 1) * T + 16; player.face = 'up';
+  bugs = []; shadows = []; fishing = null;
+}
+function exitRoom() {
+  SFX.door();
+  player.scene = 'island';
+  const h = W.buildings.find(b => b.kind === 'house');
+  player.x = h.door.x * T + 16; player.y = (h.door.y + 1) * T + 10; player.face = 'down';
+  room = null;
+  save();
+}
+function roomAction() {
+  const ft = frontTile();
+  const ty = Math.floor(player.y / T);
+  if (player.face === 'down' && ty === ROOM_H - 1 && ft.x === 4) { exitRoom(); return; }
+  const o = room.occ[ft.y] && room.occ[ft.y][ft.x];
+  if (o === 'bench') { openCraft(); return; }
+  if (o) {
+    const it = ITEMS[o.id];
+    say({ name: '', color: '#fff' }, [`${it.name}だ。`], [
+      { label: 'ポケットに しまう', fn: () => { if (pocketsFull()) { toast('ポケットが いっぱい！'); return; } room.occ[ft.y][ft.x] = null; G.room = G.room.filter(r => r !== o); addItem(o.id); SFX.pick(); save(); } },
+      { label: 'そのまま', fn: () => {} },
+    ]);
+  }
+}
+function placeFurniture(idx) {
+  if (player.scene !== 'room') { toast('家の中で 置けるよ'); return; }
+  const ft = frontTile();
+  if (ft.x < 0 || ft.x >= ROOM_W || ft.y < 2 || ft.y >= ROOM_H || room.occ[ft.y][ft.x] != null) { toast('前に 置けるばしょが ないよ'); return; }
+  if (ft.y === ROOM_H - 1 && ft.x === 4) { toast('入口には 置けないよ'); return; }
+  const s = G.pockets[idx];
+  const it = { id: s.id, x: ft.x, y: ft.y };
+  removeItem(s.id);
+  G.room.push(it); room.occ[ft.y][ft.x] = it;
+  SFX.pick(); closePanel(); save();
+}
+
+// =============== パネル ===============
+function openPanel(html) { $('panel').innerHTML = html; $('overlay').hidden = false; joy.on = false; }
+function closePanel() { $('overlay').hidden = true; $('panel').innerHTML = ''; }
+$('overlay').addEventListener('click', e => { if (e.target === $('overlay')) closePanel(); });
+
+function openPockets(opt = {}) {
+  const mode = opt.mode || 'view';
+  let sel = mode === 'sell' ? new Set() : null;
+  let cur = -1;
+  function render() {
+    const title = opt.title || 'ポケット';
+    openPanel(`<h2>${title}</h2><div class="grid" id="pk"></div><div class="detail" id="pk-d"></div><div class="actions" id="pk-a"></div>`);
+    const grid = $('pk');
+    G.pockets.forEach((s, i) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'slot' + (!s ? ' empty' : '') + ((sel ? sel.has(i) : cur === i) ? ' sel' : '');
+      if (s) { b.appendChild(iconCanvas(s.id, 40)); if (s.n > 1) { const n = document.createElement('span'); n.className = 'n'; n.textContent = s.n; b.appendChild(n); } b.setAttribute('aria-label', ITEMS[s.id].name); }
+      else b.disabled = true;
+      b.addEventListener('click', () => {
+        if (!s) return;
+        if (sel) { sel.has(i) ? sel.delete(i) : sel.add(i); }
+        else cur = i;
+        render();
+      });
+      grid.appendChild(b);
+    });
+    const d = $('pk-d'), a = $('pk-a');
+    const btn = (label, fn, cls = 'btn', dis) => { const b = document.createElement('button'); b.className = cls; b.type = 'button'; b.textContent = label; b.disabled = !!dis; b.addEventListener('click', fn); a.appendChild(b); };
+    if (mode === 'sell') {
+      let total = 0; for (const i of sel) { const s = G.pockets[i]; if (s) total += priceOf(s.id) * s.n; }
+      d.innerHTML = sel.size ? `${sel.size}こ えらんだ<small>ぜんぶで ${total.toLocaleString()} リーフ</small>` : 'タップして 売るものを えらんでね';
+      btn('売る', () => {
+        for (const i of sel) G.pockets[i] = null;
+        G.leaf += total; SFX.coin(); updateHud(); save(); closePanel();
+        say({ name: NPC.marin.name, color: NPC.marin.color, voice: NPC.marin.voice }, [`${total.toLocaleString()} リーフで 買いとります！ ありがとうございました〜！`]);
+      }, 'btn', !sel.size);
+      btn('やめる', closePanel, 'btn ghost');
+      return;
+    }
+    if (cur >= 0 && G.pockets[cur]) {
+      const s = G.pockets[cur], it = ITEMS[s.id];
+      const catName = { fruit: 'くだもの', bug: 'むし', fish: 'さかな', fossil: '化石', furn: '家具', shirt: 'ふく', mat: 'ざいりょう', shell: 'かいがら', money: 'おかね' }[it.cat];
+      d.innerHTML = `${it.name}<small>${catName}・売ると ${priceOf(s.id).toLocaleString()} リーフ</small>`;
+      if (mode === 'gift') { btn('これを あげる', () => { closePanel(); opt.onPick(cur); }); }
+      else {
+        if (it.cat === 'furn') btn('へやに 置く', () => placeFurniture(cur), 'btn', player.scene !== 'room');
+        if (it.cat === 'shirt') btn('着る', () => { const old = G.shirt; G.shirt = s.id; G.pockets[cur] = old && ITEMS[old] ? { id: old, n: 1 } : null; SFX.pick(); save(); closePanel(); toast(`${it.name}に 着がえた！`); });
+        if (it.id === 'leafbag') btn('あける', () => { G.pockets[cur] = null; give('leafbag'); closePanel(); });
+        btn('すてる', () => {
+          const a2 = $('pk-a'); a2.innerHTML = '';
+          const q = document.createElement('span'); q.textContent = 'ほんとうに すてる？'; q.style.fontWeight = '700'; q.style.alignSelf = 'center'; a2.appendChild(q);
+          btn('すてる', () => { G.pockets[cur] = null; cur = -1; save(); render(); }, 'btn');
+          btn('やめる', () => render(), 'btn ghost');
+        }, 'btn ghost');
+      }
+    } else d.textContent = mode === 'gift' ? 'あげるものを えらんでね' : 'アイテムを タップしてね';
+    btn('とじる', closePanel, 'btn ghost');
+  }
+  render();
+}
+
+function openShopBuy() {
+  const items = [...G.day.shop];
+  if (!G.tools.shovel) items.unshift('TOOL_shovel');
+  if (!G.tools.axe) items.unshift('TOOL_axe');
+  const toolInfo = { TOOL_shovel: { name: 'スコップ', price: 800, tool: 'shovel' }, TOOL_axe: { name: 'オノ', price: 800, tool: 'axe' } };
+  function render() {
+    openPanel(`<h2>よろず屋 きょうの品ぞろえ</h2><p>もっているリーフ：${G.leaf.toLocaleString()}</p><div class="list" id="shop"></div><div class="actions"><button class="btn ghost" type="button" id="shop-close">とじる</button></div>`);
+    const list = $('shop');
+    for (const id of items) {
+      const isTool = id.startsWith('TOOL_');
+      const info = isTool ? toolInfo[id] : { name: ITEMS[id].name, price: ITEMS[id].price * 4 };
+      const row = document.createElement('div'); row.className = 'li';
+      const ic = isTool ? toolIcon(info.tool, 44) : iconCanvas(id, 44);
+      row.appendChild(ic);
+      const t = document.createElement('div'); t.innerHTML = `<b>${info.name}</b><span>${info.price.toLocaleString()} リーフ</span>`; row.appendChild(t);
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'btn'; b.textContent = '買う';
+      b.disabled = G.leaf < info.price;
+      b.addEventListener('click', () => {
+        if (G.leaf < info.price) return;
+        if (isTool) { G.tools[info.tool] = true; G.leaf -= info.price; items.splice(items.indexOf(id), 1); buildToolbar(); toast(`${info.name}を 買った！ 下のボタンで もちかえられるよ`); }
+        else { if (!canAdd(id)) { toast('ポケットが いっぱい！'); return; } G.leaf -= info.price; addItem(id); toast(`${info.name}を 買った！`); }
+        SFX.coin(); updateHud(); save(); render();
+      });
+      row.appendChild(b);
+      list.appendChild(row);
+    }
+    $('shop-close').addEventListener('click', closePanel);
+  }
+  render();
+}
+
+function openCraft() {
+  function has(need) { return Object.entries(need).every(([k, n]) => countItem(k === 'NATIVE' ? 'fr_' + G.native : k) >= n); }
+  function render() {
+    openPanel(`<h2>DIY さぎょうだい</h2><p>ざいりょうを あつめて 家具を つくろう</p><div class="list" id="cr"></div><div class="actions"><button class="btn ghost" type="button" id="cr-close">とじる</button></div>`);
+    const list = $('cr');
+    for (const rc of RECIPES) {
+      const it = ITEMS[rc.id];
+      const row = document.createElement('div'); row.className = 'li';
+      row.appendChild(iconCanvas(rc.id, 44));
+      const needTxt = Object.entries(rc.need).map(([k, n]) => { const id = k === 'NATIVE' ? 'fr_' + G.native : k; return `${ITEMS[id].name} ${countItem(id)}/${n}`; }).join('・');
+      const t = document.createElement('div'); t.innerHTML = `<b>${it.name}</b><span>${needTxt}</span>`; row.appendChild(t);
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'btn'; b.textContent = 'つくる';
+      b.disabled = !has(rc.need);
+      b.addEventListener('click', () => {
+        if (!has(rc.need)) return;
+        for (const [k, n] of Object.entries(rc.need)) removeItem(k === 'NATIVE' ? 'fr_' + G.native : k, n);
+        if (addItem(rc.id) <= 0) { toast('ポケットが いっぱい！'); return; }
+        for (let i = 0; i < 4; i++) tone(300 + i * 80, .08, 'square', .03, i * .1);
+        toast(`${it.name}が できた！`); save(); render();
+      });
+      row.appendChild(b);
+      list.appendChild(row);
+    }
+    $('cr-close').addEventListener('click', closePanel);
+  }
+  render();
+}
+
+function openDex(tab = 'bug') {
+  const data = { bug: BUGS, fish: FISH, fossil: FOSSILS };
+  const label = { bug: 'むし', fish: 'さかな', fossil: '化石' };
+  const total = BUGS.length + FISH.length + FOSSILS.length;
+  const got = Object.values(G.museum).reduce((n, o) => n + Object.keys(o).length, 0);
+  openPanel(`<h2>はくぶつかん てんじ</h2><p>${total}しゅるい中 ${got}しゅるい 寄付ずみ</p><div class="tabs" id="dx-tabs"></div><div class="dex" id="dx"></div><div class="actions"><button class="btn ghost" type="button" id="dx-close">とじる</button></div>`);
+  const tabs = $('dx-tabs');
+  for (const k of ['bug', 'fish', 'fossil']) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'tab' + (k === tab ? ' on' : '');
+    b.textContent = `${label[k]} ${Object.keys(G.museum[k]).length}/${data[k].length}`;
+    b.addEventListener('click', () => openDex(k));
+    tabs.appendChild(b);
+  }
+  const box = $('dx');
+  const m = now().getMonth() + 1;
+  for (const it of data[tab]) {
+    const has = G.museum[tab][it.id];
+    const d = document.createElement('div'); d.className = 'dx' + (has ? '' : ' no');
+    const c = iconCanvas(it.id, 48);
+    if (!has) { const x = c.getContext('2d'); x.globalCompositeOperation = 'source-in'; x.fillStyle = 'rgba(150,130,100,.45)'; x.fillRect(0, 0, c.width, c.height); }
+    d.appendChild(c);
+    const t = document.createElement('div');
+    const season = it.months ? (inMonths(m, it.months) ? '今の季節に いる' : '今は いない') : '';
+    t.innerHTML = has ? it.name : `？？？<br><span style="font-weight:500">${season}</span>`;
+    d.appendChild(t);
+    box.appendChild(d);
+  }
+  $('dx-close').addEventListener('click', closePanel);
+}
+$('dex-btn').addEventListener('click', () => { if (canAct()) openDex(); });
+$('pocket-btn').addEventListener('click', () => { if (canAct()) openPockets(); });
+
+// =============== 道具バー ===============
+const TOOL_NAMES = { hand: '手', net: 'あみ', rod: 'つりざお', shovel: 'スコップ', axe: 'オノ' };
+function buildToolbar() {
+  const box = $('tools');
+  box.innerHTML = '';
+  for (const t of ['hand', 'net', 'rod', 'shovel', 'axe']) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'tool' + (G.tool === t ? ' on' : '');
+    b.setAttribute('aria-label', TOOL_NAMES[t]);
+    b.disabled = t !== 'hand' && !G.tools[t];
+    b.appendChild(toolIcon(t));
+    const s = document.createElement('small'); s.textContent = TOOL_NAMES[t]; b.appendChild(s);
+    b.addEventListener('click', () => setTool(t));
+    box.appendChild(b);
+  }
+}
+function setTool(t) {
+  if (t !== 'hand' && !G.tools[t]) { toast(`${TOOL_NAMES[t]}は よろず屋で 買えるよ`); return; }
+  G.tool = t; if (fishing) reelIn();
+  buildToolbar();
+}
+
+// =============== HUD ===============
+function updateHud() {
+  const d = now();
+  $('time').textContent = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+  const wt = { sunny: '晴れ', cloudy: 'くもり', rain: '雨' }[G.day.weather];
+  $('date').textContent = `${d.getMonth() + 1}月${d.getDate()}日（${WEEK[d.getDay()]}）${wt}`;
+  $('leaf').textContent = G.leaf.toLocaleString();
+}
+
+// =============== 更新 ===============
+let camX = 0, camY = 0, zoom = 2, VW = 0, VH = 0, dpr = 1;
+function resize() {
+  dpr = Math.min(2, window.devicePixelRatio || 1);
+  VW = window.innerWidth; VH = window.innerHeight;
+  cv.width = VW * dpr; cv.height = VH * dpr;
+  zoom = clamp(Math.min(VW / (11 * T), VH / (9 * T)), 1, 2.6);
+}
+window.addEventListener('resize', resize);
+resize();
+
+let tAll = 0, bugTimer = 0, shadowTimer = 0, hudTimer = 0, saveTimer = 0, rain = [];
+function update(dt) {
+  tAll += dt;
+  updateDialog(dt);
+  // 日付がかわったら島をリセット
+  hudTimer -= dt;
+  if (hudTimer <= 0) {
+    hudTimer = 1;
+    if (dailyReset()) { toast('あたらしい 1日が はじまった！'); bugs = []; shadows = []; if (season() !== terrainSeason) buildTerrain(); }
+    updateHud();
+  }
+  saveTimer -= dt; if (saveTimer <= 0) { saveTimer = 10; save(); }
+
+  // 動く
+  if (canAct() && !fishing) {
+    const v = inputVec();
+    const moving = Math.hypot(v.x, v.y) > 0.1;
+    player.moving = moving && !player.act;
+    player.running = v.run;
+    if (player.moving) {
+      const sp = (v.run ? 150 : 88) * dt;
+      const nx = player.x + v.x * sp, ny = player.y + v.y * sp;
+      if (!blockedAt(nx, player.y)) player.x = nx;
+      if (!blockedAt(player.x, ny)) player.y = ny;
+      player.walk += dt * (v.run ? 12 : 8);
+      player.face = Math.abs(v.x) > Math.abs(v.y) ? (v.x > 0 ? 'right' : 'left') : (v.y > 0 ? 'down' : 'up');
+      // 家から出る
+      if (player.scene === 'room' && player.y > (ROOM_H - 1) * T + 22 && Math.floor(player.x / T) === 4 && player.face === 'down') exitRoom();
+    }
+  } else if (fishing) {
+    const v = inputVec();
+    if (Math.hypot(v.x, v.y) > 0.5) { if (fishing.fish) fishing.fish.state = 'swim'; fishing = null; }
+    player.moving = false;
+  } else player.moving = false;
+  if (player.scene === 'room') {
+    player.x = clamp(player.x, 16, ROOM_W * T - 16);
+  }
+
+  if (player.act) {
+    player.actT += dt;
+    if (player.act === 'net' && player.actT > 0.18 && !player.netDone) { player.netDone = true; tryNet(); }
+    if (player.actT > 0.35) { player.act = null; player.netDone = false; }
+  }
+
+  if (player.scene === 'island') {
+    updateVillagers(dt);
+    // 虫
+    bugTimer -= dt;
+    if (bugTimer <= 0) { bugTimer = rand(1.5, 3.5); if (bugs.length < 6) spawnBug(); }
+    for (const b of bugs) {
+      b.t += dt; b.life -= dt;
+      const d = Math.hypot(b.x - player.x, b.y - player.y);
+      if (!b.flee && ((player.running && player.moving && d < 90) || (d < 26 && player.moving && b.b.where === 'fly'))) b.flee = true;
+      if (b.flee) {
+        const a = Math.atan2(b.y - player.y, b.x - player.x);
+        b.x += Math.cos(a) * 140 * dt; b.y += Math.sin(a) * 140 * dt - 40 * dt;
+        b.life = Math.min(b.life, 2);
+      } else if (b.b.where === 'fly' || (b.b.where === 'flower' && b.b.kind !== 'lady')) {
+        const r = b.b.where === 'fly' ? 50 : 14;
+        b.x = b.hx + Math.sin(b.t * 0.7) * r + Math.sin(b.t * 2.1) * 6;
+        b.y = b.hy + Math.cos(b.t * 0.9) * r * 0.6 + Math.sin(b.t * 3) * 4 - 10;
+      } else if (b.b.where === 'ground' || b.b.where === 'beach') {
+        if (Math.sin(b.t * 1.3) > 0.7) { b.x += Math.cos(b.t) * 18 * dt; b.y += Math.sin(b.t * 0.7) * 10 * dt; }
+      }
+    }
+    bugs = bugs.filter(b => b.life > 0 && Math.abs(b.x - player.x) < 700 && Math.abs(b.y - player.y) < 500);
+    // 魚影
+    shadowTimer -= dt;
+    if (shadowTimer <= 0) { shadowTimer = rand(1.5, 3); if (shadows.length < 5) spawnShadow(); }
+    for (const s of shadows) {
+      s.t += dt; s.life -= dt;
+      if (s.state === 'swim') {
+        s.dir += Math.sin(s.t * 0.5) * dt * 0.8;
+        const nx = s.x + Math.cos(s.dir) * 12 * dt, ny = s.y + Math.sin(s.dir) * 12 * dt;
+        if (waterAtPx(nx, ny) && waterAtPx(nx + Math.cos(s.dir) * 12, ny + Math.sin(s.dir) * 12)) { s.x = nx; s.y = ny; } else s.dir += Math.PI * 0.6;
+      } else if (s.state === 'flee') {
+        s.x += Math.cos(s.dir + Math.PI) * 80 * dt; s.y += Math.sin(s.dir + Math.PI) * 80 * dt; s.life = Math.min(s.life, 0.8);
+      }
+    }
+    shadows = shadows.filter(s => s.life > 0 && (s.state !== 'swim' || Math.abs(s.x - player.x) < 700));
+    updateFishing(dt);
+    for (const tr of W.trees) if (tr.shakeT) tr.shakeT = Math.max(0, tr.shakeT - dt);
+    for (const rk of W.rocks) if (rk.shakeT) rk.shakeT = Math.max(0, rk.shakeT - dt);
+  }
+  for (const p of particles) { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 200 * dt; p.life -= dt; }
+  particles = particles.filter(p => p.life > 0);
+  if (G.day.weather === 'rain' && player.scene === 'island') {
+    while (rain.length < 120) rain.push({ x: rand(0, VW), y: rand(-VH, 0), v: rand(500, 800) });
+    for (const r of rain) { r.y += r.v * dt; r.x -= r.v * 0.15 * dt; if (r.y > VH) { r.y = rand(-40, 0); r.x = rand(0, VW + 100); } }
+  } else rain = [];
+
+  // Aボタンの説明
+  const lbl = contextLabel();
+  const h = $('a-hint');
+  if (h.textContent !== lbl) h.textContent = lbl;
+  h.hidden = !lbl;
+}
+
+// =============== 描画 ===============
+function lightFor(h, m) {
+  const t = h + m / 60;
+  // [時刻, 色, 濃さ]
+  const keysL = [[0, '#1B2350', .55], [4.5, '#1B2350', .5], [6, '#F2A0A8', .18], [8, '#FFFFFF', 0], [16, '#FFFFFF', 0], [17.5, '#F29048', .2], [19, '#5A3A7A', .35], [20.5, '#1B2350', .5], [24, '#1B2350', .55]];
+  for (let i = 0; i < keysL.length - 1; i++) {
+    const [a, ca, pa] = keysL[i], [b, cb, pb] = keysL[i + 1];
+    if (t >= a && t <= b) { const k = (t - a) / (b - a); return { color: k < 0.5 ? ca : cb, a: lerp(pa, pb, k) }; }
+  }
+  return { color: '#1B2350', a: .5 };
+}
+function treeColors(se, kind) {
+  if (kind === 'pine') return se === 'winter' ? ['#4E7A5A', '#EEF3F6'] : ['#3E7A4A', '#2F6A3E'];
+  if (se === 'spring') return now().getMonth() === 3 && kind === 'tree' ? ['#F7C3D4', '#EFA9C0'] : ['#7CC45A', '#62AE48'];
+  if (se === 'summer') return ['#4FA848', '#3D943A'];
+  if (se === 'autumn') return kind === 'fruit' ? ['#C8A040', '#B08A30'] : ['#E0843A', '#C86A2A'];
+  return ['#9AAE9A', '#EEF3F6'];
+}
+function drawTree(c, tr, x, y) {
+  const se = season();
+  const sh = tr.shakeT ? Math.sin(tr.shakeT * 40) * 3 : 0;
+  c.fillStyle = 'rgba(0,0,0,.18)'; c.beginPath(); c.ellipse(x, y + 12, 16, 6, 0, 0, 7); c.fill();
+  if (tr.kind === 'palm') {
+    c.strokeStyle = '#A8784A'; c.lineWidth = 6; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(x, y + 10); c.quadraticCurveTo(x + 6, y - 14, x + sh + 2, y - 36); c.stroke();
+    c.fillStyle = se === 'winter' ? '#6E9A6A' : '#4FA848';
+    for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; c.save(); c.translate(x + 2 + sh, y - 38); c.rotate(a); c.beginPath(); c.ellipse(14, 0, 16, 5, 0.2, 0, 7); c.fill(); c.restore(); }
+    if (!G.day.fruitTaken[tr.idx]) { c.fillStyle = '#7A5A34'; for (const dx of [-4, 4]) { c.beginPath(); c.arc(x + dx + 2 + sh, y - 32, 4, 0, 7); c.fill(); } }
+    return;
+  }
+  const [c1, c2] = treeColors(se, tr.kind);
+  c.fillStyle = '#8A5E34'; c.fillRect(x - 4, y - 8, 8, 20);
+  if (tr.kind === 'pine') {
+    for (let i = 0; i < 3; i++) { c.fillStyle = i % 2 ? c1 : c2; c.beginPath(); c.moveTo(x + sh, y - 50 + i * 12); c.lineTo(x - 20 + i * 2 + sh, y - 14 + i * 6); c.lineTo(x + 20 - i * 2 + sh, y - 14 + i * 6); c.closePath(); c.fill(); }
+    if (se === 'winter') { c.fillStyle = '#FFFFFF'; c.beginPath(); c.moveTo(x + sh, y - 50); c.lineTo(x - 8 + sh, y - 36); c.lineTo(x + 8 + sh, y - 36); c.fill(); }
+    return;
+  }
+  c.fillStyle = c2; c.beginPath(); c.arc(x - 9 + sh, y - 18, 13, 0, 7); c.arc(x + 9 + sh, y - 18, 13, 0, 7); c.fill();
+  c.fillStyle = c1; c.beginPath(); c.arc(x + sh, y - 28, 16, 0, 7); c.arc(x - 8 + sh, y - 22, 11, 0, 7); c.arc(x + 9 + sh, y - 23, 11, 0, 7); c.fill();
+  c.fillStyle = 'rgba(255,255,255,.18)'; c.beginPath(); c.arc(x - 5 + sh, y - 33, 6, 0, 7); c.fill();
+  if (se === 'winter') { c.fillStyle = '#FFFFFF'; c.beginPath(); c.ellipse(x + sh, y - 38, 12, 5, 0, 0, 7); c.fill(); }
+  if (tr.kind === 'fruit' && !G.day.fruitTaken[tr.idx]) {
+    c.fillStyle = FRUITS[G.native].color;
+    for (const [dx, dy] of [[-8, -20], [6, -30], [9, -16]]) { c.beginPath(); c.arc(x + dx + sh, y + dy, 4, 0, 7); c.fill(); c.fillStyle = 'rgba(255,255,255,.5)'; c.fillRect(x + dx + sh - 2, y + dy - 2, 1.5, 1.5); c.fillStyle = FRUITS[G.native].color; }
+  }
+}
+function drawBuilding(c, b, night) {
+  const x = b.x * T, y = b.y * T, w = b.w * T, h = b.h * T;
+  c.fillStyle = 'rgba(0,0,0,.18)'; c.fillRect(x + 4, y + h - 6, w, 10);
+  const pal = {
+    museum: { wall: '#EDE3CF', roof: '#6E8A9A', trim: '#C9B98A' },
+    shop: { wall: '#F6E7C6', roof: '#D8604A', trim: '#8A5E34' },
+    house: { wall: '#FBEFD8', roof: '#5C8FD1', trim: '#8A5E34' },
+  }[b.kind] || (() => { const v = VILLAGERS.find(v => v.id === b.vid); return { wall: '#F2E6D0', roof: v.color, trim: '#8A5E34' }; })();
+  // 壁
+  c.fillStyle = pal.wall; c.fillRect(x + 2, y + h * 0.35, w - 4, h * 0.65);
+  c.fillStyle = 'rgba(0,0,0,.06)'; c.fillRect(x + 2, y + h - 6, w - 4, 6);
+  // 屋根
+  c.fillStyle = pal.roof;
+  if (b.kind === 'museum') {
+    c.beginPath(); c.moveTo(x - 4, y + h * 0.4); c.lineTo(x + w / 2, y - 6); c.lineTo(x + w + 4, y + h * 0.4); c.closePath(); c.fill();
+    c.fillStyle = '#FFFFFF'; for (let i = 0; i < 4; i++) c.fillRect(x + 18 + i * (w - 36) / 3 - 4, y + h * 0.42, 8, h * 0.52);
+    c.fillStyle = pal.trim; c.fillRect(x, y + h * 0.36, w, 5);
+  } else {
+    c.beginPath(); c.moveTo(x - 6, y + h * 0.42); c.lineTo(x + 10, y + 2); c.lineTo(x + w - 10, y + 2); c.lineTo(x + w + 6, y + h * 0.42); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(0,0,0,.12)'; c.fillRect(x - 6, y + h * 0.38, w + 12, 5);
+    c.fillStyle = 'rgba(255,255,255,.18)'; for (let i = 0; i < 4; i++) c.fillRect(x + 4 + i * (w - 8) / 4, y + 8, 2, h * 0.3);
+  }
+  if (b.kind === 'shop') {
+    c.fillStyle = '#FFFFFF'; roundRect(c, x + w / 2 - 30, y + h * 0.3, 60, 16, 5);
+    c.fillStyle = '#8A5E34'; c.font = '700 11px "M PLUS Rounded 1c", sans-serif'; c.textAlign = 'center'; c.fillText('よろず屋', x + w / 2, y + h * 0.3 + 12);
+    // ひさし
+    for (let i = 0; i < 8; i++) { c.fillStyle = i % 2 ? '#FFFFFF' : '#3FA34D'; c.fillRect(x + 6 + i * (w - 12) / 8, y + h * 0.52, (w - 12) / 8, 8); }
+  }
+  if (b.kind === 'museum') { c.fillStyle = '#5A4632'; c.font = '700 10px "M PLUS Rounded 1c", sans-serif'; c.textAlign = 'center'; c.fillText('はくぶつかん', x + w / 2, y + h * 0.3); }
+  // 窓
+  const winLit = night;
+  c.fillStyle = winLit ? '#FFE3A0' : '#9FD4EC';
+  if (b.kind !== 'museum') { c.fillRect(x + 10, y + h * 0.55, 16, 14); c.fillRect(x + w - 26, y + h * 0.55, 16, 14); c.fillStyle = pal.trim; c.fillRect(x + 17, y + h * 0.55, 2, 14); c.fillRect(x + w - 19, y + h * 0.55, 2, 14); }
+  // ドア
+  const dx = b.door.x * T + 16;
+  c.fillStyle = pal.trim; roundRect(c, dx - 9, y + h - 26, 18, 26, 6);
+  c.fillStyle = '#E3C060'; c.beginPath(); c.arc(dx + 5, y + h - 12, 1.8, 0, 7); c.fill();
+  if (b.kind === 'house') { c.fillStyle = '#FFFFFF'; c.font = '700 9px "M PLUS Rounded 1c", sans-serif'; c.textAlign = 'center'; c.fillText(G.name, x + w / 2, y + h * 0.3 + 2); }
+  if (b.kind === 'vhouse') { const v = VILLAGERS.find(v => v.id === b.vid); c.fillStyle = '#FFFFFF'; c.font = '700 9px "M PLUS Rounded 1c", sans-serif'; c.textAlign = 'center'; c.fillText(v.name, x + w / 2, y + h * 0.3 + 2); }
+}
+function drawRock(c, rk, x, y) {
+  const sh = rk.shakeT ? Math.sin(rk.shakeT * 60) * 2 : 0;
+  c.fillStyle = 'rgba(0,0,0,.18)'; c.beginPath(); c.ellipse(x, y + 10, 15, 5, 0, 0, 7); c.fill();
+  c.fillStyle = '#8E949C'; c.beginPath(); c.ellipse(x + sh, y, 15, 13, 0, 0, 7); c.fill();
+  c.fillStyle = '#B4BAC2'; c.beginPath(); c.ellipse(x - 4 + sh, y - 4, 7, 5, 0, 0, 7); c.fill();
+  c.fillStyle = 'rgba(0,0,0,.12)'; c.beginPath(); c.ellipse(x + 5 + sh, y + 5, 6, 4, 0, 0, 7); c.fill();
+}
+
+function draw() {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = player.scene === 'room' ? '#3A2E24' : '#3D9BD0';
+  ctx.fillRect(0, 0, cv.width, cv.height);
+  if (!G) return;
+  const d = now();
+  const L = lightFor(d.getHours(), d.getMinutes());
+  const night = L.a > 0.3;
+
+  if (player.scene === 'room') { drawRoom(); drawLight(L, true); return; }
+
+  // カメラ
+  const vw = VW / zoom, vh = VH / zoom;
+  camX = clamp(player.x - vw / 2, 0, MW * T - vw);
+  camY = clamp(player.y - vh / 2 - 10, 0, MH * T - vh);
+  ctx.setTransform(dpr * zoom, 0, 0, dpr * zoom, -camX * dpr * zoom, -camY * dpr * zoom);
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(terrainCanvas, 0, 0);
+
+  const x0 = Math.floor(camX / T) - 2, y0 = Math.floor(camY / T) - 2, x1 = Math.ceil((camX + vw) / T) + 2, y1 = Math.ceil((camY + vh) / T) + 3;
+  // 波うちぎわ
+  ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 2;
+  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+    if (tileAt(x, y) !== SEA) continue;
+    if (!isLand(tileAt(x, y - 1)) && !isLand(tileAt(x, y + 1)) && !isLand(tileAt(x - 1, y)) && !isLand(tileAt(x + 1, y))) {
+      if ((x * 7 + y * 13) % 11 === 0) { const a = 0.25 + Math.sin(tAll * 1.5 + x) * 0.2; ctx.strokeStyle = `rgba(255,255,255,${a})`; ctx.beginPath(); ctx.moveTo(x * T + 6, y * T + 16); ctx.quadraticCurveTo(x * T + 12, y * T + 12, x * T + 18, y * T + 16); ctx.stroke(); }
+      continue;
+    }
+    const off = Math.sin(tAll * 2 + x * 0.7 + y) * 3;
+    ctx.strokeStyle = `rgba(255,255,255,${0.35 + Math.sin(tAll * 2 + x) * 0.2})`;
+    ctx.beginPath(); ctx.arc(x * T + 16, y * T + 16 + off * 0.3, 12, 0, Math.PI * 2); ctx.stroke();
+  }
+  // 川のきらめき
+  ctx.fillStyle = 'rgba(255,255,255,.45)';
+  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) if (tileAt(x, y) === RIVER) { const k = (tAll * 20 + y * 16) % T; ctx.fillRect(x * T + 8 + ((x * 5) % 12), y * T + k, 6, 1.5); }
+  // 魚影
+  for (const s of shadows) {
+    const sz = 4 + s.f.size * 2.2;
+    ctx.save(); ctx.translate(s.x, s.y); ctx.rotate(s.dir);
+    ctx.fillStyle = 'rgba(20,40,60,.45)'; ctx.beginPath(); ctx.ellipse(0, 0, sz, sz * 0.55, 0, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-sz, 0); ctx.lineTo(-sz - 5, -3 + Math.sin(s.t * 8) * 1.5); ctx.lineTo(-sz - 5, 3 + Math.sin(s.t * 8) * 1.5); ctx.fill();
+    ctx.restore();
+  }
+  // 地面にあるもの
+  for (const f of W.flowers) {
+    if (f.x < x0 || f.x > x1 || f.y < y0 || f.y > y1) continue;
+    const fx = f.x * T + 16, fy = f.y * T + 18;
+    ctx.fillStyle = '#4E9A38'; ctx.fillRect(fx - 1, fy - 2, 2, 8);
+    ctx.fillStyle = f.color;
+    for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2 + Math.sin(tAll + f.ph) * 0.1; ctx.beginPath(); ctx.arc(fx + Math.cos(a) * 4, fy - 4 + Math.sin(a) * 4, 3, 0, 7); ctx.fill(); }
+    ctx.fillStyle = '#F7D24A'; ctx.beginPath(); ctx.arc(fx, fy - 4, 2, 0, 7); ctx.fill();
+  }
+  for (const w of G.day.weeds) { const x = w.x * T + 16, y = w.y * T + 20; ctx.strokeStyle = '#4F9A40'; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; for (const a of [-0.5, 0, 0.5]) { ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + a * 6, y - 6, x + a * 12, y - 10); ctx.stroke(); } }
+  for (const dg of G.day.digs) {
+    const x = dg.x * T + 16, y = dg.y * T + 18;
+    if (dg.kind === 'money') { const s = 0.5 + Math.sin(tAll * 4) * 0.5; ctx.fillStyle = `rgba(255,240,150,${0.4 + s * 0.5})`; for (const [dx, dy] of [[-6, -2], [5, 3], [0, -6]]) { ctx.beginPath(); ctx.arc(x + dx, y + dy, 1.5 + s * 1.5, 0, 7); ctx.fill(); } }
+    else { ctx.strokeStyle = 'rgba(90,60,30,.7)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - 5, y - 4); ctx.lineTo(x + 5, y + 4); ctx.moveTo(x + 5, y - 4); ctx.lineTo(x - 5, y + 4); ctx.moveTo(x - 7, y); ctx.lineTo(x + 7, y); ctx.stroke(); }
+  }
+  for (const dr of G.day.drops) {
+    const x = dr.x * T + 4, y = dr.y * T + 6;
+    ctx.save(); ctx.translate(x, y); drawIcon(ctx, dr.id, 24); ctx.restore();
+  }
+
+  // 高さのあるものを 奥から順に
+  const objs = [];
+  for (const tr of W.trees) if (tr.x >= x0 && tr.x <= x1 && tr.y >= y0 && tr.y <= y1 + 2) objs.push({ y: tr.y * T + 28, fn: () => drawTree(ctx, tr, tr.x * T + 16, tr.y * T + 18) });
+  for (const rk of W.rocks) if (rk.x >= x0 && rk.x <= x1 && rk.y >= y0 && rk.y <= y1) objs.push({ y: rk.y * T + 24, fn: () => drawRock(ctx, rk, rk.x * T + 16, rk.y * T + 16) });
+  for (const b of W.buildings) if (b.x + b.w >= x0 && b.x <= x1 && b.y + b.h >= y0 && b.y <= y1) objs.push({ y: (b.y + b.h) * T, fn: () => drawBuilding(ctx, b, night) });
+  for (const s of villagerStates) if (s.out) objs.push({ y: s.y, fn: () => drawChar(ctx, s.x, s.y, { type: s.v.species, face: s.face, walk: s.walk, moving: s.moving, body: s.v.body, inner: s.v.inner, shirt: s.v.shirt }) });
+  const shirt = ITEMS[G.shirt] || { color: G.shirt };
+  objs.push({ y: player.y, fn: () => {
+    drawChar(ctx, player.x, player.y, { type: 'human', face: player.face, walk: player.walk, moving: player.moving, hair: G.hair, shirt: shirt.color, stripe: shirt.stripe });
+    drawHeldTool(ctx, player.x, player.y, player.face, G.tool, player.act, player.actT);
+  } });
+  for (const b of bugs) objs.push({ y: b.b.where === 'fly' ? b.y + 30 : b.y, fn: () => drawBugShape(ctx, b.b, b.x, b.y, 1, b.t * 12) });
+  objs.sort((a, b) => a.y - b.y);
+  for (const o of objs) o.fn();
+
+  // 名前の吹き出し（近くの住人）
+  for (const s of villagerStates) if (s.out && Math.hypot(s.x - player.x, s.y - player.y) < 60) {
+    ctx.font = '700 10px "M PLUS Rounded 1c", sans-serif'; ctx.textAlign = 'center';
+    const w = ctx.measureText(s.v.name).width + 12;
+    ctx.fillStyle = s.v.color; roundRect(ctx, s.x - w / 2, s.y - 62, w, 16, 8);
+    ctx.fillStyle = '#fff'; ctx.fillText(s.v.name, s.x, s.y - 50);
+  }
+  // 釣り糸とウキ
+  if (fishing) {
+    const F = fishing;
+    const [dx, dy] = DIRS[player.face];
+    const hx = player.x + dx * 30, hy = player.y - 16 + dy * 10;
+    ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 0.8;
+    const sink = F.dip ? F.dip * 8 : 0;
+    ctx.beginPath(); ctx.moveTo(hx, hy); ctx.quadraticCurveTo((hx + F.x) / 2, Math.max(hy, F.y) + 6, F.x, F.y + sink); ctx.stroke();
+    const bob = Math.sin(F.t * 3) * 1.2 + sink;
+    ctx.strokeStyle = `rgba(255,255,255,${0.5 - (F.t % 1.5) / 3})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(F.x, F.y + 2, 6 + (F.t % 1.5) * 8, 2 + (F.t % 1.5) * 3, 0, 0, 7); ctx.stroke();
+    if (F.state !== 'bite') {
+      ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.arc(F.x, F.y + bob, 4, 0, Math.PI); ctx.fill();
+      ctx.fillStyle = '#E0413A'; ctx.beginPath(); ctx.arc(F.x, F.y + bob, 4, Math.PI, 0); ctx.fill();
+    }
+  }
+  for (const p of particles) { ctx.globalAlpha = Math.max(0, p.life / p.max); ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, p.s, p.s); }
+  ctx.globalAlpha = 1;
+
+  drawLight(L, false, night);
+  // 雨
+  if (rain.length) {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = 'rgba(40,60,90,.18)'; ctx.fillRect(0, 0, VW, VH);
+    ctx.strokeStyle = 'rgba(210,225,245,.55)'; ctx.lineWidth = 1;
+    ctx.beginPath(); for (const r of rain) { ctx.moveTo(r.x, r.y); ctx.lineTo(r.x - 3, r.y + 14); } ctx.stroke();
+  }
+  // スティック
+  if (joy.on) {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(joy.ox, joy.oy, 44, 0, 7); ctx.stroke();
+    const dx = joy.x - joy.ox, dy = joy.y - joy.oy, l = Math.hypot(dx, dy), m = Math.min(l, 44);
+    ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.beginPath(); ctx.arc(joy.ox + (l ? dx / l * m : 0), joy.oy + (l ? dy / l * m : 0), 18, 0, 7); ctx.fill();
+  }
+}
+function drawLight(L, indoor, night) {
+  if (L.a <= 0.01) return;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.globalAlpha = indoor ? L.a * 0.3 : L.a;
+  ctx.fillStyle = L.color; ctx.fillRect(0, 0, VW, VH);
+  ctx.globalAlpha = 1;
+  if (!indoor && night) {
+    // 窓と 広場の 明かり
+    ctx.setTransform(dpr * zoom, 0, 0, dpr * zoom, -camX * dpr * zoom, -camY * dpr * zoom);
+    ctx.globalCompositeOperation = 'lighter';
+    const glow = (x, y, r, a) => { const g = ctx.createRadialGradient(x, y, 2, x, y, r); g.addColorStop(0, `rgba(255,210,130,${a})`); g.addColorStop(1, 'rgba(255,210,130,0)'); ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2); };
+    for (const b of W.buildings) glow(b.door.x * T + 16, (b.y + b.h) * T - 10, 60, 0.35);
+    glow(W.plaza.x * T + 16, W.plaza.y * T + 16, 90, 0.25);
+    glow(player.x, player.y - 16, 70, 0.12);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+}
+function drawRoom() {
+  const rw = ROOM_W * T, rh = ROOM_H * T;
+  const z = clamp(Math.min(VW / (rw + 40), VH / (rh + 120)), 1, 2.8);
+  const ox = (VW / z - rw) / 2, oy = (VH / z - rh) / 2 + 10;
+  ctx.setTransform(dpr * z, 0, 0, dpr * z, ox * dpr * z, oy * dpr * z);
+  // 壁
+  ctx.fillStyle = '#F6E7C6'; ctx.fillRect(0, 0, rw, 2 * T);
+  ctx.fillStyle = 'rgba(200,170,120,.35)'; for (let x = 0; x < rw; x += 16) ctx.fillRect(x, 0, 2, 2 * T);
+  ctx.fillStyle = '#C9A064'; ctx.fillRect(0, 2 * T - 6, rw, 6);
+  // 窓
+  const h = now().getHours();
+  ctx.fillStyle = h >= 6 && h < 18 ? '#9FD4EC' : '#2A3A6A'; roundRect(ctx, rw - 90, 12, 60, 36, 6);
+  ctx.fillStyle = '#FFFFFF'; ctx.fillRect(rw - 61, 12, 2, 36); ctx.fillRect(rw - 90, 29, 60, 2);
+  // 床
+  for (let y = 2; y < ROOM_H; y++) for (let x = 0; x < ROOM_W; x++) { ctx.fillStyle = (x + y) % 2 ? '#D8B484' : '#CFA877'; ctx.fillRect(x * T, y * T, T, T); }
+  ctx.fillStyle = 'rgba(0,0,0,.08)'; for (let y = 2; y < ROOM_H; y++) ctx.fillRect(0, y * T, rw, 1);
+  // 入口マット
+  ctx.fillStyle = '#7DBF6A'; roundRect(ctx, 4 * T + 2, (ROOM_H - 1) * T + 18, T - 4, 12, 4);
+  // 作業台
+  ctx.fillStyle = '#9A6A3E'; ctx.fillRect(1 * T + 2, 2 * T + 8, T - 4, 16); ctx.fillStyle = '#7A5230'; ctx.fillRect(1 * T + 4, 2 * T + 24, 4, 8); ctx.fillRect(2 * T - 8, 2 * T + 24, 4, 8);
+  ctx.fillStyle = '#9AA0A8'; ctx.fillRect(1 * T + 8, 2 * T + 4, 10, 4);
+  const objs = [];
+  for (const it of G.room) objs.push({ y: it.y * T + 30, fn: () => drawFurniture(ctx, ITEMS[it.id], it.x * T, it.y * T, T) });
+  const shirt = ITEMS[G.shirt] || { color: G.shirt };
+  objs.push({ y: player.y, fn: () => drawChar(ctx, player.x, player.y, { type: 'human', face: player.face, walk: player.walk, moving: player.moving, hair: G.hair, shirt: shirt.color, stripe: shirt.stripe }) });
+  objs.sort((a, b) => a.y - b.y).forEach(o => o.fn());
+  // 床に「家具を置こう」
+  if (!G.room.length) { ctx.fillStyle = 'rgba(90,70,50,.55)'; ctx.font = '700 11px "M PLUS Rounded 1c", sans-serif'; ctx.textAlign = 'center'; ctx.fillText('ポケットの 家具を 置いてみよう', rw / 2, 5 * T); }
+}
+
+// =============== ループ ===============
+let last = performance.now();
+function loop(ts) {
+  const dt = Math.min(0.05, (ts - last) / 1000);
+  last = ts;
+  if (G) update(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+document.addEventListener('visibilitychange', () => { last = performance.now(); if (document.hidden) save(); });
+window.addEventListener('pagehide', save);
+
+// =============== タイトル ===============
+const HAIRS = ['#3A2A20', '#8A5A34', '#E0B060', '#D8483A', '#4F6ED6'];
+const SHIRT_START = ['#E0554A', '#4F86D6', '#F2C84A', '#5DAE62', '#F29AB8'];
+function titleScreen() {
+  const s = loadSave();
+  const p = $('title-panel');
+  p.innerHTML = `<h1 class="logo">こもれび島ぐらし<small>ISLAND LIFE</small></h1>
+    <p>本物の時間と季節が流れる、どうぶつたちの島。</p>
+    <div class="actions" id="t-act"></div>`;
+  const a = $('t-act');
+  if (s) {
+    const b = document.createElement('button'); b.className = 'btn'; b.type = 'button'; b.textContent = `つづきから（${s.island}島）`;
+    b.addEventListener('click', () => startGame(s));
+    a.appendChild(b);
+  }
+  const n = document.createElement('button'); n.className = s ? 'btn ghost' : 'btn'; n.type = 'button'; n.textContent = 'はじめから';
+  n.addEventListener('click', () => s ? confirmNew() : newGameForm());
+  a.appendChild(n);
+}
+function confirmNew() {
+  const p = $('title-panel');
+  p.innerHTML = `<h2>はじめから あそぶ？</h2><p>いまの 島の データは 消えてしまいます。</p><div class="actions"><button class="btn" type="button" id="cn-y">はじめから</button><button class="btn ghost" type="button" id="cn-n">やめる</button></div>`;
+  $('cn-y').addEventListener('click', newGameForm);
+  $('cn-n').addEventListener('click', titleScreen);
+}
+function newGameForm() {
+  const p = $('title-panel');
+  let hair = HAIRS[0], shirt = SHIRT_START[0];
+  p.innerHTML = `<h2>あなたのことを 教えてね</h2>
+    <form id="nf" style="display:grid;gap:14px">
+      <label class="field">なまえ<input id="nf-name" maxlength="8" autocomplete="off" placeholder="たとえば そうた" required></label>
+      <label class="field">島のなまえ<input id="nf-island" maxlength="8" autocomplete="off" placeholder="こもれび" value="こもれび"></label>
+      <div class="field">かみの色<div class="swatches" id="nf-hair"></div></div>
+      <div class="field">ふくの色<div class="swatches" id="nf-shirt"></div></div>
+      <button class="btn" type="submit">島へ 出発！</button>
+    </form>`;
+  const sw = (box, list, getSel, setSel) => {
+    box.innerHTML = '';
+    for (const c of list) { const b = document.createElement('button'); b.type = 'button'; b.className = 'sw' + (getSel() === c ? ' on' : ''); b.style.background = c; b.setAttribute('aria-label', c); b.addEventListener('click', () => { setSel(c); sw(box, list, getSel, setSel); }); box.appendChild(b); }
+  };
+  sw($('nf-hair'), HAIRS, () => hair, c => hair = c);
+  sw($('nf-shirt'), SHIRT_START, () => shirt, c => shirt = c);
+  $('nf').addEventListener('submit', e => {
+    e.preventDefault();
+    const name = $('nf-name').value.trim() || 'あなた';
+    const island = $('nf-island').value.trim().replace(/島$/, '') || 'こもれび';
+    const s = defaultSave({ name, island, hair, shirt });
+    startGame(s, true);
+  });
+  $('nf-name').focus();
+}
+function startGame(s, fresh) {
+  G = s;
+  if (!G.shirt) G.shirt = SHIRT_START[0];
+  W = genWorld(G.seed);
+  dailyReset();
+  buildTerrain();
+  initVillagers();
+  if (fresh || !G.x) {
+    const h = W.buildings.find(b => b.kind === 'house');
+    G.x = h.door.x * T + 16; G.y = (h.door.y + 1) * T + 12; G.face = 'down';
+  }
+  player.x = G.x; player.y = G.y; player.face = G.face || 'down'; player.scene = 'island';
+  if (blockedAt(player.x, player.y)) { const h = W.buildings.find(b => b.kind === 'house'); player.x = h.door.x * T + 16; player.y = (h.door.y + 1) * T + 12; }
+  $('title').hidden = true; $('hud').hidden = false; $('controls').hidden = false;
+  buildToolbar(); updateHud(); save();
+  const sp = { name: NPC.marin.name, color: NPC.marin.color, voice: NPC.marin.voice };
+  if (fresh) {
+    G.met = true;
+    say(sp, [
+      `${G.name}さん、${G.island}島へ ようこそ〜！ よろず屋の マリンです！`,
+      'この島では、本物と おなじ 時間が 流れているんです。朝は朝、夜は夜。季節も かわりますよ〜。',
+      '画面を なぞると 歩けます。Aボタンで 話したり、ひろったり、木を ゆらしたり できます。',
+      '下の 道具ボタンで あみや つりざおに もちかえてね。虫や魚は はくぶつかんの ゲンブさんが よろこびますよ〜。',
+      'つかまえたものは よろず屋で 売れます。家に 帰れば DIYも できます。それでは、島ぐらしを 楽しんで〜！',
+    ]);
+  } else {
+    const hr = now().getHours();
+    toast(`${hr < 11 ? 'おはよう' : hr < 18 ? 'こんにちは' : 'こんばんは'}、${G.name}さん！`);
+  }
+}
+titleScreen();
+requestAnimationFrame(loop);
+})();
+</script>
