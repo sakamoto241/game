@@ -203,8 +203,45 @@
     box-shadow: 0 8px 24px rgba(0,0,0,.2);
     transition: opacity .3s;
   }
+  /* ---- 歩道とお客さん ---- */
+  .street {
+    position: relative;
+    height: 108px;
+    overflow: hidden;
+    background:
+      repeating-linear-gradient(90deg, var(--line) 0 2px, transparent 2px 46px) 0 100% / 100% 18px no-repeat,
+      linear-gradient(transparent calc(100% - 18px), var(--soft) 0);
+    border-top: 3px solid var(--line);
+  }
+  .person {
+    position: absolute; left: 0; bottom: 8px;
+    width: 34px; height: 60px;
+    will-change: transform;
+  }
+  .person svg { display: block; width: 34px; height: 60px; overflow: visible; }
+  .person.left svg { transform: scaleX(-1); }
+  .person .leg { transform-box: fill-box; transform-origin: 50% 0; }
+  .person.walking .leg.l { animation: legl .36s ease-in-out infinite alternate; }
+  .person.walking .leg.r { animation: legl .36s ease-in-out infinite alternate-reverse; }
+  .person.walking svg .bodyg { animation: step .18s ease-in-out infinite alternate; }
+  @keyframes legl { from { transform: rotate(-22deg); } to { transform: rotate(22deg); } }
+  @keyframes step { to { transform: translateY(-1.5px); } }
+  .person.special { cursor: pointer; }
+  .bubble {
+    position: absolute; bottom: 64px; left: 50%;
+    transform: translateX(-50%);
+    background: var(--panel); color: var(--text);
+    border: 1px solid var(--line); border-radius: 10px;
+    padding: 2px 5px;
+    font-weight: 700; font-size: 13px; line-height: 20px; white-space: nowrap;
+    display: flex; align-items: center; gap: 2px;
+    animation: popin .25s ease-out;
+  }
+  .bubble svg { width: 26px; height: 22px; display: block; }
+
   @media (prefers-reduced-motion: reduce) {
-    .guest, .float, .shelf .pop-in { animation: none; }
+    .guest, .float, .shelf .pop-in, .bubble { animation: none; }
+    .person.walking .leg.l, .person.walking .leg.r, .person.walking svg .bodyg { animation: none; }
   }
 </style>
 
@@ -249,6 +286,7 @@
           <div class="shelf" id="shelf-2"></div>
         </div>
         <div class="counter"></div>
+        <div class="street" id="street" aria-hidden="true"></div>
         <p class="empty-note" id="empty-note">たなは まだ からっぽ。まずは パンを焼こう</p>
         <button class="guest" type="button" id="guest" hidden>おとくいさんが来た！</button>
       </div>
@@ -422,17 +460,140 @@
     guestTimer = setTimeout(() => {
       if (S.total < 30) return scheduleGuest();
       $('guest').hidden = false;
-      guestHide = setTimeout(() => { $('guest').hidden = true; scheduleGuest(); }, 9000);
+      spawnGuestPerson();
+      guestHide = setTimeout(() => { $('guest').hidden = true; sendGuestAway(false); scheduleGuest(); }, 9000);
     }, 40000 + Math.random() * 50000);
   }
   function serveGuest() {
     clearTimeout(guestHide);
+    if ($('guest').hidden) return;
     $('guest').hidden = true;
+    sendGuestAway(true);
     const bonus = Math.max(50, perSec() * 30, tapValue() * 20);
     const before = rankIndex();
     earn(bonus);
     toast(`おとくいさんが まとめ買い！ +¥${fmt(bonus)}`);
     render(); checkRank(before); scheduleGuest();
+  }
+
+  // ---- お店の前を歩くお客さん ----
+  const CLOTH = ['#E07A5F', '#3D7EA6', '#81B29A', '#E9B949', '#9C6ADE', '#E56B9E', '#4FA3A5', '#7D8C3A'];
+  const HAIR = ['#2B2B2B', '#6B4226', '#C98B3B', '#9A9A9A', '#3B2A5A', '#A8472A'];
+  const SKIN = ['#F5D0B0', '#E8B48E', '#C68A62', '#8D5A3B'];
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const WALK_SPEED = 70; // 1びょうに すすむ ピクセル
+
+  function personSVG(special) {
+    const cloth = special ? '#F2C14E' : pick(CLOTH);
+    const hat = special
+      ? '<path d="M8 6l2-5 2.5 3L14 0l1.5 4L18 1l2 5z" fill="#F2C14E" stroke="#B8860B" stroke-width=".8"/>'
+      : (Math.random() < 0.3 ? `<rect x="6" y="4" width="16" height="3" rx="1.5" fill="${pick(CLOTH)}"/><rect x="9" y="1" width="10" height="5" rx="2" fill="${pick(CLOTH)}"/>` : '');
+    return `<svg viewBox="0 0 28 50" aria-hidden="true">
+      <g class="leg l"><rect x="9" y="33" width="4" height="15" rx="2" fill="#3A3F4A"/></g>
+      <g class="leg r"><rect x="15" y="33" width="4" height="15" rx="2" fill="#3A3F4A"/></g>
+      <g class="bodyg">
+        <rect x="6" y="19" width="16" height="17" rx="6" fill="${cloth}"/>
+        <circle cx="14" cy="13" r="7" fill="${pick(SKIN)}"/>
+        <path d="M7 12a7 7 0 0 1 14 0c-3-2.5-9-2.5-14 0z" fill="${pick(HAIR)}"/>
+        <circle cx="17.5" cy="13" r="1.1" fill="#222"/>
+        ${hat}
+      </g></svg>`;
+  }
+
+  function walk(el, from, to) {
+    el.classList.toggle('left', to < from);
+    el.classList.add('walking');
+    const duration = reduceMotion ? 0 : Math.abs(to - from) / WALK_SPEED * 1000;
+    const a = el.animate(
+      [{ transform: `translateX(${from}px)` }, { transform: `translateX(${to}px)` }],
+      { duration, fill: 'forwards', easing: 'linear' });
+    return a.finished.then(() => { el.classList.remove('walking'); el.dataset.x = to; });
+  }
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+
+  function showBubble(el, html, ms) {
+    const b = document.createElement('div');
+    b.className = 'bubble'; b.innerHTML = html;
+    el.appendChild(b);
+    return wait(ms).then(() => b.remove());
+  }
+
+  function boughtBread() {
+    // 棚にあるパンから 1つえらぶ（まだ棚が空なら 焼きたてのコッペパン）
+    const owned = BREADS.filter(b => S.owned[b.id] > 0);
+    if (!owned.length) return BREADS[0];
+    const total = owned.reduce((n, b) => n + S.owned[b.id], 0);
+    let r = Math.random() * total;
+    for (const b of owned) { r -= S.owned[b.id]; if (r < 0) return b; }
+    return owned[0];
+  }
+
+  function spawnCustomer() {
+    const street = $('street');
+    const w = street.clientWidth;
+    if (!w || street.querySelectorAll('.person:not(.special)').length >= 6) return;
+    const el = document.createElement('div');
+    el.className = 'person';
+    el.innerHTML = personSVG(false);
+    street.appendChild(el);
+
+    const fromLeft = Math.random() < 0.5;
+    const start = fromLeft ? -44 : w + 8, end = fromLeft ? w + 8 : -44;
+    const buyer = S.total > 0;
+    // 買う人は お店の前で立ちどまる。まだ売上ゼロなら ちらっと見て 通りすぎる
+    const stop = w * (0.15 + Math.random() * 0.7);
+    walk(el, start, stop)
+      .then(() => {
+        if (buyer) {
+          const b = boughtBread();
+          return showBubble(el, `<svg viewBox="0 0 48 40"><use href="#i-${b.id}"/></svg>`, 1300);
+        }
+        return showBubble(el, '？', 900);
+      })
+      .then(() => walk(el, stop, end))
+      .then(() => el.remove())
+      .catch(() => el.remove());
+  }
+
+  function customerLoop() {
+    const ps = perSec();
+    const base = ps <= 0 ? (S.total > 0 ? 3500 : 6000) : Math.max(900, 3200 / (1 + Math.log10(ps + 1)));
+    setTimeout(() => {
+      if (!document.hidden) spawnCustomer();
+      customerLoop();
+    }, base * (0.6 + Math.random() * 0.8));
+  }
+
+  let guestEl = null;
+  function spawnGuestPerson() {
+    const street = $('street');
+    const w = street.clientWidth;
+    if (!w) return;
+    guestEl = document.createElement('div');
+    guestEl.className = 'person special';
+    guestEl.innerHTML = personSVG(true);
+    guestEl.title = 'おとくいさん';
+    guestEl.addEventListener('click', serveGuest);
+    street.appendChild(guestEl);
+    walk(guestEl, w + 8, w * 0.5).then(() => {
+      if (guestEl && !guestEl.dataset.leaving) showBubble(guestEl, '！', 7000);
+    }).catch(() => {});
+  }
+  function sendGuestAway(happy) {
+    const el = guestEl; guestEl = null;
+    if (!el) return;
+    el.dataset.leaving = '1';
+    el.querySelectorAll('.bubble').forEach(b => b.remove());
+    el.getAnimations().forEach(a => a.commitStyles && a.commitStyles());
+    el.getAnimations().forEach(a => a.cancel());
+    const m = /translateX\((-?[\d.]+)px\)/.exec(el.style.transform || '');
+    const x = m ? parseFloat(m[1]) : $('street').clientWidth * 0.5;
+    const go = () => walk(el, x, -44).then(() => el.remove()).catch(() => el.remove());
+    if (happy) {
+      const b = boughtBread();
+      showBubble(el, `<svg viewBox="0 0 48 40"><use href="#i-${b.id}"/></svg>×10`, 1200).then(go);
+    } else go();
   }
 
   // ---- おしらせ ----
@@ -619,6 +780,8 @@
     document.addEventListener('visibilitychange', save);
     window.addEventListener('pagehide', save);
     scheduleGuest();
+    customerLoop();
+    setTimeout(spawnCustomer, 600);
 
     if (window.claude?.hot && typeof window.claude.hot.snapshot === 'function') {
       window.claude.hot.snapshot(() => ({ state: S }));
