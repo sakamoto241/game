@@ -1,5 +1,5 @@
-<title>月下の弓</title>
-<meta name="description" content="止まると矢を撃つ、和風の妖怪退治ローグライク">
+<title>月下の忍</title>
+<meta name="description" content="止まると手裏剣を投げる、和風の妖怪退治ローグライク">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
@@ -105,10 +105,10 @@
 
   <div class="overlay" id="start">
     <div class="card">
-      <h1>月下の弓</h1>
-      <p>妖怪があふれる夜の神社。<br>十の間を抜けて、大天狗を討て。</p>
+      <h1>月下の忍</h1>
+      <p>妖怪があふれる夜の神社に、ひとりの忍が 忍びこむ。<br>十の間を抜けて、大天狗を討て。</p>
       <div class="how">
-        <b>動く</b>と よける。<b>止まる</b>と 近くの妖怪へ 矢を撃つ。<br>
+        <b>動く</b>と よける。<b>止まる</b>と 近くの妖怪へ 手裏剣を投げる。<br>
         スマホ：画面を なぞって移動<br>
         PC：WASD か 矢印キー
       </div>
@@ -132,7 +132,7 @@
     </div>
   </div>
 </div>
-<p class="hint">止まっている間だけ 矢を撃つ。敵の弾は 動いて よけよう。</p>
+<p class="hint">止まっている間だけ 手裏剣を投げる。敵の弾は 動いて よけよう。</p>
 
 <script>
 (() => {
@@ -148,15 +148,15 @@
 
   // ---------- 技（レベルアップで選ぶ） ----------
   const SKILLS = [
-    { id: 'multi',  k: '連', name: '連射の型', desc: '矢を もう1回 つづけて撃つ',            max: 3, apply: s => s.multi++ },
-    { id: 'front',  k: '二', name: '二本矢',   desc: '前に撃つ矢が 1本ふえる',               max: 3, apply: s => s.front++ },
-    { id: 'diag',   k: '扇', name: '扇撃ち',   desc: 'ななめにも 矢を撃つ',                  max: 2, apply: s => s.diag++ },
-    { id: 'bounce', k: '跳', name: '跳ね矢',   desc: '当たった矢が 近くの妖怪へ 跳ねる',     max: 3, apply: s => s.bounce++ },
-    { id: 'pierce', k: '貫', name: '貫き矢',   desc: '矢が 妖怪を 貫いて 飛んでいく',        max: 2, apply: s => s.pierce++ },
-    { id: 'fire',   k: '火', name: '火矢',     desc: '当たった妖怪を 燃やす',                max: 1, apply: s => s.fire = true },
+    { id: 'multi',  k: '連', name: '連投の術',   desc: '手裏剣を もう1回 つづけて投げる',          max: 3, apply: s => s.multi++ },
+    { id: 'front',  k: '双', name: '双手裏剣',   desc: '前に投げる手裏剣が 1枚ふえる',             max: 3, apply: s => s.front++ },
+    { id: 'diag',   k: '扇', name: '扇投げ',     desc: 'ななめにも 手裏剣を投げる',                max: 2, apply: s => s.diag++ },
+    { id: 'bounce', k: '跳', name: '跳ね手裏剣', desc: '当たった手裏剣が 近くの妖怪へ 跳ねる',     max: 3, apply: s => s.bounce++ },
+    { id: 'pierce', k: '貫', name: '貫き手裏剣', desc: '手裏剣が 妖怪を 貫いて 飛んでいく',        max: 2, apply: s => s.pierce++ },
+    { id: 'fire',   k: '火', name: '火遁の術',   desc: '手裏剣が 炎をまとい、当たった妖怪を 燃やす', max: 1, apply: s => s.fire = true },
     { id: 'ofuda',  k: '札', name: '守り札',   desc: 'お札が 身のまわりを 回り、妖怪と弾を 払う', max: 3, apply: s => s.ofuda++ },
-    { id: 'dmg',    k: '剛', name: '剛弓',     desc: '矢の 威力 +30%',                       max: 5, apply: s => s.dmg *= 1.3 },
-    { id: 'speed',  k: '速', name: '早撃ち',   desc: '矢を撃つ 速さ +25%',                   max: 4, apply: s => s.cd *= 0.8 },
+    { id: 'dmg',    k: '剛', name: '剛腕',     desc: '手裏剣の 威力 +30%',                       max: 5, apply: s => s.dmg *= 1.3 },
+    { id: 'speed',  k: '速', name: '早業',     desc: '手裏剣を投げる 速さ +25%',                   max: 4, apply: s => s.cd *= 0.8 },
     { id: 'hp',     k: '鍛', name: '鍛錬',     desc: '最大体力 +30、体力も 30 回復',         max: 5, apply: (s, p) => { p.maxHp += 30; p.hp = Math.min(p.maxHp, p.hp + 30); } },
     { id: 'heal',   k: '癒', name: 'おにぎり', desc: '体力を 半分 回復する',                 max: 99, apply: (s, p) => { p.hp = Math.min(p.maxHp, p.hp + p.maxHp / 2); } },
   ];
@@ -181,7 +181,7 @@
   function newGame() {
     G = {
       room: 1, level: 1, xp: 0, pendingLv: 0,
-      p: { x: GX, y: 530, r: 11, hp: 100, maxHp: 100, inv: 0, cd: 0.4, face: -Math.PI / 2, moving: false },
+      p: { x: GX, y: 530, r: 11, hp: 100, maxHp: 100, inv: 0, cd: 0.4, face: -Math.PI / 2, moving: false, throwT: 0, hand: 1 },
       s: { dmg: 20, cd: 0.62, multi: 1, front: 1, diag: 0, bounce: 0, pierce: 0, fire: false, ofuda: 0 },
       taken: {},
       arrows: [], enemies: [], bullets: [], orbs: [], fx: [], texts: [], obstacles: [], volley: [],
@@ -342,11 +342,12 @@
   }
   function shoot(angle) {
     const s = G.s, p = G.p;
+    p.throwT = 0.14; p.hand *= -1;
     const mk = (a, off) => {
       const nx = -Math.sin(a), ny = Math.cos(a);
       G.arrows.push({
         x: p.x + Math.cos(a) * 12 + nx * off, y: p.y + Math.sin(a) * 12 + ny * off,
-        vx: Math.cos(a) * 480, vy: Math.sin(a) * 480, a,
+        vx: Math.cos(a) * 440, vy: Math.sin(a) * 440, a, spin: rand(0, 6),
         dmg: s.dmg, pierce: s.pierce, bounce: s.bounce, hit: new Set(), life: 1.4,
       });
     };
@@ -474,6 +475,7 @@
     g.banner = Math.max(0, g.banner - dt);
     g.shake = Math.max(0, g.shake - dt);
     p.inv = Math.max(0, p.inv - dt);
+    p.throwT = Math.max(0, p.throwT - dt);
     p.cd -= dt;
 
     // 移動
@@ -497,9 +499,9 @@
     for (const v of g.volley) { v.t -= dt; if (v.t <= 0) shoot(v.angle); }
     g.volley = g.volley.filter(v => v.t > 0);
 
-    // 矢
+    // 手裏剣
     for (const a of g.arrows) {
-      a.x += a.vx * dt; a.y += a.vy * dt; a.life -= dt;
+      a.x += a.vx * dt; a.y += a.vy * dt; a.life -= dt; a.spin += dt * 22;
       if (a.x < L || a.x > R || a.y < T || a.y > B || hitsObstacle(a)) { a.dead = true; continue; }
       for (const e of g.enemies) {
         if (e.dead || e.spawn > 0 || a.hit.has(e)) continue;
@@ -512,7 +514,7 @@
             const n = nearestEnemy(a, a.hit);
             if (n && n.d < 240) {
               const na = Math.atan2(n.e.y - a.y, n.e.x - a.x);
-              a.vx = Math.cos(na) * 480; a.vy = Math.sin(na) * 480; a.a = na; a.life = 1;
+              a.vx = Math.cos(na) * 440; a.vy = Math.sin(na) * 440; a.a = na; a.life = 1;
             } else if (a.pierce > 0) a.pierce--; else a.dead = true;
           } else if (a.pierce > 0) a.pierce--;
           else a.dead = true;
@@ -607,23 +609,37 @@
     ctx.translate(p.x, p.y);
     ctx.fillStyle = 'rgba(0,0,0,.35)';
     ctx.beginPath(); ctx.ellipse(0, 9, 12, 5, 0, 0, Math.PI * 2); ctx.fill();
-    // 袴（赤）と 白い着物、黒髪
-    ctx.fillStyle = '#C8372D';
-    ctx.beginPath(); ctx.arc(0, 0, p.r, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#F2EDE0';
-    ctx.beginPath(); ctx.arc(0, -1, p.r - 3.5, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#1A1A22';
-    ctx.beginPath(); ctx.arc(0, -2, 5, 0, Math.PI * 2); ctx.fill();
-    // 弓
     ctx.rotate(p.face);
-    ctx.strokeStyle = '#9A6A3A'; ctx.lineWidth = 3; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.arc(2, 0, 16, -1.0, 1.0); ctx.stroke();
-    ctx.strokeStyle = 'rgba(242,237,224,.7)'; ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(2 + Math.cos(-1) * 16, Math.sin(-1) * 16);
-    ctx.lineTo(p.moving ? 2 + Math.cos(1) * 16 * 0.9 : 4, 0);
-    ctx.lineTo(2 + Math.cos(1) * 16, Math.sin(1) * 16);
-    ctx.stroke();
+    // なびく 赤いはちまき（進む向きの うしろへ）
+    const t = performance.now() / 1000;
+    const wave = p.moving ? 4 : 1.5;
+    ctx.strokeStyle = '#D9482B'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(-5, side * 2);
+      ctx.quadraticCurveTo(-13, side * 3 + Math.sin(t * 12 + side) * wave, -21, side * 5 + Math.sin(t * 12 + side + 1) * wave);
+      ctx.stroke();
+    }
+    // 腕（投げた瞬間は 前へのびる）
+    const reach = p.throwT > 0 ? 14 : 8;
+    ctx.fillStyle = '#A8B4E8';
+    ctx.beginPath(); ctx.arc(reach * 0.5, p.hand * 9, 3.5, 0, Math.PI * 2); ctx.fill();
+    if (p.throwT > 0) { ctx.beginPath(); ctx.arc(reach, p.hand * 7, 3, 0, Math.PI * 2); ctx.fill(); }
+    // 忍び装束（紺）と 頭巾
+    ctx.fillStyle = '#2E3862';
+    ctx.beginPath(); ctx.arc(0, 0, p.r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#A8B4E8'; ctx.lineWidth = 1.8;
+    ctx.beginPath(); ctx.arc(0, 0, p.r, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#151A2E';
+    ctx.beginPath(); ctx.arc(0, 0, 6.5, 0, Math.PI * 2); ctx.fill();
+    // はちまき
+    ctx.strokeStyle = '#D9482B'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0, 0, 6.5, Math.PI * 0.55, Math.PI * 1.45, true); ctx.stroke();
+    // 目元（顔が向いている方）
+    ctx.fillStyle = '#E8C9A8';
+    ctx.fillRect(3.5, -4, 3, 8);
+    ctx.fillStyle = '#111';
+    ctx.fillRect(4.5, -3, 1.6, 1.8); ctx.fillRect(4.5, 1.2, 1.6, 1.8);
     ctx.restore();
 
     // 頭の上の体力
@@ -807,13 +823,26 @@
       }
     }
 
-    // 矢
-    ctx.lineCap = 'round';
+    // 手裏剣
     for (const a of G.arrows) {
-      ctx.strokeStyle = G.s.fire ? '#FFB25C' : '#E8C170'; ctx.lineWidth = 2.5;
-      ctx.beginPath(); ctx.moveTo(a.x - Math.cos(a.a) * 14, a.y - Math.sin(a.a) * 14); ctx.lineTo(a.x, a.y); ctx.stroke();
-      ctx.fillStyle = '#F2EDE0';
-      ctx.beginPath(); ctx.arc(a.x, a.y, 2, 0, Math.PI * 2); ctx.fill();
+      ctx.save();
+      ctx.translate(a.x, a.y);
+      if (G.s.fire) {
+        ctx.shadowColor = '#FF8A3D'; ctx.shadowBlur = 10;
+      }
+      ctx.rotate(a.spin);
+      ctx.fillStyle = G.s.fire ? '#FFC07A' : '#D5DBEA';
+      ctx.beginPath();
+      for (let i = 0; i < 4; i++) {
+        const r0 = i * Math.PI / 2;
+        ctx.lineTo(Math.cos(r0) * 7, Math.sin(r0) * 7);
+        ctx.lineTo(Math.cos(r0 + Math.PI / 4) * 2.2, Math.sin(r0 + Math.PI / 4) * 2.2);
+      }
+      ctx.closePath(); ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#12142A';
+      ctx.beginPath(); ctx.arc(0, 0, 1.4, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
     }
 
     // 敵の弾
