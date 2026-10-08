@@ -1,0 +1,751 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>ぷるぷるゼリー</title>
+<meta name="description" content="ひっぱってはなすと、ぷるんと飛ぶ。ゼリーをお皿までとどける、ひとさしのパズル。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&family=Zen+Maru+Gothic:wght@500;700&display=swap">
+<style>
+  :root {
+    --ink: #4a3326;
+    --paper: #fff7e8;
+    --mint: #35b58a;
+    --mint-dark: #1f8a69;
+    --berry: #e8607a;
+    --pop: "Mochiy Pop One", "Hiragino Maru Gothic ProN", system-ui, sans-serif;
+    --body: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", system-ui, sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #f6e7cd; color: var(--ink); font-family: var(--body); font-weight: 700; }
+  body { -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+  canvas.dragging { cursor: grabbing; }
+
+  .hud { position: fixed; inset: 0; pointer-events: none; padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 12px max(16px, env(safe-area-inset-left)); display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .hud > * { pointer-events: auto; }
+  .title { display: grid; gap: 2px; }
+  .title .lv { font-family: var(--pop); font-weight: 400; font-size: clamp(16px, 3.4vw, 24px); line-height: 1.2; text-shadow: 0 2px 0 rgba(255,255,255,.7); }
+  .title .shots { font-size: 13px; opacity: .8; }
+  .btns { display: flex; gap: 8px; }
+  .btn {
+    font: inherit; color: var(--ink); background: rgba(255,255,255,.88); border: 2px solid rgba(74,51,38,.25);
+    border-radius: 999px; padding: 8px 14px; min-height: 40px; cursor: pointer; font-size: 14px;
+    box-shadow: 0 3px 0 rgba(74,51,38,.18);
+  }
+  .btn:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(74,51,38,.18); }
+  .btn:focus-visible { outline: 3px solid var(--mint); outline-offset: 2px; }
+  .btn.primary { background: var(--mint); color: #fff; border-color: var(--mint-dark); box-shadow: 0 3px 0 var(--mint-dark); }
+
+  .hint { position: fixed; left: 0; right: 0; bottom: max(18px, env(safe-area-inset-bottom)); text-align: center; font-size: 15px; pointer-events: none; transition: opacity .6s; text-shadow: 0 2px 0 rgba(255,255,255,.8); }
+  .hint.off { opacity: 0; }
+  .rotate { display: none; position: fixed; left: 16px; right: 16px; top: 76px; text-align: center; font-size: 13px; background: rgba(255,255,255,.85); border-radius: 12px; padding: 6px 10px; pointer-events: none; }
+  @media (orientation: portrait) and (max-width: 700px) { .rotate { display: block; } }
+
+  .clear { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(255,247,232,.55); backdrop-filter: blur(2px); }
+  .panel { background: #fff; border: 3px solid rgba(74,51,38,.2); border-radius: 24px; padding: 22px 28px; text-align: center; box-shadow: 0 8px 0 rgba(74,51,38,.15); min-width: min(86vw, 300px); display: grid; gap: 10px; animation: pop .35s cubic-bezier(.2,1.6,.4,1); }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .panel h2 { margin: 0; font-family: var(--pop); font-weight: 400; font-size: 28px; color: var(--mint-dark); }
+  .stars { font-size: 38px; letter-spacing: 6px; color: #f5b82e; text-shadow: 0 2px 0 rgba(0,0,0,.12); }
+  .stars .off { color: #e4d9c6; }
+  .panel p { margin: 0; font-size: 14px; opacity: .85; }
+  .panel .row { display: flex; gap: 10px; justify-content: center; margin-top: 4px; }
+  @media (prefers-reduced-motion: reduce) { .panel { animation: none; } .hint { transition: none; } }
+</style>
+</head>
+<body>
+<canvas id="c" aria-label="ゲーム画面"></canvas>
+
+<div class="hud">
+  <div class="title">
+    <div class="lv" id="lvName">1. ぷるんと出発</div>
+    <div class="shots" id="shots">はっしゃ 0 かい</div>
+  </div>
+  <div class="btns">
+    <button class="btn" id="btnReset" type="button" aria-label="やりなおす">↺ やりなおし</button>
+    <button class="btn" id="btnSound" type="button" aria-label="おと">♪ おと</button>
+  </div>
+</div>
+<div class="rotate" aria-hidden="true">↻ スマホは よこむきにすると 大きく あそべるよ</div>
+<div class="hint" id="hint">ひっぱって、はなすと とぶよ</div>
+
+<div class="clear" id="clear" hidden>
+  <div class="panel" role="dialog" aria-label="クリア">
+    <h2>クリア！</h2>
+    <div class="stars" id="stars">★★★</div>
+    <p id="clearText">はっしゃ 2 かい</p>
+    <div class="row">
+      <button class="btn" id="btnRetry" type="button">もういちど</button>
+      <button class="btn primary" id="btnNext" type="button">つぎへ ▶</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* =========================================================
+   定数
+   ========================================================= */
+const W = 960, H = 540;            // ゲーム世界の大きさ
+const FLOOR = 500;                 // ゆかの上面
+const N = 22;                      // ゼリーの点の数
+const R = 32;                      // ゼリーの半径
+const SUB = 4;                     // 1コマあたりの小分け
+const DT = 1 / 60 / SUB;
+const GRAV = 2300;                 // 重力（px/s^2）
+const MAX_PULL = 150;              // ひっぱれる最大の長さ
+const MIN_SPEED = 380, MAX_SPEED = 1350;
+
+/* =========================================================
+   ステージ
+   ========================================================= */
+const rect = (x, y, w, h, type = 'n') => ({ type, pts: [[x, y], [x + w, y], [x + w, y + h], [x, y + h]] });
+const FRAME = () => [
+  rect(-80, -80, W + 160, 80), rect(-80, -80, 80, H + 160),
+  rect(W, -80, 80, H + 160), rect(-80, FLOOR, W + 160, 120),
+];
+const LEVELS = [
+  { name: 'ぷるんと出発', par: 2, start: [130, FLOOR - R - 1], goal: { x: 740, y: 430, w: 150, h: 70 },
+    walls: [...FRAME(), rect(470, 396, 40, 104)], hint: 'ひっぱって、はなすと とぶよ' },
+  { name: 'すき間をぎゅっ', par: 2, start: [130, FLOOR - R - 1], goal: { x: 740, y: 430, w: 150, h: 70 },
+    walls: [...FRAME(), rect(470, -80, 40, 528)], hint: 'ゼリーは つぶれて すき間をぬけられるよ' },
+  { name: 'ぽよんと高く', par: 3, start: [110, FLOOR - R - 1], goal: { x: 760, y: 130, w: 150, h: 70 },
+    walls: [...FRAME(), rect(250, 478, 150, 22, 'b'), rect(560, 250, 40, 250), rect(620, 200, 340, 30)],
+    hint: 'ピンクのだいに のると はずむよ' },
+  { name: 'ぺたぺた登る', par: 4, start: [130, FLOOR - R - 1], goal: { x: 760, y: 100, w: 150, h: 70 },
+    walls: [...FRAME(), rect(440, 170, 60, 330, 's'), rect(500, 170, 460, 40)],
+    hint: 'きいろい かべには くっつくよ' },
+];
+
+/* =========================================================
+   形の準備（かべの法線など）
+   ========================================================= */
+function prepWall(w) {
+  const p = w.pts, n = p.length;
+  w.nx = []; w.ny = [];
+  let minx = 1e9, miny = 1e9, maxx = -1e9, maxy = -1e9;
+  for (let i = 0; i < n; i++) {
+    const a = p[i], b = p[(i + 1) % n];
+    const tx = b[0] - a[0], ty = b[1] - a[1], l = Math.hypot(tx, ty) || 1;
+    w.nx.push(ty / l); w.ny.push(-tx / l);          // 外向き（時計まわりの定義）
+    minx = Math.min(minx, a[0]); maxx = Math.max(maxx, a[0]);
+    miny = Math.min(miny, a[1]); maxy = Math.max(maxy, a[1]);
+  }
+  w.bb = [minx, miny, maxx, maxy];
+}
+LEVELS.forEach(l => l.walls.forEach(prepWall));
+
+function pointInPoly(x, y, p) {
+  let inside = false;
+  for (let i = 0, j = p.length - 1; i < p.length; j = i++) {
+    const xi = p[i][0], yi = p[i][1], xj = p[j][0], yj = p[j][1];
+    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+/* =========================================================
+   おと（WebAudio でその場で作る）
+   ========================================================= */
+const Sfx = {
+  ctx: null, on: true, lastSquish: 0, noise: null,
+  init() {
+    if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return; }
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      this.ctx = new AC();
+      const len = Math.floor(this.ctx.sampleRate * 0.25);
+      const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      this.noise = buf;
+    } catch (e) { this.ctx = null; }
+  },
+  tone(f0, f1, f2, t1, t2, vol, type = 'sine') {
+    if (!this.ctx || !this.on) return;
+    const c = this.ctx, t = c.currentTime;
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(f0, t);
+    o.frequency.exponentialRampToValueAtTime(f1, t + t1);
+    o.frequency.exponentialRampToValueAtTime(f2, t + t2);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + t2 + 0.05);
+    o.connect(g).connect(c.destination);
+    o.start(t); o.stop(t + t2 + 0.08);
+  },
+  boing(power) { this.tone(150, 430 + 260 * power, 110, 0.07, 0.32, 0.22 + 0.1 * power); },
+  squish(v) {
+    if (!this.ctx || !this.on) return;
+    const now = performance.now();
+    if (now - this.lastSquish < 90) return;
+    this.lastSquish = now;
+    const c = this.ctx, t = c.currentTime, k = Math.min(1, v / 900);
+    const s = c.createBufferSource(); s.buffer = this.noise;
+    const f = c.createBiquadFilter(); f.type = 'lowpass';
+    f.frequency.setValueAtTime(700 + 900 * k, t); f.frequency.exponentialRampToValueAtTime(160, t + 0.14);
+    const g = c.createGain(); g.gain.setValueAtTime(0.05 + 0.28 * k, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+    s.connect(f).connect(g).connect(c.destination); s.start(t); s.stop(t + 0.2);
+    this.tone(210 + 80 * k, 120, 90, 0.05, 0.12, 0.06 + 0.1 * k);
+  },
+  stick() { this.tone(300, 160, 100, 0.05, 0.14, 0.12); },
+  bounce() { this.tone(200, 700, 260, 0.08, 0.28, 0.22, 'triangle'); },
+  chime() {
+    if (!this.ctx || !this.on) return;
+    [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+      setTimeout(() => this.tone(f, f * 1.003, f, 0.05, 0.22, 0.16), i * 95);
+    });
+  },
+  pop() { this.tone(400, 640, 420, 0.04, 0.1, 0.12); },
+};
+
+/* =========================================================
+   ゼリー（やわらかい体）
+   ========================================================= */
+class Jelly {
+  constructor() {
+    this.rest = [];
+    for (let i = 0; i < N; i++) {
+      const a = (i / N) * Math.PI * 2;
+      this.rest.push([Math.cos(a) * R, Math.sin(a) * R]);
+    }
+    this.edge = 2 * R * Math.sin(Math.PI / N);
+    this.skip2 = 2 * R * Math.sin(2 * Math.PI / N);
+    this.skip4 = 2 * R * Math.sin(4 * Math.PI / N);
+    this.cross = 2 * R;
+    this.A0 = 0.5 * N * R * R * Math.sin(2 * Math.PI / N);
+    this.P0 = N * this.edge;
+    this.spinDamp = 0.12;          // 回転のおさえ具合（小分けごと）
+    this.kSquash = 0.12;           // つぶれたあと、もとの大きさにもどる強さ
+    this.kCross = 0.05;            // 体のやわらかさ（小さいほどぷるぷる）
+    this.slide = 0.025;            // かべや床での、すべりやすさ（小さいほどよくすべる）
+    this.pts = [];
+    for (let i = 0; i < N; i++) this.pts.push({ x: 0, y: 0, px: 0, py: 0, c: 0 });
+    this.reset(0, 0);
+  }
+  reset(cx, cy) {
+    for (let i = 0; i < N; i++) {
+      const p = this.pts[i];
+      p.x = p.px = cx + this.rest[i][0];
+      p.y = p.py = cy + this.rest[i][1];
+      p.c = 0;
+    }
+    this.contactTime = 0;
+    this.stuckTime = 0;
+    this.stickyOff = 0;
+    this.charge = 0; this.chDx = 1; this.chDy = 0;
+    this.squishV = 0; this.stickEvent = false; this.bounceEvent = false;
+    this.contactCount = 0;
+  }
+  center() {
+    let x = 0, y = 0;
+    for (const p of this.pts) { x += p.x; y += p.y; }
+    return [x / N, y / N];
+  }
+  velocity() {
+    let x = 0, y = 0;
+    for (const p of this.pts) { x += p.x - p.px; y += p.y - p.py; }
+    return [x / N / DT, y / N / DT];
+  }
+  area() {
+    let s = 0;
+    for (let i = 0; i < N; i++) {
+      const a = this.pts[i], b = this.pts[(i + 1) % N];
+      s += a.x * b.y - b.x * a.y;
+    }
+    return s * 0.5;
+  }
+  /* 1 小分けぶん進める */
+  step(walls) {
+    const pts = this.pts;
+    // 回転をおさえる（ころがって顔が横むきのままになるのをふせぐ。ゼリーはぷるんと戻る）
+    {
+      const [mx, my] = this.center();
+      let L = 0, I = 0;
+      for (const p of pts) {
+        const rx = p.x - mx, ry = p.y - my, vx = p.x - p.px, vy = p.y - p.py;
+        L += rx * vy - ry * vx; I += rx * rx + ry * ry;
+      }
+      const w = (L / I) * this.spinDamp;
+      for (const p of pts) { p.px += -(p.y - my) * w; p.py += (p.x - mx) * w; }
+    }
+    // 積分
+    for (const p of pts) {
+      const vx = (p.x - p.px) * 0.9993, vy = (p.y - p.py) * 0.9993;
+      p.px = p.x; p.py = p.y;
+      p.x += vx; p.y += vy + GRAV * DT * DT;
+    }
+    // ためている間は、ひっぱる向きにぺちゃんこにする
+    if (this.charge > 0) {
+      const [cx, cy] = this.center();
+      const dx = this.chDx, dy = this.chDy, k = 0.09 * this.charge;
+      for (const p of pts) {
+        const al = (p.x - cx) * dx + (p.y - cy) * dy;
+        p.x -= dx * al * k; p.y -= dy * al * k;
+      }
+    }
+    this.contactCount = 0;
+    let maxImpact = 0;
+    for (let it = 0; it < 4; it++) {
+      // 辺
+      for (let i = 0; i < N; i++) this.dist(pts[i], pts[(i + 1) % N], this.edge, 0.5);
+      for (let i = 0; i < N; i++) this.dist(pts[i], pts[(i + 2) % N], this.skip2, 0.28);
+      for (let i = 0; i < N; i++) this.dist(pts[i], pts[(i + 4) % N], this.skip4, 0.1);
+      for (let i = 0; i < N / 2; i++) this.dist(pts[i], pts[i + N / 2], this.cross, this.kCross);
+      // 空気の圧（面積をたもつ）
+      const A = this.area();
+      const k = (A < this.A0) ? this.kSquash : 0.5;
+      const dl = (this.A0 - A) / this.P0 * k;
+      for (let i = 0; i < N; i++) {
+        const a = pts[(i + N - 1) % N], b = pts[(i + 1) % N];
+        let tx = b.x - a.x, ty = b.y - a.y; const l = Math.hypot(tx, ty) || 1;
+        pts[i].x += (ty / l) * dl; pts[i].y += (-tx / l) * dl;
+      }
+      // かべ
+      const imp = this.collide(walls, it === 3);
+      if (imp > maxImpact) maxImpact = imp;
+    }
+    if (maxImpact > this.squishV) this.squishV = maxImpact;
+    if (this.contactCount >= 2) this.contactTime = 0.14; else this.contactTime = Math.max(0, this.contactTime - DT);
+    this.stickyOff = Math.max(0, this.stickyOff - DT);
+  }
+  dist(a, b, rest, k) {
+    const dx = b.x - a.x, dy = b.y - a.y, l = Math.hypot(dx, dy) || 1e-6;
+    const d = (l - rest) / l * 0.5 * k;
+    a.x += dx * d; a.y += dy * d; b.x -= dx * d; b.y -= dy * d;
+  }
+  collide(walls, last) {
+    let maxImpact = 0;
+    for (const p of this.pts) {
+      for (const w of walls) {
+        const bb = w.bb;
+        if (p.x < bb[0] || p.x > bb[2] || p.y < bb[1] || p.y > bb[3]) continue;
+        if (!pointInPoly(p.x, p.y, w.pts)) continue;
+        // いちばん近い辺をさがす
+        let best = 1e18, qx = 0, qy = 0, nx = 0, ny = 0;
+        const n = w.pts.length;
+        for (let i = 0; i < n; i++) {
+          const a = w.pts[i], b = w.pts[(i + 1) % n];
+          const ex = b[0] - a[0], ey = b[1] - a[1];
+          const t = Math.max(0, Math.min(1, ((p.x - a[0]) * ex + (p.y - a[1]) * ey) / (ex * ex + ey * ey)));
+          const cx = a[0] + ex * t, cy = a[1] + ey * t;
+          const d = (p.x - cx) ** 2 + (p.y - cy) ** 2;
+          if (d < best) { best = d; qx = cx; qy = cy; nx = w.nx[i]; ny = w.ny[i]; }
+        }
+        let vx = p.x - p.px, vy = p.y - p.py;
+        p.x = qx + nx; p.y = qy + ny;
+        let vn = vx * nx + vy * ny;
+        const tx = -ny, ty = nx;
+        let vt = vx * tx + vy * ty;
+        const first = p.c === 0;
+        if (vn < 0) {
+          const impact = -vn / DT;
+          if (impact > maxImpact) maxImpact = impact;
+          let rest = 0.12;
+          if (w.type === 'b') { rest = 1.18; if (impact > 300) this.bounceEvent = true; }
+          vn = -vn * rest;
+        }
+        // 動いている間はよくすべり、おそくなったらペタッととまる
+        let fr = Math.abs(vt) / DT < 140 ? 0.2 : this.slide;
+        if (w.type === 's' && this.stickyOff <= 0 && this.charge <= 0.02) {
+          vt = 0; vn = Math.min(vn, 0) * 0; fr = 1;
+          if (first) this.stickEvent = true;
+        } else if (w.type === 's') { fr = 0.3; }
+        vt *= (1 - fr);
+        p.px = p.x - (nx * vn + tx * vt);
+        p.py = p.y - (ny * vn + ty * vt);
+        p.c = 2; this.contactCount++;
+        break;
+      }
+      if (p.c > 0 && last) p.c--;
+    }
+    return maxImpact;
+  }
+  /* ひっぱって、はなした */
+  launch(dx, dy, power) {
+    const sp = MIN_SPEED + (MAX_SPEED - MIN_SPEED) * power;
+    const [cx, cy] = this.center();
+    const vx0 = dx * sp, vy0 = dy * sp;
+    for (const p of this.pts) {
+      const along = ((p.x - cx) * dx + (p.y - cy) * dy) / R;      // -1〜1
+      const s = (sp + along * sp * 0.32) * DT;
+      p.px = p.x - dx * s; p.py = p.y - dy * s;
+    }
+    this.contactTime = 0; this.stickyOff = 0.18; this.charge = 0;
+    return [vx0, vy0];
+  }
+  /* 見た目のむき・つぶれ */
+  pose() {
+    const [cx, cy] = this.center();
+    let sc = 0, ss = 0;
+    for (let i = 0; i < N; i++) {
+      const p = this.pts[i], r = this.rest[i];
+      const ox = p.x - cx, oy = p.y - cy;
+      sc += r[0] * ox + r[1] * oy; ss += r[0] * oy - r[1] * ox;
+    }
+    const th = Math.atan2(ss, sc), ux = Math.cos(th), uy = Math.sin(th);
+    let eu = 0, ew = 0;
+    for (const p of this.pts) {
+      eu = Math.max(eu, Math.abs((p.x - cx) * ux + (p.y - cy) * uy));
+      ew = Math.max(ew, Math.abs(-(p.x - cx) * uy + (p.y - cy) * ux));
+    }
+    return { cx, cy, th, sx: eu / R, sy: ew / R };
+  }
+}
+
+/* =========================================================
+   ゲーム
+   ========================================================= */
+const cv = document.getElementById('c');
+const ctx = cv.getContext('2d');
+const $ = id => document.getElementById(id);
+const ui = { lvName: $('lvName'), shots: $('shots'), hint: $('hint'), clear: $('clear'), stars: $('stars'), clearText: $('clearText') };
+
+const jelly = new Jelly();
+let levelIdx = 0, lvl = LEVELS[0], shots = 0, cleared = false, goalTimer = 0;
+let particles = [];
+let drag = null;          // {sx, sy, x, y}
+let view = { s: 1, ox: 0, oy: 0, dpr: 1 };
+let blinkAt = 3, time = 0, launchFlash = 0, hintShown = true;
+let progress = {};
+try { progress = JSON.parse(localStorage.getItem('jelly.progress') || '{}') || {}; } catch (e) { progress = {}; }
+function saveProgress() { try { localStorage.setItem('jelly.progress', JSON.stringify(progress)); } catch (e) { /* 保存できなくても遊べる */ } }
+
+function loadLevel(i) {
+  levelIdx = ((i % LEVELS.length) + LEVELS.length) % LEVELS.length;
+  lvl = LEVELS[levelIdx];
+  shots = 0; cleared = false; goalTimer = 0; particles = []; drag = null;
+  jelly.reset(lvl.start[0], lvl.start[1]);
+  ui.lvName.textContent = `${levelIdx + 1}. ${lvl.name}`;
+  ui.shots.textContent = 'はっしゃ 0 かい';
+  ui.hint.textContent = lvl.hint || '';
+  ui.hint.classList.toggle('off', !lvl.hint);
+  ui.clear.hidden = true;
+}
+
+function launchDirFromDrag() {
+  if (!drag) return null;
+  const dx = drag.sx - drag.x, dy = drag.sy - drag.y;
+  const len = Math.hypot(dx, dy) / view.s;
+  if (len < 10) return null;
+  const pull = Math.min(1, len / MAX_PULL);
+  return { dx: dx / Math.hypot(dx, dy), dy: dy / Math.hypot(dx, dy), pull };
+}
+
+/* ---------- 入力 ---------- */
+function toWorld(ev) { return [(ev.clientX - view.ox) / view.s, (ev.clientY - view.oy) / view.s]; }
+cv.addEventListener('pointerdown', ev => {
+  Sfx.init();
+  if (cleared) return;
+  cv.setPointerCapture(ev.pointerId);
+  drag = { sx: ev.clientX, sy: ev.clientY, x: ev.clientX, y: ev.clientY };
+  cv.classList.add('dragging');
+});
+cv.addEventListener('pointermove', ev => { if (drag) { drag.x = ev.clientX; drag.y = ev.clientY; } });
+function endDrag(ev, cancel) {
+  if (!drag) return;
+  if (ev) { drag.x = ev.clientX; drag.y = ev.clientY; }
+  const d = cancel ? null : launchDirFromDrag();
+  drag = null; jelly.charge = 0;
+  cv.classList.remove('dragging');
+  if (!d || cleared) return;
+  if (jelly.contactTime <= 0) return;                 // 空中ではとべない
+  jelly.launch(d.dx, d.dy, d.pull);
+  shots++; launchFlash = 0.25;
+  ui.shots.textContent = `はっしゃ ${shots} かい`;
+  Sfx.boing(d.pull);
+  if (hintShown) { hintShown = false; ui.hint.classList.add('off'); }
+  const [cx, cy] = jelly.center();
+  for (let i = 0; i < 8; i++) puff(cx - d.dx * R * 0.6, cy - d.dy * R * 0.6, 0.6);
+}
+cv.addEventListener('pointerup', ev => endDrag(ev, false));
+cv.addEventListener('pointercancel', ev => endDrag(ev, true));
+window.addEventListener('keydown', ev => {
+  if (ev.key === 'r' || ev.key === 'R') loadLevel(levelIdx);
+  if ((ev.key === 'n' || ev.key === 'N') && cleared) loadLevel(levelIdx + 1);
+});
+$('btnReset').addEventListener('click', () => { Sfx.init(); loadLevel(levelIdx); });
+$('btnRetry').addEventListener('click', () => { loadLevel(levelIdx); });
+$('btnNext').addEventListener('click', () => { loadLevel(levelIdx + 1); });
+$('btnSound').addEventListener('click', () => {
+  Sfx.init(); Sfx.on = !Sfx.on; $('btnSound').textContent = Sfx.on ? '♪ おと' : '× おと';
+  if (Sfx.on) Sfx.pop();
+});
+
+/* ---------- パーティクル ---------- */
+function puff(x, y, size) {
+  const a = Math.random() * Math.PI * 2, s = 80 + Math.random() * 220;
+  particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 60, r: (3 + Math.random() * 5) * size, life: 0.5 + Math.random() * 0.4, t: 0, col: 'jelly' });
+}
+function confetti(x, y) {
+  const cols = ['#e8607a', '#f5b82e', '#35b58a', '#5aa9e6', '#ffffff'];
+  for (let i = 0; i < 46; i++) {
+    const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.2, s = 260 + Math.random() * 520;
+    particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, r: 3 + Math.random() * 4, life: 1.2 + Math.random() * 0.8, t: 0, col: cols[i % cols.length], sq: true });
+  }
+}
+
+/* ---------- 1 コマ ---------- */
+function update() {
+  time += 1 / 60;
+  const dd = launchDirFromDrag();
+  if (drag && dd && !cleared) { jelly.charge = dd.pull; jelly.chDx = dd.dx; jelly.chDy = dd.dy; } else jelly.charge = 0;
+  if (!cleared) {
+    for (let i = 0; i < SUB; i++) jelly.step(lvl.walls);
+  } else {
+    for (let i = 0; i < SUB; i++) jelly.step(lvl.walls);
+  }
+  // 音と粒
+  if (jelly.squishV > 260) {
+    Sfx.squish(jelly.squishV);
+    const [cx, cy] = jelly.center();
+    if (jelly.squishV > 520) for (let i = 0; i < 3; i++) puff(cx, cy + R * 0.6, 0.5);
+  }
+  jelly.squishV = 0;
+  if (jelly.stickEvent) { Sfx.stick(); jelly.stickEvent = false; }
+  if (jelly.bounceEvent) { Sfx.bounce(); jelly.bounceEvent = false; }
+  // 画面の外に出たら、はじめから
+  const [cx, cy] = jelly.center();
+  if (cx < -120 || cx > W + 120 || cy < -200 || cy > H + 200) { loadLevel(levelIdx); return; }
+  // ゴール
+  if (!cleared) {
+    const g = lvl.goal;
+    if (cx > g.x && cx < g.x + g.w && cy > g.y && cy < g.y + g.h) goalTimer += 1 / 60; else goalTimer = 0;
+    if (goalTimer > 0.3) win();
+  }
+  // 粒
+  for (const p of particles) {
+    p.t += 1 / 60; p.vy += 1500 / 60; p.x += p.vx / 60; p.y += p.vy / 60;
+    p.vx *= 0.99;
+  }
+  particles = particles.filter(p => p.t < p.life);
+  launchFlash = Math.max(0, launchFlash - 1 / 60);
+}
+
+function win() {
+  cleared = true;
+  const stars = shots <= lvl.par ? 3 : shots <= lvl.par + 2 ? 2 : 1;
+  const prev = progress[levelIdx] || 0;
+  if (stars > prev) { progress[levelIdx] = stars; saveProgress(); }
+  ui.stars.innerHTML = [1, 2, 3].map(i => `<span class="${i <= stars ? '' : 'off'}">★</span>`).join('');
+  ui.clearText.textContent = `はっしゃ ${shots} かい（めやす ${lvl.par} かい）`;
+  const g = lvl.goal;
+  confetti(g.x + g.w / 2, g.y + g.h * 0.4);
+  Sfx.chime();
+  setTimeout(() => { if (cleared) ui.clear.hidden = false; }, 650);
+}
+
+/* =========================================================
+   えがく
+   ========================================================= */
+// 背景（一度だけ作る）
+const bg = document.createElement('canvas'); bg.width = W; bg.height = H;
+(function makeBg() {
+  const g = bg.getContext('2d');
+  g.fillStyle = '#fff4de'; g.fillRect(0, 0, W, H);
+  // ギンガムチェック
+  const S = 40;
+  g.fillStyle = 'rgba(232,96,122,.07)';
+  for (let y = 0; y < H; y += S) for (let x = 0; x < W; x += S) if (((x / S) + (y / S)) % 2 === 0) g.fillRect(x, y, S, S);
+  g.fillStyle = 'rgba(232,96,122,.07)';
+  for (let y = 0; y < H; y += S * 2) g.fillRect(0, y, W, S);
+  for (let x = 0; x < W; x += S * 2) g.fillRect(x, 0, S, H);
+  // 周辺をすこし暗く
+  const v = g.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, W * 0.7);
+  v.addColorStop(0, 'rgba(120,70,30,0)'); v.addColorStop(1, 'rgba(120,70,30,.22)');
+  g.fillStyle = v; g.fillRect(0, 0, W, H);
+})();
+
+const WALL_STYLE = {
+  n: { fill: '#a8714a', edge: '#7a4c2c', hi: 'rgba(255,230,200,.40)' },
+  s: { fill: '#f4b942', edge: '#c98a16', hi: 'rgba(255,255,255,.50)' },
+  b: { fill: '#ff8fa6', edge: '#d9566f', hi: 'rgba(255,255,255,.55)' },
+};
+
+function pathPoly(pts) {
+  ctx.beginPath();
+  ctx.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+  ctx.closePath();
+}
+
+function drawWalls() {
+  // かげ
+  ctx.save(); ctx.translate(5, 8); ctx.fillStyle = 'rgba(90,50,20,.16)';
+  for (const w of lvl.walls) { pathPoly(w.pts); ctx.fill(); }
+  ctx.restore();
+  for (const w of lvl.walls) {
+    const st = WALL_STYLE[w.type];
+    pathPoly(w.pts); ctx.fillStyle = st.fill; ctx.fill();
+    ctx.lineJoin = 'round'; ctx.lineWidth = 5; ctx.strokeStyle = st.edge; ctx.stroke();
+    // うえの面のツヤ
+    const bb = w.bb;
+    if (bb[2] - bb[0] > 14 && bb[1] > -40) {
+      ctx.save(); pathPoly(w.pts); ctx.clip();
+      ctx.fillStyle = st.hi; ctx.fillRect(bb[0], bb[1], bb[2] - bb[0], 7);
+      if (w.type === 's') {                       // はちみつのしずく
+        ctx.fillStyle = '#ffd470';
+        for (let x = bb[0] + 10; x < bb[2] - 6; x += 18) { ctx.beginPath(); ctx.ellipse(x, bb[1] + 12 + ((x * 7) % 11), 4, 9, 0, 0, 7); ctx.fill(); }
+      }
+      if (w.type === 'b') {                       // ばね
+        ctx.strokeStyle = 'rgba(217,86,111,.55)'; ctx.lineWidth = 3;
+        for (let x = bb[0] + 14; x < bb[2]; x += 22) { ctx.beginPath(); ctx.moveTo(x, bb[1] + 6); ctx.lineTo(x + 8, bb[3]); ctx.stroke(); }
+      }
+      ctx.restore();
+    }
+  }
+}
+
+function drawGoal() {
+  const g = lvl.goal, cx = g.x + g.w / 2, by = g.y + g.h;
+  // お皿
+  ctx.fillStyle = 'rgba(90,50,20,.18)'; ctx.beginPath(); ctx.ellipse(cx + 3, by + 3, g.w * 0.56, 11, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#8fb8e0'; ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.ellipse(cx, by - 2, g.w * 0.54, 13, 0, 0, 7); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = '#cfe3f5'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.ellipse(cx, by - 4, g.w * 0.38, 7, 0, 0, 7); ctx.stroke();
+  // はた
+  const t = time * 3;
+  ctx.strokeStyle = '#7a4c2c'; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(cx + g.w * 0.36, by - 4); ctx.lineTo(cx + g.w * 0.36, by - 52); ctx.stroke();
+  ctx.fillStyle = '#e8607a';
+  ctx.beginPath(); ctx.moveTo(cx + g.w * 0.36, by - 52);
+  ctx.quadraticCurveTo(cx + g.w * 0.36 + 14, by - 54 + Math.sin(t) * 3, cx + g.w * 0.36 + 28, by - 46 + Math.sin(t + 1) * 3);
+  ctx.quadraticCurveTo(cx + g.w * 0.36 + 14, by - 40 + Math.sin(t) * 3, cx + g.w * 0.36, by - 36); ctx.fill();
+}
+
+function drawJelly() {
+  const pts = jelly.pts, ps = jelly.pose();
+  const mid = (a, b) => [(a.x + b.x) / 2, (a.y + b.y) / 2];
+  // 体
+  ctx.save();
+  ctx.shadowColor = 'rgba(31,138,105,.35)'; ctx.shadowBlur = 14; ctx.shadowOffsetY = 6;
+  ctx.beginPath();
+  let m = mid(pts[N - 1], pts[0]); ctx.moveTo(m[0], m[1]);
+  for (let i = 0; i < N; i++) { const n = mid(pts[i], pts[(i + 1) % N]); ctx.quadraticCurveTo(pts[i].x, pts[i].y, n[0], n[1]); }
+  ctx.closePath();
+  const gr = ctx.createRadialGradient(ps.cx - R * 0.3, ps.cy - R * 0.4, R * 0.1, ps.cx, ps.cy, R * 1.25);
+  gr.addColorStop(0, 'rgba(206,255,228,.96)'); gr.addColorStop(0.6, 'rgba(110,226,176,.92)'); gr.addColorStop(1, 'rgba(53,181,138,.92)');
+  ctx.fillStyle = gr; ctx.fill();
+  ctx.shadowColor = 'transparent';
+  ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.stroke();
+  ctx.restore();
+  // ツヤ
+  ctx.fillStyle = 'rgba(255,255,255,.6)';
+  ctx.beginPath(); ctx.ellipse(ps.cx - R * 0.38, ps.cy - R * 0.5, R * 0.26 * ps.sx, R * 0.14 * ps.sy, -0.5, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.arc(ps.cx - R * 0.08, ps.cy - R * 0.62, R * 0.07, 0, 7); ctx.fill();
+  // 顔
+  ctx.save();
+  ctx.translate(ps.cx, ps.cy); ctx.rotate(ps.th); ctx.scale(ps.sx, ps.sy);
+  const blink = (time > blinkAt && time < blinkAt + 0.12);
+  if (time > blinkAt + 0.12) blinkAt = time + 2 + Math.random() * 3;
+  const squint = jelly.charge > 0.05 || blink;
+  ctx.fillStyle = '#2b3a42'; ctx.strokeStyle = '#2b3a42'; ctx.lineCap = 'round'; ctx.lineWidth = 3.2;
+  for (const sx of [-1, 1]) {
+    const ex = sx * R * 0.3, ey = -R * 0.02;
+    if (squint) { ctx.beginPath(); ctx.moveTo(ex - 5, ey); ctx.quadraticCurveTo(ex, ey - 4, ex + 5, ey); ctx.stroke(); }
+    else {
+      ctx.beginPath(); ctx.ellipse(ex, ey, 4.4, 6, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(ex - 1.4, ey - 2.2, 1.6, 0, 7); ctx.fill(); ctx.fillStyle = '#2b3a42';
+    }
+    ctx.fillStyle = 'rgba(255,120,150,.35)'; ctx.beginPath(); ctx.ellipse(sx * R * 0.52, ey + 9, 5, 3.2, 0, 0, 7); ctx.fill(); ctx.fillStyle = '#2b3a42';
+  }
+  ctx.beginPath();
+  if (launchFlash > 0 || jelly.charge > 0.5) { ctx.ellipse(0, R * 0.26, 4, 5, 0, 0, 7); ctx.fill(); }
+  else { ctx.moveTo(-6, R * 0.2); ctx.quadraticCurveTo(0, R * 0.34, 6, R * 0.2); ctx.stroke(); }
+  ctx.restore();
+}
+
+function drawAim() {
+  const d = launchDirFromDrag();
+  if (!d || cleared) return;
+  const [cx, cy] = jelly.center();
+  const sp = MIN_SPEED + (MAX_SPEED - MIN_SPEED) * d.pull;
+  const vx = d.dx * sp, vy = d.dy * sp;
+  const ok = jelly.contactTime > 0;
+  for (let i = 1; i <= 14; i++) {
+    const t = i * 0.045;
+    const x = cx + vx * t, y = cy + vy * t + 0.5 * GRAV * t * t;
+    ctx.globalAlpha = (1 - i / 16) * (ok ? 0.9 : 0.35);
+    ctx.fillStyle = '#e8607a';
+    ctx.beginPath(); ctx.arc(x, y, 5.5 - i * 0.22, 0, 7); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  // ひっぱりの目もり
+  ctx.strokeStyle = 'rgba(232,96,122,.8)'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.arc(cx, cy, R + 12, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * d.pull); ctx.stroke();
+}
+
+function drawParticles() {
+  for (const p of particles) {
+    const a = 1 - p.t / p.life;
+    ctx.globalAlpha = Math.max(0, a);
+    ctx.fillStyle = p.col === 'jelly' ? '#6ee2b0' : p.col;
+    if (p.sq) { ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.t * 8); ctx.fillRect(-p.r, -p.r * 0.6, p.r * 2, p.r * 1.2); ctx.restore(); }
+    else { ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill(); }
+  }
+  ctx.globalAlpha = 1;
+}
+
+function render() {
+  const w = cv.width, h = cv.height;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = '#f6e7cd'; ctx.fillRect(0, 0, w, h);
+  ctx.setTransform(view.s * view.dpr, 0, 0, view.s * view.dpr, view.ox * view.dpr, view.oy * view.dpr);
+  ctx.drawImage(bg, 0, 0);
+  drawWalls();
+  drawGoal();
+  drawAim();
+  drawJelly();
+  drawParticles();
+}
+
+/* ---------- 画面サイズ ---------- */
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const cw = window.innerWidth, ch = window.innerHeight;
+  cv.width = Math.round(cw * dpr); cv.height = Math.round(ch * dpr);
+  const s = Math.min(cw / W, ch / H);
+  view = { s, ox: (cw - W * s) / 2, oy: (ch - H * s) / 2, dpr };
+}
+window.addEventListener('resize', resize);
+resize();
+
+/* ---------- ループ ---------- */
+let last = performance.now(), acc = 0;
+function frame(now) {
+  acc += Math.min(0.1, (now - last) / 1000); last = now;
+  while (acc >= 1 / 60) { update(); acc -= 1 / 60; }
+  render();
+  requestAnimationFrame(frame);
+}
+loadLevel(0);
+requestAnimationFrame(frame);
+
+/* ---------- 動作確認用（?debug をつけたときだけ） ---------- */
+if (/[?&]debug\b/.test(location.search)) {
+  window.__jelly = {
+    J: jelly,
+    snap: () => ({ pts: jelly.pts.map(p => ({ x: p.x, y: p.y, px: p.px, py: p.py, c: p.c })), ct: jelly.contactTime, so: jelly.stickyOff, sh: shots, cl: cleared, gt: goalTimer }),
+    restore: s => { jelly.pts.forEach((p, i) => Object.assign(p, s.pts[i])); jelly.contactTime = s.ct; jelly.stickyOff = s.so; shots = s.sh; cleared = s.cl; goalTimer = s.gt; },
+    goal: () => lvl.goal,
+    setGap: g => { const w = rect(470, -80, 40, FLOOR - g + 80); prepWall(w); LEVELS[1].walls[4] = w; },
+    load: i => loadLevel(i),
+    state: () => ({ c: jelly.center(), v: jelly.velocity(), area: jelly.area() / jelly.A0, cleared, shots, level: levelIdx, grounded: jelly.contactTime > 0, pose: jelly.pose() }),
+    shoot: (dx, dy, pull) => { const l = Math.hypot(dx, dy); if (jelly.contactTime <= 0) return false; jelly.launch(dx / l, dy / l, pull); shots++; return true; },
+    tick: n => { for (let i = 0; i < n; i++) update(); },
+    pause: () => { acc = -1e9; },
+    setCharge: (dx, dy, c) => { jelly.charge = c; jelly.chDx = dx; jelly.chDy = dy; },
+  };
+}
+})();
+</script>
+</body>
+</html>
