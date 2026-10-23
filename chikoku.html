@@ -220,7 +220,7 @@
   puddle(1690, 70);
   crow(2270, 168); crow(2340, 168); crow(2410, 168);
   dog(2345, { h: 18, w: 26 });
-  girl(2700, -250);
+  girl(2850, -160);
   door(2950, 2860);
   bike(3200); bike(3360);
   pot(3560, 3420);
@@ -231,12 +231,12 @@
   dog(5300); bike(5480);
   crow(6100, 176); crow(6170, 176);
   puddle(6300, 120);
-  girl(6700, -350);
+  girl(6700, -220);
   dog(6850); dog(7050); dog(7250);
   bike(7760);
   door(8000, 7910);
   pot(8200, 8060);
-  girl(8600, -300);
+  girl(8600, -200);
   teacher(8820, 8740);
 
   const CAUSE = {
@@ -602,11 +602,13 @@
   }
 
   function drawLandmarks() {
-    // 曲がり角ミラー
+    // 曲がり角ミラー（奥の歩道に立つ飾り。障害物ではない）
     const mx = 2610;
-    rect(mx, GROUND - 90, 4, 90, '#e8693a');
-    ctx.fillStyle = '#ff8a4a'; ctx.beginPath(); ctx.ellipse(sx(mx + 2), sy(GROUND - 100), 14 * scale, 16 * scale, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#cfe8f7'; ctx.beginPath(); ctx.ellipse(sx(mx + 2), sy(GROUND - 100), 10 * scale, 12 * scale, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 0.45;
+    rect(mx, GROUND - 96, 3, 82, '#e8693a');
+    ctx.fillStyle = '#ff8a4a'; ctx.beginPath(); ctx.ellipse(sx(mx + 1.5), sy(GROUND - 104), 10 * scale, 12 * scale, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#cfe8f7'; ctx.beginPath(); ctx.ellipse(sx(mx + 1.5), sy(GROUND - 104), 7 * scale, 9 * scale, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
     // コンビニ（中間地点）
     const cx = CHECK - 120;
     rect(cx, GROUND - 90, 150, 90, '#f7f7f2');
@@ -704,6 +706,28 @@
     }
   }
 
+  // 画面の右外から近づいてくるものを「!」で予告する
+  function drawWarnings(t) {
+    if (state !== 'run') return;
+    const edge = camX + viewW;
+    for (const o of H) {
+      if (!o.vx) continue;
+      const r = hazardRect(o);
+      if (!r || r.x < edge - 10 || r.x > edge + 420) continue;
+      const k = 1 - (r.x - edge) / 420;
+      const bx = W - 22, by = sy(GROUND - o.h / 2 - 14);
+      const pulse = 1 + Math.sin(t * 20) * 0.08;
+      ctx.save();
+      ctx.translate(bx, by); ctx.scale(pulse, pulse);
+      ctx.globalAlpha = 0.5 + k * 0.5;
+      ctx.fillStyle = '#e23b3b';
+      ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fffaf0'; ctx.font = '900 18px "Dela Gothic One", sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('!', 0, 1);
+      ctx.restore();
+    }
+  }
+
   function drawStudent(X, Y, t, isGirl) {
     const run = Math.sin(t * 22) * 4;
     const legs = isGirl ? '#1f2433' : '#2b3550';
@@ -779,6 +803,7 @@
     drawLandmarks();
     drawBlocks();
     for (const o of H) drawHazard(o, clockT);
+    drawWarnings(clockT);
     drawPlayer(clockT);
     drawParts(dt);
     drawProgress();
