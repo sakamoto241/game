@@ -221,9 +221,9 @@
   crow(2270, 168); crow(2340, 168); crow(2410, 168);
   dog(2345, { h: 18, w: 26 });
   girl(2850, -160);
-  door(2950, 2860);
-  bike(3200); bike(3360);
-  pot(3560, 3420);
+  door(3100, 2900);
+  bike(3290); bike(3450);
+  pot(3640, 3500);
   puddle(3880, 80); puddle(4040, 80); puddle(4200, 130);
   dog(0, { meet: 4550, vx: -120 });
   crow(4960, 168); crow(5030, 168);
@@ -602,13 +602,6 @@
   }
 
   function drawLandmarks() {
-    // 曲がり角ミラー（奥の歩道に立つ飾り。障害物ではない）
-    const mx = 2610;
-    ctx.globalAlpha = 0.45;
-    rect(mx, GROUND - 96, 3, 82, '#e8693a');
-    ctx.fillStyle = '#ff8a4a'; ctx.beginPath(); ctx.ellipse(sx(mx + 1.5), sy(GROUND - 104), 10 * scale, 12 * scale, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#cfe8f7'; ctx.beginPath(); ctx.ellipse(sx(mx + 1.5), sy(GROUND - 104), 7 * scale, 9 * scale, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.globalAlpha = 1;
     // コンビニ（中間地点）
     const cx = CHECK - 120;
     rect(cx, GROUND - 90, 150, 90, '#f7f7f2');
