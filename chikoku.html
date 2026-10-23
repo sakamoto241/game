@@ -222,8 +222,8 @@
   dog(2345, { h: 18, w: 26 });
   girl(2850, -160);
   door(3100, 2900);
-  bike(3290); bike(3450);
-  pot(3640, 3500);
+  bike(3300);
+  pot(3560, 3330);
   puddle(3880, 80); puddle(4040, 80); puddle(4200, 130);
   dog(0, { meet: 4550, vx: -120 });
   crow(4960, 168); crow(5030, 168);
@@ -235,7 +235,7 @@
   dog(6850); dog(7050); dog(7250);
   bike(7760);
   door(8000, 7910);
-  pot(8200, 8060);
+  pot(8200, 7990);
   girl(8600, -200);
   teacher(8820, 8740);
 
@@ -684,6 +684,12 @@
         ctx.fillStyle = '#ffd84a'; ctx.beginPath(); ctx.arc(sx(X + 6), sy(Y + 34), 2.5 * scale, 0, Math.PI * 2); ctx.fill();
         break;
       case 'pot':
+        if (Y < GROUND - r.h - 1) {
+          // 落下地点の影
+          const k = Math.max(0.2, Math.min(1, (Y + 20) / (GROUND - r.h + 20)));
+          ctx.fillStyle = `rgba(31,36,51,${0.35 * k})`;
+          ctx.beginPath(); ctx.ellipse(sx(X + r.w / 2), sy(GROUND - 1), (6 + 10 * k) * scale, 3 * scale, 0, 0, Math.PI * 2); ctx.fill();
+        }
         ctx.fillStyle = '#c4643a';
         ctx.beginPath(); ctx.moveTo(sx(X), sy(Y + 6)); ctx.lineTo(sx(X + r.w), sy(Y + 6)); ctx.lineTo(sx(X + r.w - 4), sy(Y + r.h)); ctx.lineTo(sx(X + 4), sy(Y + r.h)); ctx.fill();
         rect(X + 8, Y - 6, 3, 12, '#3f9a4f');
