@@ -197,14 +197,19 @@
 
   // ---------- コース ----------
   // 動く障害物は「プレイヤーと meet の位置で出会う」ように定義する（毎回同じ動き）
-  const pits = [[1950, 2060], [4700, 4840], [7500, 7620]];
+  const pits = [[1950, 2060], [4700, 4840], [6600, 6810], [7300, 7420]];
   const manhole = { x0: 5720, x1: 5810, trig: 5690 };
   const blocks = [
     { x: 1550, w: 140, h: 40 },
     { x: 3800, w: 80, h: 30 }, { x: 3960, w: 80, h: 60 }, { x: 4120, w: 80, h: 90 },
     { x: 6000, w: 300, h: 40 },
   ];
+  const mattresses = [{ x: 6540, w: 56, h: 12 }];   // 乗ると大きく跳ねる
+  const slopes = [[7520, 8150]];                    // 下り坂：この区間は1.5倍速
+  const BOUNCE = 1180, SLOPE_MULT = 1.5;
+  const speedAt = (x) => slopes.some(([a, b]) => x >= a && x < b) ? SLOPE_MULT : 1;
   const H = [];
+  const ROPE1 = 1, ROPE2 = 2;
   const dog = (x, o = {}) => H.push({ type: 'dog', x, w: 30, h: o.h || 22, ...o });
   const puddle = (x, w) => H.push({ type: 'puddle', x, w, h: 6 });
   const bike = (meet, vx = -200) => H.push({ type: 'bike', meet, vx, w: 44, h: 40 });
@@ -213,6 +218,7 @@
   const door = (x, trig) => H.push({ type: 'door', x, trig, w: 12, h: 64 });
   const pot = (x, trig) => H.push({ type: 'pot', x, trig, w: 20, h: 22 });
   const teacher = (x, trig) => H.push({ type: 'teacher', x, trig, w: 26, h: 48 });
+  const rope = (x, period, phase) => H.push({ type: 'rope', x, w: 100, h: 6, period, phase });
 
   dog(520); dog(760);
   puddle(980, 80);
@@ -225,19 +231,20 @@
   bike(3300);
   pot(3560, 3330);
   puddle(3880, 80); puddle(4040, 80); puddle(4200, 130);
+  // ---- 後半 ----
   dog(0, { meet: 4550, vx: -120 });
   crow(4960, 168); crow(5030, 168);
   puddle(5000, 60);
-  dog(5300); bike(5480);
+  dog(5250);
+  rope(5420, 0.9, ROPE1);
   crow(6100, 176); crow(6170, 176);
   puddle(6300, 120);
-  girl(6700, -220);
-  dog(6850); dog(7050); dog(7250);
-  bike(7760);
-  door(8000, 7910);
-  pot(8200, 7990);
-  girl(8600, -200);
-  teacher(8820, 8740);
+  dog(6960); dog(7140);
+  dog(7650); puddle(7840, 80); bike(8050, -120);
+  door(8240, 8100);
+  rope(8470, 0.75, ROPE2);
+  girl(8690, -200);
+  teacher(8870, 8780);
 
   const CAUSE = {
     dog: ['犬にかまれた', 'ワンッ！！'],
@@ -248,6 +255,7 @@
     door: ['急に開いたドアに激突', 'ガチャッ'],
     pot: ['植木鉢が降ってきた', 'ゴンッ'],
     teacher: ['生活指導につかまった', 'コラーッ！'],
+    rope: ['縄跳びに引っかかった', '「おにいちゃんも入る？」'],
     wall: ['ブロック塀に激突', 'ゴツン'],
     pit: ['工事中の穴に落ちた', 'ヒューン…'],
     manhole: ['マンホールに落ちた', 'フタは信じるな'],
@@ -280,6 +288,7 @@
     land: () => tone('triangle', 160, 90, .05, .05),
     die: () => { tone('sawtooth', 500, 60, .4, .16); tone('square', 120, 50, .3, .1, .05); },
     check: () => { tone('square', 660, 660, .08, .07); tone('square', 990, 990, .12, .07, .09); },
+    boing: () => { tone('sine', 180, 720, .25, .12); tone('triangle', 360, 1100, .2, .05, .05); },
     clear: () => [523, 659, 784, 1046].forEach((f, i) => tone('square', f, f, .16, .08, i * .1)),
     chime: () => [659, 523, 587, 392].forEach((f, i) => tone('triangle', f, f, .35, .06, i * .3)),
   };
@@ -320,6 +329,10 @@
       case 'puddle': return { x: o.x, y: GROUND - 5, w: o.w, h: 7 };
       case 'crow': return { x: o.x, y: o.y, w: o.w, h: o.h };
       case 'door': case 'teacher': return p.x > o.trig ? { x: o.x, y: GROUND - o.h, w: o.w, h: o.h } : null;
+      case 'rope': {
+        const y = ropeY(o);
+        return { x: o.x + 8, y: y - 3, w: o.w - 16, h: 6 };
+      }
       case 'pot': {
         if (p.x <= o.trig) return null;
         const dt = (p.x - o.trig) / SPEED;
@@ -329,6 +342,7 @@
     }
     return null;
   }
+  const ropeY = (o) => GROUND - 38 - 36 * Math.cos(Math.PI * 2 * (T() / o.period) + o.phase);
   const manholeOpen = () => p.x > manhole.trig;
   function inPit(x0, x1) {
     const list = manholeOpen() ? [...pits, [manhole.x0, manhole.x1]] : pits;
@@ -363,7 +377,7 @@
   function respawn() {
     p.x = checkpointReached ? CHECK : 0;
     startX = p.x;
-    p.y = GROUND - PH; p.vy = 0; p.ground = true; p.coyote = 0; p.buffer = 0;
+    p.y = GROUND - PH; p.vy = 0; p.ground = true; p.coyote = 0; p.buffer = 0; p.bounce = false;
     shownMilestone = Math.floor((p.x / GOAL) * 4);
     state = 'run';
     hideMsg();
@@ -432,7 +446,7 @@
   function step(dt) {
     if (state !== 'run') return;
     const prevBottom = p.y + PH;
-    p.x += SPEED * dt;
+    p.x += SPEED * speedAt(p.x) * dt;
     p.vy += G * dt;
     p.y += p.vy * dt;
     p.coyote -= dt; p.buffer -= dt;
@@ -449,6 +463,16 @@
         }
       }
     }
+    // マットレス（どこから触れても跳ねる）
+    for (const m of mattresses) {
+      const r = { x: m.x, y: GROUND - m.h, w: m.w, h: m.h };
+      if (p.vy >= 0 && overlap({ x: p.x, y: p.y, w: PW, h: PH }, r)) {
+        p.y = r.y - PH; p.vy = -BOUNCE; p.bounce = true; p.ground = false; p.coyote = 0; p.buffer = 0;
+        sfx.boing();
+        for (let i = 0; i < 8; i++) parts.push({ x: p.x + PW / 2, y: r.y, vx: (Math.random() - .5) * 200, vy: -Math.random() * 160, life: .5, c: '#ffffff', r: 3 });
+        return;
+      }
+    }
     // ブロック塀
     for (const b of blocks) {
       const r = { x: b.x, y: GROUND - b.h, w: b.w, h: b.h };
@@ -458,6 +482,7 @@
       }
     }
     if (landed) {
+      p.bounce = false;
       if (!p.ground) sfx.land();
       p.ground = true; p.coyote = 0.08;
       if (p.buffer > 0) jump();
@@ -507,7 +532,7 @@
   }
   function release() {
     holding = false;
-    if (state === 'run' && p.vy < 0) p.vy *= CUT;
+    if (state === 'run' && p.vy < 0 && !p.bounce) p.vy *= CUT;
   }
 
   // ---------- 描画 ----------
@@ -559,6 +584,8 @@
       ctx.fillStyle = '#16171b'; ctx.fillRect(sx(a), sy(GROUND), (b - a) * scale, 10 * scale);
     }
     for (const [a, b] of pits) {
+      // マットレス直後の穴は看板なし（マットレスと重なるため）
+      if (mattresses.some((m) => a - (m.x + m.w) < 30 && a >= m.x)) { cone(b + 4); continue; }
       // 工事中のコーン
       cone(a - 16); cone(b + 4);
       rect(a - 8, GROUND - 46, 8, 46, '#555');
@@ -583,6 +610,39 @@
     ctx.beginPath();
     ctx.moveTo(sx(x), sy(GROUND)); ctx.lineTo(sx(x + 6), sy(GROUND - 20)); ctx.lineTo(sx(x + 12), sy(GROUND)); ctx.fill();
     ctx.fillStyle = '#fff'; ctx.fillRect(sx(x + 3), sy(GROUND - 11), 6 * scale, 3 * scale);
+  }
+
+  function drawMattresses(t) {
+    for (const m of mattresses) {
+      const y = GROUND - m.h;
+      const squish = Math.abs(p.x - m.x) < 40 && p.bounce && p.vy < -900 ? 3 : 0;
+      rect(m.x, y + squish, m.w, m.h - squish, '#f3efe6');
+      ctx.strokeStyle = '#7ab0d8'; ctx.lineWidth = 2 * scale;
+      for (let xx = m.x + 6; xx < m.x + m.w; xx += 10) { ctx.beginPath(); ctx.moveTo(sx(xx), sy(y + squish + 1)); ctx.lineTo(sx(xx), sy(GROUND - 1)); ctx.stroke(); }
+      rect(m.x + 4, y - 26, 48, 14, '#ffd84a');
+      ctx.fillStyle = '#1f2433'; ctx.font = `900 ${9 * scale}px "Zen Kaku Gothic New", sans-serif`;
+      ctx.fillText('粗大ゴミ', sx(m.x + 8), sy(y - 15));
+    }
+  }
+
+  function drawSlopes(t) {
+    for (const [a, b] of slopes) {
+      if (b < camX || a > camX + viewW) continue;
+      rect(a, GROUND, b - a, 6, '#c9a14a');
+      ctx.fillStyle = 'rgba(255,255,255,.75)';
+      const off = (t * 300) % 60;
+      for (let x = a + off; x < b - 20; x += 60) {
+        ctx.beginPath();
+        ctx.moveTo(sx(x), sy(GROUND + 14)); ctx.lineTo(sx(x + 14), sy(GROUND + 20)); ctx.lineTo(sx(x), sy(GROUND + 26));
+        ctx.lineTo(sx(x + 5), sy(GROUND + 20)); ctx.fill();
+      }
+      // 標識
+      rect(a - 40, GROUND - 80, 4, 80, '#8a8f9c');
+      ctx.fillStyle = '#ffd84a';
+      ctx.beginPath(); ctx.moveTo(sx(a - 38), sy(GROUND - 112)); ctx.lineTo(sx(a - 16), sy(GROUND - 90)); ctx.lineTo(sx(a - 38), sy(GROUND - 68)); ctx.lineTo(sx(a - 60), sy(GROUND - 90)); ctx.fill();
+      ctx.fillStyle = '#1f2433'; ctx.font = `900 ${9 * scale}px "Zen Kaku Gothic New", sans-serif`;
+      ctx.fillText('下り坂', sx(a - 52), sy(GROUND - 87));
+    }
   }
 
   function drawBlocks() {
@@ -695,6 +755,23 @@
         rect(X + 8, Y - 6, 3, 12, '#3f9a4f');
         ctx.fillStyle = '#e23b3b'; ctx.beginPath(); ctx.arc(sx(X + 9.5), sy(Y - 8), 4 * scale, 0, Math.PI * 2); ctx.fill();
         break;
+      case 'rope': {
+        const y = ropeY(o);
+        // 奥の歩道に立つ小学生（障害物は縄だけ）
+        ctx.globalAlpha = 0.85;
+        for (const kx of [o.x - 4, o.x + o.w - 10]) {
+          rect(kx, GROUND - 26, 14, 16, '#e8693a');
+          rect(kx + 2, GROUND - 10, 4, 10, '#1f2433'); rect(kx + 8, GROUND - 10, 4, 10, '#1f2433');
+          ctx.fillStyle = '#f1c7a5'; ctx.beginPath(); ctx.arc(sx(kx + 7), sy(GROUND - 32), 6 * scale, 0, Math.PI * 2); ctx.fill();
+          rect(kx, GROUND - 40, 14, 4, '#ffd84a');
+        }
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = '#e23b3b'; ctx.lineWidth = 3 * scale;
+        ctx.beginPath(); ctx.moveTo(sx(o.x + 4), sy(GROUND - 22));
+        ctx.quadraticCurveTo(sx(o.x + o.w / 2), sy(y * 2 - (GROUND - 22)), sx(o.x + o.w - 4), sy(GROUND - 22));
+        ctx.stroke();
+        break;
+      }
       case 'teacher':
         rect(X, Y + 14, r.w, r.h - 14, '#c93030');
         rect(X + 4, Y + r.h - 10, 7, 10, '#1f2433'); rect(X + r.w - 11, Y + r.h - 10, 7, 10, '#1f2433');
@@ -800,7 +877,9 @@
     drawBackground(clockT);
     drawPits();
     drawLandmarks();
+    drawSlopes(clockT);
     drawBlocks();
+    drawMattresses(clockT);
     for (const o of H) drawHazard(o, clockT);
     drawWarnings(clockT);
     drawPlayer(clockT);
