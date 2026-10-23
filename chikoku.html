@@ -1,0 +1,813 @@
+<title>遅刻ダッシュ</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="食パンをくわえて校門までダッシュ。8:30に校門が閉まる、30秒の鬼畜1ボタンジャンプゲーム。">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="遅刻ダッシュ">
+<meta property="og:title" content="遅刻ダッシュ">
+<meta property="og:description" content="食パンをくわえて校門までダッシュ。犬、水たまり、転校生。30秒を走り切れるか。">
+<meta property="og:locale" content="ja_JP">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="遅刻ダッシュ">
+<meta name="twitter:description" content="食パンをくわえて校門までダッシュ。30秒の鬼畜1ボタンジャンプゲーム。">
+<meta name="theme-color" content="#7cc4f0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap">
+<style>
+  /* Layout: 朝の通学路を横から見た一枚絵。上に遅刻回数と時計、中央にコース、下にヒント */
+  :root {
+    color-scheme: light;
+    --sky: #7cc4f0;
+    --sky-low: #fde7b8;
+    --ink: #1f2433;
+    --paper: #fffaf0;
+    --red: #e23b3b;
+    --toast: #e9a94b;
+    --muted: #55607a;
+    --display: "Dela Gothic One", "Hiragino Sans", system-ui, sans-serif;
+    --body: "Zen Kaku Gothic New", "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif;
+  }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--sky);
+    color: var(--ink);
+    font-family: var(--body);
+    overflow: hidden;
+    -webkit-user-select: none; user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: none;
+  }
+  #app { position: relative; height: 100%; display: flex; flex-direction: column; }
+  header {
+    position: relative; z-index: 3;
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 10px 6px;
+  }
+  .label { font-size: 11px; font-weight: 900; letter-spacing: .1em; color: var(--muted); }
+  #deaths { font-family: var(--display); font-size: clamp(34px, 10vw, 54px); line-height: 1; color: var(--red); font-variant-numeric: tabular-nums; }
+  #deaths small { font-size: .45em; margin-left: 2px; color: var(--ink); }
+  #deaths.pop { animation: pop .35s ease-out; }
+  @keyframes pop { 0% { transform: scale(1.5); } 100% { transform: scale(1); } }
+  .right { text-align: right; display: grid; gap: 4px; justify-items: end; }
+  #clock {
+    font-family: var(--display); font-size: clamp(22px, 6.5vw, 32px); line-height: 1;
+    background: var(--ink); color: #ffd84a; padding: 4px 8px; border-radius: 6px;
+    font-variant-numeric: tabular-nums;
+  }
+  #best { font-size: 12px; font-weight: 900; }
+  .xbtn {
+    display: inline-flex; align-items: center; gap: 5px;
+    font: 900 12px var(--body); color: var(--paper); background: var(--ink);
+    text-decoration: none; padding: 5px 10px; border-radius: 999px;
+  }
+  .xbtn:focus-visible, .btn:focus-visible { outline: 3px solid var(--red); outline-offset: 2px; }
+
+  #stage { position: relative; flex: 1; min-height: 0; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+  #msg {
+    position: absolute; left: 0; right: 0; top: 14%; z-index: 2;
+    text-align: center; pointer-events: none;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  #msg .big {
+    font-family: var(--display); font-size: clamp(30px, 9vw, 54px); line-height: 1.1;
+    color: var(--paper);
+    -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill;
+    text-shadow: 4px 4px 0 var(--ink);
+  }
+  #msg .sub { margin-top: 6px; font-weight: 900; font-size: 15px; color: var(--ink); text-shadow: 0 0 6px var(--paper), 0 0 6px var(--paper); }
+  #msg.show { animation: msgin .3s cubic-bezier(.2,1.6,.4,1); }
+  @keyframes msgin { 0% { transform: scale(2) rotate(-6deg); opacity: 0; } 100% { transform: scale(1) rotate(-2deg); opacity: 1; } }
+
+  footer {
+    text-align: center; font-size: 12px; font-weight: 700; color: var(--ink); min-height: 18px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 6px 8px;
+    position: relative; z-index: 3;
+  }
+
+  .overlay {
+    position: absolute; inset: 0; z-index: 5;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+    text-align: center;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  #title { background: color-mix(in srgb, var(--sky) 55%, transparent); }
+  #title h1 {
+    margin: 0; font-family: var(--display); font-weight: 400;
+    font-size: clamp(52px, 17vw, 104px); line-height: 1; color: var(--paper);
+    -webkit-text-stroke: 3px var(--ink); paint-order: stroke fill;
+    text-shadow: 6px 6px 0 var(--red);
+    transform: rotate(-3deg);
+  }
+  #title .lead { font-weight: 900; font-size: 16px; line-height: 1.7; background: var(--paper); border: 2.5px solid var(--ink); border-radius: 6px; padding: 10px 14px; max-width: 24em; }
+  .tap { font-family: var(--display); font-size: 18px; color: var(--red); animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: .25; } }
+
+  #clear { background: color-mix(in srgb, var(--ink) 55%, transparent); }
+  .card {
+    width: 100%; max-width: 360px; box-sizing: border-box;
+    background: var(--paper); border: 3px solid var(--ink); border-radius: 6px;
+    box-shadow: 6px 6px 0 var(--ink); padding: 20px; display: grid; gap: 8px;
+  }
+  .card h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 52px; color: var(--red); line-height: 1; transform: rotate(-3deg); }
+  #c-deaths { font-family: var(--display); font-size: 40px; line-height: 1.1; }
+  #c-comment { font-weight: 900; font-size: 15px; }
+  .btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    font: 900 16px var(--body); text-decoration: none; cursor: pointer;
+    border: 3px solid var(--ink); border-radius: 6px; padding: 12px;
+    box-shadow: 3px 3px 0 var(--ink);
+  }
+  .btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+  #c-share { background: var(--ink); color: var(--paper); }
+  #c-retry { background: #ffd84a; color: var(--ink); }
+
+  .shake { animation: shake .3s; }
+  @keyframes shake { 25% { transform: translate(-7px, 3px); } 50% { transform: translate(6px, -4px); } 75% { transform: translate(-3px, 2px); } }
+  @media (prefers-reduced-motion: reduce) {
+    .shake, #msg.show, #deaths.pop, .tap { animation: none; }
+  }
+</style>
+
+<div id="app">
+  <header>
+    <div>
+      <div class="label">遅刻した回数</div>
+      <div id="deaths">0<small>回</small></div>
+    </div>
+    <div class="right">
+      <div id="clock">8:29:30</div>
+      <div id="best">最高到達 0%</div>
+      <a id="xshare" class="xbtn" href="https://twitter.com/intent/tweet" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        遅刻を晒す
+      </a>
+    </div>
+  </header>
+
+  <div id="stage">
+    <canvas id="cv"></canvas>
+    <div id="msg"></div>
+  </div>
+  <footer id="hint">タップでジャンプ ／ 長押しで高く跳ぶ</footer>
+
+  <div id="title" class="overlay">
+    <h1>遅刻<br>ダッシュ</h1>
+    <div class="lead">8:30に校門が閉まる。<br>食パンをくわえて30秒を走り切れ。<br>タップでジャンプ、長押しで高く。</div>
+    <div class="tap">タップ / SPACE でスタート</div>
+  </div>
+
+  <div id="clear" class="overlay" hidden>
+    <div class="card">
+      <h2>セーフ!!</h2>
+      <div class="label">ここまでの遅刻</div>
+      <div id="c-deaths">0回</div>
+      <div id="c-comment"></div>
+      <a id="c-share" class="btn" href="https://twitter.com/intent/tweet" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        Xで自慢する
+      </a>
+      <button id="c-retry" class="btn" type="button">明日も登校する</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const cv = $('cv'), ctx = cv.getContext('2d'), stage = $('stage');
+
+  // ---------- 定数 ----------
+  const VH = 360, GROUND = 300;
+  const SPEED = 300;            // px/秒。30秒で9000px
+  const GOAL = 9000, CHECK = 4400;
+  const G = 2600, JV = 820, CUT = 0.45;
+  const PW = 22, PH = 30;
+
+  // ---------- コース ----------
+  // 動く障害物は「プレイヤーと meet の位置で出会う」ように定義する（毎回同じ動き）
+  const pits = [[1950, 2060], [4700, 4840], [7500, 7620]];
+  const manhole = { x0: 5720, x1: 5810, trig: 5690 };
+  const blocks = [
+    { x: 1550, w: 140, h: 40 },
+    { x: 3800, w: 80, h: 30 }, { x: 3960, w: 80, h: 60 }, { x: 4120, w: 80, h: 90 },
+    { x: 6000, w: 300, h: 40 },
+  ];
+  const H = [];
+  const dog = (x, o = {}) => H.push({ type: 'dog', x, w: 30, h: o.h || 22, ...o });
+  const puddle = (x, w) => H.push({ type: 'puddle', x, w, h: 6 });
+  const bike = (meet, vx = -200) => H.push({ type: 'bike', meet, vx, w: 44, h: 40 });
+  const crow = (x, y) => H.push({ type: 'crow', x, y, w: 30, h: 22 });
+  const girl = (meet, vx) => H.push({ type: 'girl', meet, vx, w: 22, h: 30 });
+  const door = (x, trig) => H.push({ type: 'door', x, trig, w: 12, h: 64 });
+  const pot = (x, trig) => H.push({ type: 'pot', x, trig, w: 20, h: 22 });
+  const teacher = (x, trig) => H.push({ type: 'teacher', x, trig, w: 26, h: 48 });
+
+  dog(520); dog(760);
+  puddle(980, 80);
+  bike(1350);
+  puddle(1690, 70);
+  crow(2270, 168); crow(2340, 168); crow(2410, 168);
+  dog(2345, { h: 18, w: 26 });
+  girl(2700, -250);
+  door(2950, 2860);
+  bike(3200); bike(3360);
+  pot(3560, 3420);
+  puddle(3880, 80); puddle(4040, 80); puddle(4200, 130);
+  dog(0, { meet: 4550, vx: -120 });
+  crow(4960, 168); crow(5030, 168);
+  puddle(5000, 60);
+  dog(5300); bike(5480);
+  crow(6100, 176); crow(6170, 176);
+  puddle(6300, 120);
+  girl(6700, -350);
+  dog(6850); dog(7050); dog(7250);
+  bike(7760);
+  door(8000, 7910);
+  pot(8200, 8060);
+  girl(8600, -300);
+  teacher(8820, 8740);
+
+  const CAUSE = {
+    dog: ['犬にかまれた', 'ワンッ！！'],
+    puddle: ['水たまりで転んだ', 'ズルッ'],
+    bike: ['自転車にひかれた', 'チリンチリーン'],
+    crow: ['カラスにパンを取られた', 'カァー！'],
+    girl: ['転校生とぶつかった', '（恋が始まった）'],
+    door: ['急に開いたドアに激突', 'ガチャッ'],
+    pot: ['植木鉢が降ってきた', 'ゴンッ'],
+    teacher: ['生活指導につかまった', 'コラーッ！'],
+    wall: ['ブロック塀に激突', 'ゴツン'],
+    pit: ['工事中の穴に落ちた', 'ヒューン…'],
+    manhole: ['マンホールに落ちた', 'フタは信じるな'],
+  };
+
+  // ---------- 保存 ----------
+  const K = 'chikokudash_';
+  const load = (k, d) => { try { const v = localStorage.getItem(K + k); return v === null ? d : v; } catch { return d; } };
+  const save = (k, v) => { try { localStorage.setItem(K + k, v); } catch {} };
+  let deaths = parseInt(load('deaths', '0'), 10) || 0;
+  let bestPct = parseInt(load('best', '0'), 10) || 0;
+
+  // ---------- 音 ----------
+  let ac = null;
+  function audio() {
+    if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch { return null; } }
+    if (ac.state === 'suspended') ac.resume();
+    return ac;
+  }
+  function tone(type, f0, f1, dur, vol, when = 0) {
+    const a = audio(); if (!a) return;
+    const t = a.currentTime + when;
+    const o = a.createOscillator(); o.type = type;
+    o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    const g = a.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + .02);
+  }
+  const sfx = {
+    jump: () => tone('square', 380, 760, .1, .06),
+    land: () => tone('triangle', 160, 90, .05, .05),
+    die: () => { tone('sawtooth', 500, 60, .4, .16); tone('square', 120, 50, .3, .1, .05); },
+    check: () => { tone('square', 660, 660, .08, .07); tone('square', 990, 990, .12, .07, .09); },
+    clear: () => [523, 659, 784, 1046].forEach((f, i) => tone('square', f, f, .16, .08, i * .1)),
+    chime: () => [659, 523, 587, 392].forEach((f, i) => tone('triangle', f, f, .35, .06, i * .3)),
+  };
+
+  // ---------- 画面 ----------
+  let W = 0, Hs = 0, dpr = 1, scale = 1, oy = 0, viewW = 0;
+  function resize() {
+    const r = stage.getBoundingClientRect();
+    dpr = Math.min(2, window.devicePixelRatio || 1);
+    W = r.width; Hs = r.height;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(Hs * dpr);
+    scale = Math.min(W / 360, Hs / VH);
+    oy = Math.min(Hs - VH * scale, Math.max(0, Hs * 0.72 - GROUND * scale));
+    viewW = W / scale;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // ---------- 状態 ----------
+  // state: 'title' | 'run' | 'dead' | 'clear'
+  let state = 'title';
+  const p = { x: 0, y: GROUND - PH, vy: 0, ground: true, coyote: 0, buffer: 0 };
+  let holding = false;
+  let startX = 0;
+  let checkpointReached = false;
+  let deathTimer = 0;
+  let deathsThisClear = parseInt(load('sinceclear', '0'), 10) || 0;
+  let parts = [];
+  let shownMilestone = 0;
+  let camX = 0;
+
+  const T = () => p.x / SPEED;               // コース上の時計（位置で決まる）
+  const moverX = (o) => o.meet + o.vx * (T() - o.meet / SPEED);
+  function hazardRect(o) {
+    switch (o.type) {
+      case 'bike': case 'girl': return { x: moverX(o), y: GROUND - o.h, w: o.w, h: o.h };
+      case 'dog': return o.meet ? { x: moverX(o), y: GROUND - o.h, w: o.w, h: o.h } : { x: o.x, y: GROUND - o.h, w: o.w, h: o.h };
+      case 'puddle': return { x: o.x, y: GROUND - 5, w: o.w, h: 7 };
+      case 'crow': return { x: o.x, y: o.y, w: o.w, h: o.h };
+      case 'door': case 'teacher': return p.x > o.trig ? { x: o.x, y: GROUND - o.h, w: o.w, h: o.h } : null;
+      case 'pot': {
+        if (p.x <= o.trig) return null;
+        const dt = (p.x - o.trig) / SPEED;
+        const y = Math.min(GROUND - o.h, -20 + 300 * dt + 1300 * dt * dt);
+        return { x: o.x, y, w: o.w, h: o.h };
+      }
+    }
+    return null;
+  }
+  const manholeOpen = () => p.x > manhole.trig;
+  function inPit(x0, x1) {
+    const list = manholeOpen() ? [...pits, [manhole.x0, manhole.x1]] : pits;
+    for (const [a, b] of list) if (x0 >= a && x1 <= b) return [a, b];
+    return null;
+  }
+  function overSolidGround(x0, x1) {
+    const list = manholeOpen() ? [...pits, [manhole.x0, manhole.x1]] : pits;
+    for (const [a, b] of list) if (x0 >= a && x1 <= b) return false;
+    return true;
+  }
+
+  function hud() {
+    $('deaths').innerHTML = deaths.toLocaleString('ja-JP') + '<small>回</small>';
+    $('best').textContent = '最高到達 ' + bestPct + '%';
+    const text = `遅刻ダッシュで${deaths.toLocaleString('ja-JP')}回遅刻した🍞 最高${bestPct}%まで行った。誰かクリアして\n#遅刻ダッシュ\n${location.href}`;
+    $('xshare').href = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(text);
+  }
+  function clockText() {
+    const s = Math.min(30, Math.max(0, T()));
+    const sec = 30 + Math.floor(s);
+    return sec >= 60 ? '8:30:00' : `8:29:${String(sec).padStart(2, '0')}`;
+  }
+  function showMsg(big, sub) {
+    const m = $('msg');
+    m.innerHTML = `<div class="big">${big}</div>` + (sub ? `<div class="sub">${sub}</div>` : '');
+    m.classList.remove('show'); void m.offsetWidth; m.classList.add('show');
+    m.hidden = false;
+  }
+  const hideMsg = () => { $('msg').hidden = true; };
+
+  function respawn() {
+    p.x = checkpointReached ? CHECK : 0;
+    startX = p.x;
+    p.y = GROUND - PH; p.vy = 0; p.ground = true; p.coyote = 0; p.buffer = 0;
+    shownMilestone = Math.floor((p.x / GOAL) * 4);
+    state = 'run';
+    hideMsg();
+  }
+
+  function startGame() {
+    $('title').hidden = true;
+    $('clear').hidden = true;
+    checkpointReached = false;
+    respawn();
+    showMsg('いってきまーす！', '');
+    setTimeout(() => { if (state === 'run' && p.x < 600) hideMsg(); }, 900);
+  }
+
+  function die(cause) {
+    if (state !== 'run') return;
+    state = 'dead';
+    deaths++; deathsThisClear++;
+    save('deaths', String(deaths)); save('sinceclear', String(deathsThisClear));
+    const pct = Math.floor((p.x / GOAL) * 100);
+    if (pct > bestPct) { bestPct = pct; save('best', String(bestPct)); }
+    hud();
+    const d = $('deaths'); d.classList.remove('pop'); void d.offsetWidth; d.classList.add('pop');
+    const [big, sub] = CAUSE[cause] || ['遅刻', ''];
+    showMsg(big, sub + '　（' + pct + '%）');
+    sfx.die();
+    stage.classList.remove('shake'); void stage.offsetWidth; stage.classList.add('shake');
+    // パンくずが飛び散る
+    for (let i = 0; i < 26; i++) {
+      const a = Math.random() * Math.PI * 2, s = 120 + Math.random() * 320;
+      parts.push({ x: p.x + PW / 2, y: p.y + PH / 2, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 200, life: 1, c: i % 3 ? '#e9a94b' : '#fff3d6', r: 2 + Math.random() * 4 });
+    }
+    deathTimer = 0.75;
+  }
+
+  function clear() {
+    state = 'clear';
+    sfx.chime(); sfx.clear();
+    bestPct = 100; save('best', '100');
+    hud();
+    const n = deathsThisClear;
+    const comments = [
+      [0, '遅刻ゼロ。皆勤賞おめでとう'],
+      [10, '寝坊はしたけど、間に合った'],
+      [50, '先生「お前、毎朝ギリギリだな」'],
+      [150, 'このペースだと卒業まで遅刻し続ける'],
+      [400, 'もはや遅刻のプロ'],
+      [1000, '遅刻回数が出席日数を超えた'],
+    ];
+    let c = comments[0][1];
+    for (const [k, t] of comments) if (n >= k) c = t;
+    $('c-deaths').textContent = n.toLocaleString('ja-JP') + '回';
+    $('c-comment').textContent = c;
+    const text = `遅刻ダッシュを${n.toLocaleString('ja-JP')}回遅刻してやっとクリアした🍞🏫 ${c}\n#遅刻ダッシュ\n${location.href}`;
+    $('c-share').href = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(text);
+    deathsThisClear = 0; save('sinceclear', '0');
+    for (let i = 0; i < 80; i++) {
+      parts.push({ x: p.x + (Math.random() - .5) * 300, y: 0 - Math.random() * 100, vx: (Math.random() - .5) * 80, vy: 60 + Math.random() * 120, life: 3, c: ['#e23b3b', '#ffd84a', '#3aa0e8', '#5bc46a', '#ffffff'][i % 5], r: 3 + Math.random() * 3, conf: true });
+    }
+    setTimeout(() => { $('clear').hidden = false; }, 1300);
+  }
+
+  // ---------- 物理 ----------
+  const overlap = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+
+  function step(dt) {
+    if (state !== 'run') return;
+    const prevBottom = p.y + PH;
+    p.x += SPEED * dt;
+    p.vy += G * dt;
+    p.y += p.vy * dt;
+    p.coyote -= dt; p.buffer -= dt;
+
+    let landed = false;
+    // 地面
+    const x0 = p.x, x1 = p.x + PW;
+    if (p.y + PH >= GROUND) {
+      if (overSolidGround(x0, x1)) {
+        if (prevBottom <= GROUND + 1) { p.y = GROUND - PH; p.vy = 0; landed = true; }
+        else {
+          // 穴の中から地面の壁にぶつかった
+          return die(inManholeZone(x0) ? 'manhole' : 'pit');
+        }
+      }
+    }
+    // ブロック塀
+    for (const b of blocks) {
+      const r = { x: b.x, y: GROUND - b.h, w: b.w, h: b.h };
+      if (overlap({ x: p.x, y: p.y, w: PW, h: PH }, r)) {
+        if (prevBottom <= r.y + 2 && p.vy >= 0) { p.y = r.y - PH; p.vy = 0; landed = true; }
+        else return die('wall');
+      }
+    }
+    if (landed) {
+      if (!p.ground) sfx.land();
+      p.ground = true; p.coyote = 0.08;
+      if (p.buffer > 0) jump();
+    } else {
+      p.ground = false;
+    }
+    if (p.y > VH + 40) return die(inManholeZone(p.x) ? 'manhole' : 'pit');
+
+    // 危険物（当たり判定は少しだけ甘め）
+    const me = { x: p.x + 3, y: p.y + 3, w: PW - 6, h: PH - 4 };
+    for (const o of H) {
+      const r = hazardRect(o);
+      if (r && overlap(me, { x: r.x + 2, y: r.y + 2, w: r.w - 4, h: r.h - 2 })) return die(o.type);
+    }
+
+    if (!checkpointReached && p.x >= CHECK) {
+      checkpointReached = true;
+      sfx.check();
+      showMsg('中間地点', 'コンビニで一息。ここから再スタートできる');
+      setTimeout(() => { if (state === 'run') hideMsg(); }, 1300);
+    }
+    const ms = Math.floor((p.x / GOAL) * 4);
+    if (ms > shownMilestone) {
+      shownMilestone = ms;
+      const text = { 1: 'あと22秒', 3: 'あと7秒！' }[ms];
+      if (text) {
+        showMsg(text, '');
+        setTimeout(() => { if (state === 'run') hideMsg(); }, 800);
+      }
+    }
+    if (p.x >= GOAL) clear();
+  }
+  const inManholeZone = (x) => x > manhole.x0 - PW && x < manhole.x1 + 10;
+
+  function jump() {
+    p.vy = -JV; p.ground = false; p.coyote = 0; p.buffer = 0;
+    sfx.jump();
+    for (let i = 0; i < 6; i++) parts.push({ x: p.x + PW / 2, y: p.y + PH, vx: -60 - Math.random() * 120, vy: -Math.random() * 80, life: .4, c: '#d8cfc0', r: 2 + Math.random() * 3 });
+  }
+  function press() {
+    audio();
+    if (state === 'title') return startGame();
+    if (state !== 'run') return;
+    holding = true;
+    if (p.ground || p.coyote > 0) jump();
+    else p.buffer = 0.1;
+  }
+  function release() {
+    holding = false;
+    if (state === 'run' && p.vy < 0) p.vy *= CUT;
+  }
+
+  // ---------- 描画 ----------
+  const sx = (x) => (x - camX) * scale;
+  const sy = (y) => oy + y * scale;
+  function rect(x, y, w, h, c) { ctx.fillStyle = c; ctx.fillRect(sx(x), sy(y), w * scale, h * scale); }
+
+  function drawBackground(t) {
+    const g = ctx.createLinearGradient(0, 0, 0, sy(GROUND));
+    g.addColorStop(0, '#7cc4f0'); g.addColorStop(1, '#fde7b8');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, sy(GROUND));
+    // 朝日
+    ctx.fillStyle = 'rgba(255,220,120,.7)';
+    ctx.beginPath(); ctx.arc(W * 0.82, sy(70), 26 * scale, 0, Math.PI * 2); ctx.fill();
+    // 遠くの家並み（パララックス）
+    const par = camX * 0.3;
+    for (let i = -1; i < viewW / 90 + 2; i++) {
+      const base = Math.floor(par / 90) + i;
+      const hx = (base * 90 - par) * scale;
+      const hh = 50 + ((base * 37) % 40 + 40) % 40;
+      ctx.fillStyle = base % 2 ? '#c8d6e6' : '#b7c8dc';
+      ctx.fillRect(hx, sy(GROUND - hh - 20), 76 * scale, (hh + 20) * scale);
+      ctx.beginPath();
+      ctx.moveTo(hx - 6 * scale, sy(GROUND - hh - 20));
+      ctx.lineTo(hx + 38 * scale, sy(GROUND - hh - 48));
+      ctx.lineTo(hx + 82 * scale, sy(GROUND - hh - 20));
+      ctx.fillStyle = base % 3 ? '#9fb1c8' : '#c47a6a'; ctx.fill();
+    }
+    // 電柱
+    const par2 = camX * 0.7;
+    for (let i = -1; i < viewW / 260 + 2; i++) {
+      const base = Math.floor(par2 / 260) + i;
+      const px = (base * 260 - par2) * scale;
+      ctx.fillStyle = '#8a8f9c';
+      ctx.fillRect(px, sy(110), 6 * scale, (GROUND - 110) * scale);
+      ctx.fillRect(px - 14 * scale, sy(124), 34 * scale, 4 * scale);
+    }
+    // 道路
+    ctx.fillStyle = '#6e7280'; ctx.fillRect(0, sy(GROUND), W, Hs - sy(GROUND));
+    ctx.fillStyle = '#9ca0aa'; ctx.fillRect(0, sy(GROUND), W, 6 * scale);
+    ctx.fillStyle = '#f2f2f2';
+    for (let x = Math.floor(camX / 80) * 80; x < camX + viewW + 80; x += 80) rect(x, GROUND + 30, 40, 4, '#f2f2f2');
+  }
+
+  function drawPits() {
+    const list = manholeOpen() ? [...pits, [manhole.x0, manhole.x1]] : pits;
+    for (const [a, b] of list) {
+      rect(a, GROUND, b - a, VH, '#2a2c33');
+      ctx.fillStyle = '#16171b'; ctx.fillRect(sx(a), sy(GROUND), (b - a) * scale, 10 * scale);
+    }
+    for (const [a, b] of pits) {
+      // 工事中のコーン
+      cone(a - 16); cone(b + 4);
+      rect(a - 8, GROUND - 46, 8, 46, '#555');
+      ctx.fillStyle = '#ffd84a'; ctx.fillRect(sx(a - 30), sy(GROUND - 58), 56 * scale, 18 * scale);
+      ctx.fillStyle = '#1f2433'; ctx.font = `900 ${10 * scale}px "Zen Kaku Gothic New", sans-serif`;
+      ctx.fillText('工事中', sx(a - 26), sy(GROUND - 45));
+    }
+    if (!manholeOpen()) {
+      // 普通のマンホールにしか見えない
+      ctx.fillStyle = '#585b66';
+      ctx.beginPath(); ctx.ellipse(sx((manhole.x0 + manhole.x1) / 2), sy(GROUND + 3), 40 * scale, 4 * scale, 0, 0, Math.PI * 2); ctx.fill();
+    } else {
+      ctx.save();
+      ctx.translate(sx(manhole.x1 + 6), sy(GROUND - 20));
+      ctx.rotate(-1.2);
+      ctx.fillStyle = '#585b66'; ctx.fillRect(-4 * scale, -40 * scale, 8 * scale, 80 * scale);
+      ctx.restore();
+    }
+  }
+  function cone(x) {
+    ctx.fillStyle = '#ff7a1a';
+    ctx.beginPath();
+    ctx.moveTo(sx(x), sy(GROUND)); ctx.lineTo(sx(x + 6), sy(GROUND - 20)); ctx.lineTo(sx(x + 12), sy(GROUND)); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.fillRect(sx(x + 3), sy(GROUND - 11), 6 * scale, 3 * scale);
+  }
+
+  function drawBlocks() {
+    for (const b of blocks) {
+      const y = GROUND - b.h;
+      rect(b.x, y, b.w, b.h, '#b9bcc4');
+      ctx.strokeStyle = '#8d919b'; ctx.lineWidth = Math.max(1, scale);
+      for (let yy = y; yy < GROUND; yy += 15) {
+        ctx.beginPath(); ctx.moveTo(sx(b.x), sy(yy)); ctx.lineTo(sx(b.x + b.w), sy(yy)); ctx.stroke();
+        const off = ((yy - y) / 15) % 2 ? 0 : 20;
+        for (let xx = b.x + off; xx < b.x + b.w; xx += 40) {
+          ctx.beginPath(); ctx.moveTo(sx(xx), sy(yy)); ctx.lineTo(sx(xx), sy(Math.min(GROUND, yy + 15))); ctx.stroke();
+        }
+      }
+      rect(b.x - 2, y - 4, b.w + 4, 5, '#9a9ea8');
+    }
+  }
+
+  function drawLandmarks() {
+    // 曲がり角ミラー
+    const mx = 2610;
+    rect(mx, GROUND - 90, 4, 90, '#e8693a');
+    ctx.fillStyle = '#ff8a4a'; ctx.beginPath(); ctx.ellipse(sx(mx + 2), sy(GROUND - 100), 14 * scale, 16 * scale, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#cfe8f7'; ctx.beginPath(); ctx.ellipse(sx(mx + 2), sy(GROUND - 100), 10 * scale, 12 * scale, 0, 0, Math.PI * 2); ctx.fill();
+    // コンビニ（中間地点）
+    const cx = CHECK - 120;
+    rect(cx, GROUND - 90, 150, 90, '#f7f7f2');
+    rect(cx, GROUND - 90, 150, 14, '#3aa0e8');
+    rect(cx, GROUND - 76, 150, 6, '#5bc46a');
+    rect(cx, GROUND - 70, 150, 4, '#e23b3b');
+    rect(cx + 20, GROUND - 56, 110, 56, '#cfe8f7');
+    rect(CHECK, GROUND - 70, 4, 70, '#1f2433');
+    ctx.fillStyle = checkpointReached ? '#5bc46a' : '#e23b3b';
+    ctx.beginPath(); ctx.moveTo(sx(CHECK + 4), sy(GROUND - 70)); ctx.lineTo(sx(CHECK + 30), sy(GROUND - 62)); ctx.lineTo(sx(CHECK + 4), sy(GROUND - 54)); ctx.fill();
+    // 校門
+    const gx = GOAL;
+    rect(gx - 30, GROUND - 120, 22, 120, '#b9a98e');
+    rect(gx + 70, GROUND - 120, 22, 120, '#b9a98e');
+    rect(gx - 120, GROUND - 60, 90, 60, '#cfc6b4');
+    rect(gx + 92, GROUND - 60, 160, 60, '#cfc6b4');
+    rect(gx - 26, GROUND - 106, 14, 70, '#fffaf0');
+    ctx.fillStyle = '#1f2433'; ctx.font = `900 ${9 * scale}px "Zen Kaku Gothic New", sans-serif`;
+    ['あ', 'さ', 'や', 'け', '中'].forEach((ch, i) => ctx.fillText(ch, sx(gx - 23), sy(GROUND - 94 + i * 12)));
+    rect(gx + 100, GROUND - 200, 200, 140, '#e9e3d6');
+    rect(gx + 180, GROUND - 230, 40, 30, '#e9e3d6');
+    ctx.fillStyle = '#fffaf0'; ctx.beginPath(); ctx.arc(sx(gx + 200), sy(GROUND - 214), 10 * scale, 0, Math.PI * 2); ctx.fill();
+    // 閉まりかけの門扉
+    const closing = state === 'clear' ? 1 : Math.min(1, Math.max(0, (p.x - (GOAL - 600)) / 600)) * 0.6;
+    const gw = 90 * closing;
+    ctx.strokeStyle = '#4b5263'; ctx.lineWidth = 2 * scale;
+    const gl = state === 'clear' ? gx - 8 : gx + 70 - gw;
+    for (let x = 0; x <= gw; x += 9) {
+      ctx.beginPath(); ctx.moveTo(sx(gl + x), sy(GROUND - 56)); ctx.lineTo(sx(gl + x), sy(GROUND)); ctx.stroke();
+    }
+    if (gw > 0) { ctx.beginPath(); ctx.moveTo(sx(gl), sy(GROUND - 56)); ctx.lineTo(sx(gl + gw), sy(GROUND - 56)); ctx.stroke(); }
+  }
+
+  function drawHazard(o, t) {
+    const r = hazardRect(o);
+    if (!r) return;
+    if (r.x > camX + viewW + 60 || r.x + r.w < camX - 60) return;
+    const X = r.x, Y = r.y;
+    switch (o.type) {
+      case 'dog': {
+        const hop = Math.abs(Math.sin(t * 9 + o.x)) * 2;
+        rect(X, Y + 8 - hop, r.w - 6, r.h - 12, '#b07a45');
+        rect(X - 4, Y + 2 - hop, 12, 12, '#b07a45');
+        rect(X - 3, Y - 1 - hop, 4, 5, '#7a4f28');
+        rect(X - 2, Y + 6 - hop, 2, 2, '#1f2433');
+        rect(X + 2, Y + r.h - 6, 4, 6, '#8a5a30'); rect(X + r.w - 12, Y + r.h - 6, 4, 6, '#8a5a30');
+        rect(X + r.w - 7, Y + 6 - hop, 6, 3, '#b07a45');
+        if (Math.abs(X - p.x) < 140) { ctx.fillStyle = '#e23b3b'; ctx.font = `900 ${10 * scale}px "Zen Kaku Gothic New", sans-serif`; ctx.fillText('ワン!', sx(X - 6), sy(Y - 8)); }
+        break;
+      }
+      case 'puddle':
+        ctx.fillStyle = '#5aa8e0';
+        ctx.beginPath(); ctx.ellipse(sx(X + r.w / 2), sy(GROUND - 1), r.w / 2 * scale, 5 * scale, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.fillRect(sx(X + r.w * .25), sy(GROUND - 3), r.w * .2 * scale, 1.5 * scale);
+        break;
+      case 'bike': {
+        ctx.strokeStyle = '#1f2433'; ctx.lineWidth = 2.5 * scale;
+        for (const wx of [X + 8, X + 36]) { ctx.beginPath(); ctx.arc(sx(wx), sy(GROUND - 8), 8 * scale, 0, Math.PI * 2); ctx.stroke(); }
+        ctx.strokeStyle = '#e23b3b';
+        ctx.beginPath(); ctx.moveTo(sx(X + 8), sy(GROUND - 8)); ctx.lineTo(sx(X + 20), sy(GROUND - 22)); ctx.lineTo(sx(X + 36), sy(GROUND - 8)); ctx.lineTo(sx(X + 22), sy(GROUND - 8)); ctx.closePath(); ctx.stroke();
+        rect(X + 18, Y + 2, 12, 14, '#3a5a8c');
+        ctx.fillStyle = '#f1c7a5'; ctx.beginPath(); ctx.arc(sx(X + 22), sy(Y), 5 * scale, 0, Math.PI * 2); ctx.fill();
+        break;
+      }
+      case 'crow': {
+        const f = Math.sin(t * 14 + o.x) * 6;
+        ctx.fillStyle = '#1f2433';
+        ctx.beginPath(); ctx.ellipse(sx(X + 15), sy(Y + 12), 11 * scale, 6 * scale, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(sx(X + 8), sy(Y + 10)); ctx.lineTo(sx(X + 16), sy(Y + 2 + f)); ctx.lineTo(sx(X + 22), sy(Y + 10)); ctx.fill();
+        ctx.beginPath(); ctx.arc(sx(X + 4), sy(Y + 9), 4 * scale, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#ffd84a'; ctx.beginPath(); ctx.moveTo(sx(X), sy(Y + 8)); ctx.lineTo(sx(X - 5), sy(Y + 10)); ctx.lineTo(sx(X), sy(Y + 11)); ctx.fill();
+        break;
+      }
+      case 'girl':
+        drawStudent(X, Y, t, true);
+        break;
+      case 'door':
+        rect(X - 26, GROUND - 74, 30, 74, '#d9cbb0');
+        rect(X, Y, r.w, r.h, '#8b5a2b');
+        ctx.fillStyle = '#ffd84a'; ctx.beginPath(); ctx.arc(sx(X + 6), sy(Y + 34), 2.5 * scale, 0, Math.PI * 2); ctx.fill();
+        break;
+      case 'pot':
+        ctx.fillStyle = '#c4643a';
+        ctx.beginPath(); ctx.moveTo(sx(X), sy(Y + 6)); ctx.lineTo(sx(X + r.w), sy(Y + 6)); ctx.lineTo(sx(X + r.w - 4), sy(Y + r.h)); ctx.lineTo(sx(X + 4), sy(Y + r.h)); ctx.fill();
+        rect(X + 8, Y - 6, 3, 12, '#3f9a4f');
+        ctx.fillStyle = '#e23b3b'; ctx.beginPath(); ctx.arc(sx(X + 9.5), sy(Y - 8), 4 * scale, 0, Math.PI * 2); ctx.fill();
+        break;
+      case 'teacher':
+        rect(X, Y + 14, r.w, r.h - 14, '#c93030');
+        rect(X + 4, Y + r.h - 10, 7, 10, '#1f2433'); rect(X + r.w - 11, Y + r.h - 10, 7, 10, '#1f2433');
+        ctx.fillStyle = '#f1c7a5'; ctx.beginPath(); ctx.arc(sx(X + r.w / 2), sy(Y + 8), 9 * scale, 0, Math.PI * 2); ctx.fill();
+        rect(X + 4, Y - 2, r.w - 8, 4, '#1f2433');
+        ctx.fillStyle = '#e23b3b'; ctx.font = `900 ${12 * scale}px "Dela Gothic One", sans-serif`; ctx.fillText('コラー!', sx(X - 10), sy(Y - 10));
+        break;
+    }
+  }
+
+  function drawStudent(X, Y, t, isGirl) {
+    const run = Math.sin(t * 22) * 4;
+    const legs = isGirl ? '#1f2433' : '#2b3550';
+    // 足
+    rect(X + 4, Y + 22, 5, 8 + (p.ground || isGirl ? run * .5 : 0), legs);
+    rect(X + PW - 9, Y + 22, 5, 8 - (p.ground || isGirl ? run * .5 : 0), legs);
+    // 体
+    rect(X + 2, Y + 11, PW - 4, 13, isGirl ? '#2b3a67' : '#22305a');
+    if (isGirl) { rect(X, Y + 20, PW, 6, '#3a4a7a'); rect(X + 8, Y + 12, 6, 4, '#e23b3b'); }
+    else rect(X + 9, Y + 11, 4, 8, '#f2f2f2');
+    // 頭
+    ctx.fillStyle = '#f1c7a5'; ctx.beginPath(); ctx.arc(sx(X + PW / 2), sy(Y + 6), 7 * scale, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#1f2433';
+    ctx.beginPath(); ctx.arc(sx(X + PW / 2), sy(Y + 4), 7.5 * scale, Math.PI, 0); ctx.fill();
+    if (isGirl) rect(X + PW - 3, Y + 2, 4, 12, '#1f2433');
+    // 口の食パン
+    const tx = isGirl ? X - 7 : X + PW - 1;
+    rect(tx, Y + 5, 8, 8, '#e9a94b');
+    rect(tx + 1, Y + 6, 6, 6, '#fff3d6');
+  }
+
+  function drawPlayer(t) {
+    if (state === 'dead') return;
+    ctx.save();
+    const tilt = p.ground ? 0 : Math.max(-0.35, Math.min(0.35, p.vy / 2400));
+    ctx.translate(sx(p.x + PW / 2), sy(p.y + PH / 2));
+    ctx.rotate(tilt);
+    ctx.translate(-sx(p.x + PW / 2), -sy(p.y + PH / 2));
+    // 汗
+    if (Math.floor(t * 6) % 2 === 0) { ctx.fillStyle = '#7cc4f0'; ctx.beginPath(); ctx.arc(sx(p.x - 3), sy(p.y + 4), 2.5 * scale, 0, Math.PI * 2); ctx.fill(); }
+    drawStudent(p.x, p.y, t, false);
+    ctx.restore();
+  }
+
+  function drawParts(dt) {
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const q = parts[i];
+      q.life -= dt;
+      if (q.life <= 0) { parts.splice(i, 1); continue; }
+      q.vy += (q.conf ? 60 : 900) * dt;
+      q.x += q.vx * dt; q.y += q.vy * dt;
+      ctx.globalAlpha = Math.min(1, q.life * 2);
+      ctx.fillStyle = q.c;
+      ctx.fillRect(sx(q.x), sy(q.y), q.r * scale, q.r * scale);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawProgress() {
+    const y = 6, x0 = 16, w = W - 32;
+    ctx.fillStyle = 'rgba(31,36,51,.25)'; ctx.fillRect(x0, y, w, 6);
+    ctx.fillStyle = '#e23b3b'; ctx.fillRect(x0, y, w * Math.min(1, p.x / GOAL), 6);
+    ctx.fillStyle = '#1f2433'; ctx.fillRect(x0 + w * (bestPct / 100) - 1, y - 3, 2, 12);
+    ctx.fillStyle = '#5bc46a'; ctx.fillRect(x0 + w * (CHECK / GOAL) - 1, y - 2, 2, 10);
+  }
+
+  // ---------- ループ ----------
+  let last = 0, acc = 0, clockT = 0;
+  function frame(now) {
+    const dt = last ? Math.min(0.05, (now - last) / 1000) : 0;
+    last = now;
+    clockT += dt;
+    acc += dt;
+    while (acc >= 1 / 120) { step(1 / 120); acc -= 1 / 120; }
+    if (state === 'dead') { deathTimer -= dt; if (deathTimer <= 0) respawn(); }
+    const target = p.x - viewW * 0.2;
+    camX = state === 'title' ? -viewW * 0.2 : target;
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, Hs);
+    drawBackground(clockT);
+    drawPits();
+    drawLandmarks();
+    drawBlocks();
+    for (const o of H) drawHazard(o, clockT);
+    drawPlayer(clockT);
+    drawParts(dt);
+    drawProgress();
+    $('clock').textContent = clockText();
+    requestAnimationFrame(frame);
+  }
+  hud();
+  requestAnimationFrame(frame);
+
+  // ---------- 入力 ----------
+  const isUI = (el) => el.closest && el.closest('a, button');
+  window.addEventListener('pointerdown', (e) => {
+    if (isUI(e.target) || !$('clear').hidden) return;
+    e.preventDefault();
+    press();
+  });
+  window.addEventListener('pointerup', release);
+  window.addEventListener('pointercancel', release);
+  window.addEventListener('keydown', (e) => {
+    if (!['Space', 'ArrowUp', 'KeyW'].includes(e.code)) return;
+    if (isUI(e.target)) return;
+    e.preventDefault();
+    if (e.repeat) return;
+    if (state === 'clear') { if (!$('clear').hidden) startGame(); return; }
+    press();
+  });
+  window.addEventListener('keyup', (e) => { if (['Space', 'ArrowUp', 'KeyW'].includes(e.code)) release(); });
+  window.addEventListener('blur', release);
+  window.addEventListener('contextmenu', (e) => e.preventDefault());
+  $('c-retry').addEventListener('click', startGame);
+})();
+</script>
