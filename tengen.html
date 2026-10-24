@@ -587,7 +587,7 @@
 
   // 結果のルーペ（天元まわりを6倍で拡大）
   function drawLoupe() {
-    if (state !== 'done' || !result || result.off || (result.tier || 0) >= 2) return;
+    if (state !== 'done' || !result || result.off || (result.tier || 0) >= 2 || result.d > 15) return;
     const Z = 6;
     const rad = Math.min(W * 0.2, 78);
     const lx = W - rad - 12, ly = rad + 12;
