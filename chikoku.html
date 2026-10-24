@@ -1,3 +1,5 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>遅刻ダッシュ</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="description" content="食パンをくわえて校門までダッシュ。8:30に校門が閉まる、30秒の鬼畜1ボタンジャンプゲーム。">
@@ -28,7 +30,7 @@
     --body: "Zen Kaku Gothic New", "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif;
   }
   [hidden] { display: none !important; }
-  html, body { height: 100%; }
+  html, body { height: 100%; overflow: hidden; }
   body {
     margin: 0;
     background: var(--sky);
@@ -305,6 +307,7 @@
     viewW = W / scale;
   }
   window.addEventListener('resize', resize);
+  if (window.ResizeObserver) new ResizeObserver(resize).observe(stage);
   resize();
 
   // ---------- 状態 ----------

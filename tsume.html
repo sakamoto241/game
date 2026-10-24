@@ -1,3 +1,5 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>爪切りパチン</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="description" content="タイミングよくパチン！爪を一筆書きでどこまで長く切れるか挑戦するワンタップゲーム。">
@@ -41,7 +43,7 @@
   }
 
   [hidden] { display: none !important; }
-  html, body { height: 100%; }
+  html, body { height: 100%; overflow: hidden; }
   body {
     margin: 0;
     background-color: var(--paper);
@@ -313,6 +315,7 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
   window.addEventListener('resize', resize);
+  if (window.ResizeObserver) new ResizeObserver(resize).observe(stage);
   resize();
   const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 

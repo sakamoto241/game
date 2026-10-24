@@ -1,0 +1,592 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>天元ピタリ</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="碁石を指で弾いて、碁盤のど真ん中「天元」でピタリと止める。ズレはmm単位で判定。">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="天元ピタリ">
+<meta property="og:title" content="天元ピタリ">
+<meta property="og:description" content="碁石を指で弾いて、碁盤のど真ん中「天元」でピタリと止める。実物と同じ寸法の碁盤で、ズレはmm単位。">
+<meta property="og:locale" content="ja_JP">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="天元ピタリ">
+<meta name="twitter:description" content="碁石を弾いて天元でピタリ。ズレはmm単位で判定。">
+<meta name="theme-color" content="#2e3a2a">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@600;800&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap">
+<style>
+  /* Layout: 畳の上に置いた実寸の碁盤を真上から。上に記録、中央に盤、下に師匠のひとこと */
+  :root {
+    color-scheme: dark;
+    --tatami: #5d6a3c;
+    --night: #23291d;
+    --washi: #f5efe0;
+    --ink: #1d1a16;
+    --sumi: #4a443a;
+    --gold: #c9a24a;
+    --vermilion: #b8402e;
+    --display: "Shippori Mincho B1", "Hiragino Mincho ProN", "Yu Mincho", serif;
+    --body: "Zen Kaku Gothic New", "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif;
+  }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    margin: 0;
+    background: var(--night);
+    color: var(--washi);
+    font-family: var(--body);
+    overflow: hidden;
+    -webkit-user-select: none; user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: none;
+  }
+  #app { position: relative; height: 100%; display: flex; flex-direction: column; }
+  header {
+    display: flex; justify-content: space-between; align-items: flex-end; gap: 12px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 10px 6px;
+    position: relative; z-index: 2;
+  }
+  h1 { margin: 0; font-family: var(--display); font-weight: 800; font-size: clamp(26px, 7.5vw, 36px); letter-spacing: .08em; line-height: 1; }
+  h1 small { display: block; font-family: var(--body); font-size: 11px; font-weight: 700; letter-spacing: .12em; color: color-mix(in srgb, var(--washi) 65%, transparent); margin-top: 6px; }
+  .recs { display: grid; grid-template-columns: auto auto; gap: 2px 10px; text-align: right; font-size: 12px; }
+  .recs dt { color: color-mix(in srgb, var(--washi) 65%, transparent); font-weight: 700; }
+  .recs dd { margin: 0; font-family: var(--display); font-weight: 800; font-size: 15px; font-variant-numeric: tabular-nums; }
+
+  #stage { position: relative; flex: 1; min-height: 0; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+  #shout {
+    position: absolute; left: 0; right: 0; top: 34%; text-align: center; pointer-events: none;
+    font-family: var(--display); font-weight: 800; font-size: clamp(44px, 14vw, 84px);
+    color: var(--gold); text-shadow: 0 2px 0 var(--ink), 0 0 24px rgba(0,0,0,.6);
+    letter-spacing: .1em;
+  }
+  #shout.show { animation: shout 1.4s ease-out forwards; }
+  @keyframes shout { 0% { opacity: 0; transform: scale(1.6); } 15% { opacity: 1; transform: scale(1); } 75% { opacity: 1; } 100% { opacity: 0; } }
+
+  footer {
+    position: relative; z-index: 2;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 6px 10px;
+  }
+  .panel {
+    background: var(--washi); color: var(--ink);
+    border-radius: 4px; padding: 10px 12px;
+    display: grid; gap: 6px;
+    box-shadow: 0 2px 0 rgba(0,0,0,.3);
+  }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  #result { font-family: var(--display); font-weight: 800; font-size: clamp(20px, 6vw, 26px); font-variant-numeric: tabular-nums; min-width: 0; }
+  #title-badge {
+    font-weight: 900; font-size: 13px; color: var(--washi); background: var(--vermilion);
+    padding: 3px 10px; border-radius: 2px; letter-spacing: .1em;
+  }
+  #master { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; line-height: 1.6; }
+  #master b { flex: none; font-family: var(--display); font-weight: 800; color: var(--vermilion); }
+  .actions { display: flex; gap: 8px; }
+  .btn {
+    flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+    font: 900 14px var(--body); text-decoration: none; cursor: pointer;
+    border-radius: 3px; padding: 10px; border: 2px solid var(--ink);
+  }
+  #share { background: var(--ink); color: var(--washi); }
+  #again { background: var(--washi); color: var(--ink); }
+  .btn:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  #hint { font-size: 13px; text-align: center; color: var(--washi); font-weight: 700; padding-block: 6px; }
+  #hint .spec { display: block; font-size: 11px; font-weight: 500; color: color-mix(in srgb, var(--washi) 60%, transparent); margin-top: 2px; }
+  @media (prefers-reduced-motion: reduce) { #shout.show { animation: none; opacity: 1; } }
+</style>
+
+<div id="app">
+  <header>
+    <h1>天元ピタリ<small>碁石を弾いて、天元で止めろ</small></h1>
+    <dl class="recs">
+      <dt>初手の記録</dt><dd id="first">—</dd>
+      <dt>最高記録</dt><dd id="best">—</dd>
+      <dt>挑戦</dt><dd id="tries">0回</dd>
+    </dl>
+  </header>
+
+  <div id="stage">
+    <canvas id="cv"></canvas>
+    <div id="shout"></div>
+  </div>
+
+  <footer>
+    <div id="hint">石を上へ弾いて、盤の真ん中の点「天元」で止めよう<span class="spec">実物と同じ寸法：盤 42.4×45.5cm／線の間隔 横22mm・縦23.7mm／石の直径22mm</span></div>
+    <div id="panel" class="panel" hidden>
+      <div class="row">
+        <div id="result">天元から 0.00mm</div>
+        <div id="title-badge">名人</div>
+      </div>
+      <div id="master"><b>師匠</b><span id="master-line"></span></div>
+      <div class="actions">
+        <a id="share" class="btn" href="https://twitter.com/intent/tweet" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+          Xでシェア
+        </a>
+        <button id="again" class="btn" type="button">もう一局</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const cv = $('cv'), ctx = cv.getContext('2d'), stage = $('stage');
+
+  // ---------- 実寸（mm） ----------
+  const BW = 424, BH = 455;                 // 盤の大きさ
+  const GX = 22.0, GY = 23.7;               // 線の間隔
+  const MX = (BW - GX * 18) / 2, MY = (BH - GY * 18) / 2;
+  const R = 11.0;                           // 石の半径
+  const TX = BW / 2, TY = BH / 2;           // 天元
+  const START = { x: TX, y: MY + GY * 18 }; // 手前の一線から弾く
+  const FRICTION = 5200;                    // 減速 mm/s²（盤の上を滑る石）
+  const VMAX = 4200;
+
+  const ix = (i) => MX + GX * i;
+  const iy = (j) => MY + GY * j;
+
+  // ---------- 保存 ----------
+  const K = 'tengenpitari_';
+  const load = (k, d) => { try { const v = localStorage.getItem(K + k); return v === null ? d : v; } catch { return d; } };
+  const save = (k, v) => { try { localStorage.setItem(K + k, v); } catch {} };
+  let first = load('first', null);
+  let best = load('best', null);
+  let tries = parseInt(load('tries', '0'), 10) || 0;
+  const fmtRec = (v) => v === null ? '—' : (v === 'off' ? '盤外' : parseFloat(v).toFixed(2) + 'mm');
+  function showRecs() {
+    $('first').textContent = fmtRec(first);
+    $('best').textContent = fmtRec(best);
+    $('tries').textContent = tries + '回';
+  }
+  showRecs();
+
+  // ---------- 音 ----------
+  let ac = null;
+  function audio() {
+    if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch { return null; } }
+    if (ac.state === 'suspended') ac.resume();
+    return ac;
+  }
+  function noiseBuf(a, dur) {
+    const b = a.createBuffer(1, Math.floor(a.sampleRate * dur), a.sampleRate);
+    const d = b.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    return b;
+  }
+  let slideNode = null, slideGain = null;
+  const sfx = {
+    // 石を打つ「パチッ」：短いノイズ＋高めの共鳴
+    snap(vol = 0.6) {
+      const a = audio(); if (!a) return;
+      const t = a.currentTime;
+      const s = a.createBufferSource(); s.buffer = noiseBuf(a, 0.08);
+      const f = a.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 2600; f.Q.value = 6;
+      const g = a.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + .08);
+      s.connect(f).connect(g).connect(a.destination); s.start(t);
+      const o = a.createOscillator(); o.frequency.setValueAtTime(1800, t); o.frequency.exponentialRampToValueAtTime(900, t + .05);
+      const g2 = a.createGain(); g2.gain.setValueAtTime(vol * .25, t); g2.gain.exponentialRampToValueAtTime(.0001, t + .06);
+      o.connect(g2).connect(a.destination); o.start(t); o.stop(t + .07);
+    },
+    slideStart() {
+      const a = audio(); if (!a) return;
+      sfx.slideStop();
+      slideNode = a.createBufferSource(); slideNode.buffer = noiseBuf(a, 2); slideNode.loop = true;
+      const f = a.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 700;
+      slideGain = a.createGain(); slideGain.gain.value = 0;
+      slideNode.connect(f).connect(slideGain).connect(a.destination); slideNode.start();
+    },
+    slideVol(v) { if (slideGain) slideGain.gain.value = Math.min(.12, v / 20000); },
+    slideStop() { if (slideNode) { try { slideNode.stop(); } catch {} slideNode = null; slideGain = null; } },
+    fall() {
+      const a = audio(); if (!a) return;
+      [0, .18, .3, .38].forEach((w, i) => {
+        const t = a.currentTime + w;
+        const s = a.createBufferSource(); s.buffer = noiseBuf(a, .06);
+        const f = a.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1800 - i * 200; f.Q.value = 4;
+        const g = a.createGain(); g.gain.setValueAtTime(.35 - i * .07, t); g.gain.exponentialRampToValueAtTime(.0001, t + .06);
+        s.connect(f).connect(g).connect(a.destination); s.start(t);
+      });
+    },
+    bell() {
+      const a = audio(); if (!a) return;
+      [880, 1320, 1760].forEach((fr, i) => {
+        const t = a.currentTime + i * .02;
+        const o = a.createOscillator(); o.type = 'sine'; o.frequency.value = fr;
+        const g = a.createGain(); g.gain.setValueAtTime(.12 / (i + 1), t); g.gain.exponentialRampToValueAtTime(.0001, t + 2.2);
+        o.connect(g).connect(a.destination); o.start(t); o.stop(t + 2.3);
+      });
+    },
+  };
+
+  // ---------- 画面 ----------
+  let W = 0, H = 0, dpr = 1, S = 1, ox = 0, oy = 0;   // S: px/mm
+  let woodCanvas = null, tatamiCanvas = null;
+  function resize() {
+    const r = stage.getBoundingClientRect();
+    dpr = Math.min(2, window.devicePixelRatio || 1);
+    W = r.width; H = r.height;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    S = Math.min((W - 24) / BW, (H - 40) / (BH + 30));
+    ox = (W - BW * S) / 2;
+    oy = Math.max(8, (H - (BH + 24) * S) / 2);
+    woodCanvas = makeWood(); tatamiCanvas = makeTatami();
+  }
+  const px = (x) => ox + x * S;
+  const py = (y) => oy + y * S;
+
+  // 榧の柾目
+  function makeWood() {
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(BW * S * dpr)); c.height = Math.max(1, Math.round(BH * S * dpr));
+    const g = c.getContext('2d');
+    const base = g.createLinearGradient(0, 0, c.width, c.height);
+    base.addColorStop(0, '#e7bf74'); base.addColorStop(.5, '#deb062'); base.addColorStop(1, '#d6a556');
+    g.fillStyle = base; g.fillRect(0, 0, c.width, c.height);
+    let seed = 7;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let i = 0; i < c.width; i += 1) {
+      const n = Math.sin(i * 0.05) * 0.5 + Math.sin(i * 0.013 + 1.3) * 0.5;
+      const a = 0.03 + 0.05 * Math.abs(n) + (rnd() < 0.06 ? 0.06 : 0);
+      g.fillStyle = `rgba(150,95,35,${a})`;
+      g.fillRect(i, 0, 1, c.height);
+    }
+    for (let k = 0; k < 40; k++) {
+      const x = rnd() * c.width, w = 1 + rnd() * 3 * dpr;
+      g.fillStyle = `rgba(120,70,20,${0.05 + rnd() * 0.08})`;
+      g.fillRect(x, 0, w, c.height);
+    }
+    const sheen = g.createLinearGradient(0, 0, c.width, 0);
+    sheen.addColorStop(0, 'rgba(255,240,200,.0)'); sheen.addColorStop(.35, 'rgba(255,240,200,.12)'); sheen.addColorStop(.6, 'rgba(255,240,200,0)');
+    g.fillStyle = sheen; g.fillRect(0, 0, c.width, c.height);
+    return c;
+  }
+  // 畳
+  function makeTatami() {
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(W * dpr)); c.height = Math.max(1, Math.round(H * dpr));
+    const g = c.getContext('2d');
+    g.fillStyle = '#5d6a3c'; g.fillRect(0, 0, c.width, c.height);
+    for (let y = 0; y < c.height; y += 3 * dpr) {
+      g.fillStyle = (y / (3 * dpr)) % 2 ? 'rgba(255,240,180,.05)' : 'rgba(0,0,0,.06)';
+      g.fillRect(0, y, c.width, 1.5 * dpr);
+    }
+    g.fillStyle = 'rgba(0,0,0,.12)';
+    for (let x = 0; x < c.width; x += 18 * dpr) g.fillRect(x, 0, 1, c.height);
+    const v = g.createRadialGradient(c.width / 2, c.height / 2, c.width * .2, c.width / 2, c.height / 2, c.width * .8);
+    v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.45)');
+    g.fillStyle = v; g.fillRect(0, 0, c.width, c.height);
+    return c;
+  }
+  window.addEventListener('resize', resize);
+  if (window.ResizeObserver) new ResizeObserver(resize).observe(stage);
+  resize();
+
+  // ---------- 石 ----------
+  // state: 'ready' | 'drag' | 'slide' | 'fall' | 'done'
+  let state = 'ready';
+  const stone = { x: START.x, y: START.y, vx: 0, vy: 0, z: 1, rot: 0 };
+  let trail = [];
+  let result = null;
+  let glow = 0;
+
+  function reset() {
+    Object.assign(stone, { x: START.x, y: START.y, vx: 0, vy: 0, z: 1, rot: 0 });
+    state = 'ready';
+    result = null; glow = 0;
+    $('panel').hidden = true;
+    $('hint').hidden = false;
+  }
+
+  // ---------- 判定 ----------
+  const KANJI = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十', '十一', '十二', '十三', '十四', '十五', '十六', '十七', '十八', '十九'];
+  function pointName(i, j) {
+    // 日本式の座標：横は右から 1〜19、縦は上から 一〜十九
+    const col = 19 - i, row = j + 1;
+    const a = Math.min(col, 20 - col), b = Math.min(row, 20 - row);
+    const lo = Math.min(a, b), hi = Math.max(a, b);
+    let name = '';
+    if (col === 10 && row === 10) name = '天元';
+    else if (lo === 4 && hi === 4) name = '星';
+    else if ((lo === 4 && hi === 10)) name = '辺の星';
+    else if (lo === 3 && hi === 4) name = '小目';
+    else if (lo === 3 && hi === 3) name = '三々';
+    else if (lo === 3 && hi === 5) name = '目外し';
+    else if (lo === 4 && hi === 5) name = '高目';
+    else if (lo === 1 && hi === 1) name = '一の一';
+    return { coord: `${col}の${KANJI[row]}`, name };
+  }
+
+  const TITLES = [
+    [0.3, '名人', ['寸分の狂いもない。見事な一手じゃ。', '天元の点が石に隠れて見えぬ。これぞ天元。']],
+    [1, '本因坊', ['ほぼ真ん中。盤の神も唸っておる。', '1mm足らず。目で見て分かる者はおらぬ。']],
+    [2, '九段', ['良い手つきじゃ。あと一息で名人の域。', 'わずかにズレた。しかし誰も文句は言わぬ。']],
+    [4, '七段', ['筋は良い。指先にまだ迷いがある。', 'ほう、なかなか。']],
+    [7, '五段', ['天元は踏んでおる。だが真ん中ではない。', '惜しい。石の端で天元に触れておる。']],
+    [11, '初段', ['かろうじて天元に触れておる。かろうじてな。', 'まあ天元と言えなくもない。']],
+    [Infinity, '級位者', ['天元に届いておらぬ。石の下に点が見えておる。', '盤は広い。焦らずともよい。']],
+  ];
+  function judge() {
+    const d = Math.hypot(stone.x - TX, stone.y - TY);
+    const i = Math.max(0, Math.min(18, Math.round((stone.x - MX) / GX)));
+    const j = Math.max(0, Math.min(18, Math.round((stone.y - MY) / GY)));
+    const pt = pointName(i, j);
+    let title = TITLES[TITLES.length - 1];
+    for (const t of TITLES) if (d < t[0]) { title = t; break; }
+    let line = title[2][Math.floor(Math.random() * title[2].length)];
+    if (d >= 11) {
+      if (pt.name === '小目') line = '小目か。秀策流の布石も小目から始まる。悪くはないが、今日は天元じゃ。';
+      else if (pt.name === '星') line = '星に打ったな。それは別の遊びじゃ。';
+      else if (pt.name === '三々') line = '三々……。隅に逃げたな。';
+      else if (pt.name === '一の一') line = '一の一。盤の隅で何をしておる。';
+      else if (pt.name) line = `${pt.name}に着手。天元はもっと真ん中じゃ。`;
+      else if (stone.y > TY + GY * 3) line = '弱い。石に気持ちが乗っておらぬ。';
+      else if (stone.y < TY - GY * 3) line = '強すぎる。天元を通り過ぎておる。';
+    }
+    return { d, pt, title: title[1], line, off: false };
+  }
+
+  function finish(res) {
+    result = res;
+    tries++; save('tries', String(tries));
+    const recVal = res.off ? 'off' : res.d.toFixed(2);
+    if (first === null) { first = recVal; save('first', first); }
+    const better = !res.off && (best === null || best === 'off' || res.d < parseFloat(best));
+    if (better || best === null) { best = recVal; save('best', best); }
+    showRecs();
+
+    if (res.off) {
+      $('result').textContent = '盤外';
+      $('title-badge').textContent = '観戦者';
+    } else {
+      $('result').textContent = `天元から ${res.d.toFixed(2)}mm`;
+      $('title-badge').textContent = res.title;
+    }
+    $('master-line').textContent = res.line + (better && tries > 1 ? '（最高記録）' : '');
+    const where = res.off ? '' : `（${res.pt.coord}${res.pt.name && res.pt.name !== '天元' ? '・' + res.pt.name : ''}）`;
+    const text = res.off
+      ? `天元を狙ったら、石が盤の外へ飛んでいった⚫\n称号：観戦者\n#天元ピタリ\n${location.href}`
+      : `碁石を弾いて、天元から${res.d.toFixed(2)}mmに打った⚫${where}\n称号：${res.title}\n#天元ピタリ\n${location.href}`;
+    $('share').href = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(text);
+    $('hint').hidden = true;
+    $('panel').hidden = false;
+
+    if (!res.off && res.d < 1) {
+      glow = 1;
+      sfx.bell();
+      const s = $('shout'); s.textContent = '天元！'; s.classList.remove('show'); void s.offsetWidth; s.classList.add('show');
+    }
+  }
+
+  // ---------- 入力（どこをスワイプしてもよい） ----------
+  let samples = [];
+  function pos(e) { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top, t: performance.now() }; }
+  stage.addEventListener('pointerdown', (e) => {
+    if (state !== 'ready') return;
+    audio();
+    e.preventDefault();
+    try { stage.setPointerCapture(e.pointerId); } catch {}
+    state = 'drag';
+    samples = [pos(e)];
+  });
+  stage.addEventListener('pointermove', (e) => {
+    if (state !== 'drag') return;
+    samples.push(pos(e));
+    const now = performance.now();
+    while (samples.length > 2 && now - samples[0].t > 120) samples.shift();
+  });
+  function releaseFlick(e) {
+    if (state !== 'drag') return;
+    samples.push(pos(e));
+    const now = performance.now();
+    while (samples.length > 2 && now - samples[0].t > 90) samples.shift();
+    const a = samples[0], b = samples[samples.length - 1];
+    const dt = Math.max(0.016, (b.t - a.t) / 1000);
+    let vx = (b.x - a.x) / dt / S, vy = (b.y - a.y) / dt / S;   // mm/s
+    const sp = Math.hypot(vx, vy);
+    if (sp < 60 || vy > 0) { state = 'ready'; return; }            // 弾いていない／下向き
+    if (sp > VMAX) { vx *= VMAX / sp; vy *= VMAX / sp; }
+    stone.vx = vx; stone.vy = vy;
+    state = 'slide';
+    trail = [];
+    sfx.snap(0.25);
+    sfx.slideStart();
+  }
+  stage.addEventListener('pointerup', releaseFlick);
+  stage.addEventListener('pointercancel', () => { if (state === 'drag') state = 'ready'; });
+  $('again').addEventListener('click', reset);
+  window.addEventListener('keydown', (e) => { if ((e.code === 'Space' || e.code === 'Enter') && state === 'done' && !e.target.closest('a, button')) { e.preventDefault(); reset(); } });
+
+  // ---------- 物理 ----------
+  function update(dt) {
+    if (state === 'slide') {
+      const sp = Math.hypot(stone.vx, stone.vy);
+      const dec = FRICTION * dt;
+      if (sp <= dec) {
+        stone.vx = 0; stone.vy = 0;
+        sfx.slideStop();
+        sfx.snap(0.5);
+        state = 'done';
+        finish(judge());
+        return;
+      }
+      stone.vx -= stone.vx / sp * dec; stone.vy -= stone.vy / sp * dec;
+      stone.x += stone.vx * dt; stone.y += stone.vy * dt;
+      stone.rot += sp * dt * 0.01;
+      sfx.slideVol(sp);
+      trail.push({ x: stone.x, y: stone.y });
+      if (trail.length > 18) trail.shift();
+      // 石の中心が盤の外に出たら落ちる
+      if (stone.x < 0 || stone.x > BW || stone.y < 0 || stone.y > BH) {
+        sfx.slideStop();
+        sfx.fall();
+        state = 'fall';
+      }
+    } else if (state === 'fall') {
+      stone.x += stone.vx * dt * 0.6; stone.y += stone.vy * dt * 0.6;
+      stone.z -= dt * 2.2;
+      if (stone.z <= 0.35) {
+        state = 'done';
+        finish({ off: true, line: ['石が盤から落ちた。盤と石は大事にせよ。', '力みすぎじゃ。石が畳を転がっておる。', '天元は盤の上にある。外ではない。'][Math.floor(Math.random() * 3)] });
+      }
+    }
+    if (glow > 0) glow = Math.max(0, glow - dt * 0.35);
+  }
+
+  // ---------- 描画 ----------
+  function drawBoard() {
+    ctx.drawImage(tatamiCanvas, 0, 0, W, H);
+    // 盤の厚みと影
+    ctx.fillStyle = 'rgba(0,0,0,.45)';
+    ctx.fillRect(px(6), py(10), BW * S, BH * S + 16 * S);
+    ctx.fillStyle = '#b4843f';
+    ctx.fillRect(px(0), py(BH), BW * S, 18 * S);
+    ctx.fillStyle = 'rgba(0,0,0,.2)';
+    ctx.fillRect(px(0), py(BH) + 12 * S, BW * S, 6 * S);
+    ctx.drawImage(woodCanvas, px(0), py(0), BW * S, BH * S);
+
+    // 線（漆の黒）
+    ctx.strokeStyle = 'rgba(25,18,10,.88)';
+    ctx.lineWidth = Math.max(1, 0.9 * S);
+    ctx.beginPath();
+    for (let i = 0; i < 19; i++) {
+      ctx.moveTo(px(ix(i)), py(iy(0))); ctx.lineTo(px(ix(i)), py(iy(18)));
+      ctx.moveTo(px(ix(0)), py(iy(i))); ctx.lineTo(px(ix(18)), py(iy(i)));
+    }
+    ctx.stroke();
+    ctx.lineWidth = Math.max(1.5, 1.6 * S);
+    ctx.strokeRect(px(ix(0)), py(iy(0)), GX * 18 * S, GY * 18 * S);
+    // 星と天元
+    ctx.fillStyle = 'rgba(25,18,10,.92)';
+    for (const i of [3, 9, 15]) for (const j of [3, 9, 15]) {
+      ctx.beginPath(); ctx.arc(px(ix(i)), py(iy(j)), Math.max(2, 2.1 * S), 0, Math.PI * 2); ctx.fill();
+    }
+    if (glow > 0) {
+      const g = ctx.createRadialGradient(px(TX), py(TY), 0, px(TX), py(TY), 80 * S);
+      g.addColorStop(0, `rgba(255,220,120,${0.6 * glow})`); g.addColorStop(1, 'rgba(255,220,120,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    }
+  }
+
+  function drawStone(x, y, r, z = 1, alpha = 1) {
+    const cx = px(x), cy = py(y), rr = r * S * z;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    // 影
+    ctx.fillStyle = 'rgba(0,0,0,.35)';
+    ctx.beginPath(); ctx.ellipse(cx + 1.6 * S, cy + 2.2 * S, rr, rr * .96, 0, 0, Math.PI * 2); ctx.fill();
+    // 那智黒（黒石）
+    const g = ctx.createRadialGradient(cx - rr * .35, cy - rr * .4, rr * .05, cx, cy, rr);
+    g.addColorStop(0, '#6a6a6a'); g.addColorStop(.25, '#2b2b2b'); g.addColorStop(1, '#0b0b0b');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(cx, cy, rr, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.18)';
+    ctx.beginPath(); ctx.ellipse(cx - rr * .3, cy - rr * .38, rr * .32, rr * .16, -0.5, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawStartMark() {
+    if (state !== 'ready' && state !== 'drag') return;
+    ctx.strokeStyle = 'rgba(245,239,224,.75)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 6]);
+    ctx.beginPath(); ctx.moveTo(px(START.x), py(START.y - 20)); ctx.lineTo(px(TX), py(TY + 20)); ctx.stroke();
+    ctx.setLineDash([]);
+    const t = performance.now() / 1000;
+    const a = 0.5 + Math.sin(t * 4) * 0.3;
+    ctx.fillStyle = `rgba(245,239,224,${a})`;
+    ctx.beginPath();
+    ctx.moveTo(px(START.x), py(START.y - 34)); ctx.lineTo(px(START.x - 8), py(START.y - 22)); ctx.lineTo(px(START.x + 8), py(START.y - 22));
+    ctx.fill();
+  }
+
+  // 結果のルーペ（天元まわりを6倍で拡大）
+  function drawLoupe() {
+    if (state !== 'done' || !result || result.off) return;
+    const Z = 6;
+    const rad = Math.min(W * 0.2, 78);
+    const lx = W - rad - 12, ly = rad + 12;
+    ctx.save();
+    ctx.beginPath(); ctx.arc(lx, ly, rad, 0, Math.PI * 2); ctx.clip();
+    ctx.fillStyle = '#deb062'; ctx.fillRect(lx - rad, ly - rad, rad * 2, rad * 2);
+    const k = S * Z;
+    const mx = (x) => lx + (x - TX) * k, my = (y) => ly + (y - TY) * k;
+    ctx.strokeStyle = 'rgba(25,18,10,.85)'; ctx.lineWidth = 1.2 * Z * .6;
+    ctx.beginPath();
+    for (let i = 7; i <= 11; i++) { ctx.moveTo(mx(ix(i)), my(iy(6))); ctx.lineTo(mx(ix(i)), my(iy(12))); ctx.moveTo(mx(ix(6)), my(iy(i))); ctx.lineTo(mx(ix(12)), my(iy(i))); }
+    ctx.stroke();
+    // 石（半透明で天元の点が透けて見える）
+    const sxp = mx(stone.x), syp = my(stone.y);
+    ctx.fillStyle = 'rgba(15,15,15,.55)';
+    ctx.beginPath(); ctx.arc(sxp, syp, R * k, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(245,239,224,.9)'; ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // 天元の点
+    ctx.fillStyle = '#b8402e';
+    ctx.beginPath(); ctx.arc(mx(TX), my(TY), 3, 0, Math.PI * 2); ctx.fill();
+    // 石の中心
+    ctx.fillStyle = '#f5efe0';
+    ctx.beginPath(); ctx.arc(sxp, syp, 2.5, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#f5efe0'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(mx(TX), my(TY)); ctx.lineTo(sxp, syp); ctx.stroke();
+    ctx.restore();
+    ctx.strokeStyle = '#1d1a16'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(lx, ly, rad, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = '#c9a24a'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(lx, ly, rad - 3, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#f5efe0'; ctx.font = '900 11px "Zen Kaku Gothic New", sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('6倍拡大', lx, ly + rad + 14);
+    ctx.textAlign = 'start';
+  }
+
+  let last = 0;
+  function frame(now) {
+    const dt = last ? Math.min(0.033, (now - last) / 1000) : 0;
+    last = now;
+    // 物理は細かく刻む
+    const n = 4;
+    for (let i = 0; i < n; i++) update(dt / n);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    drawBoard();
+    drawStartMark();
+    for (let i = 0; i < trail.length; i++) {
+      const t = trail[i];
+      ctx.fillStyle = `rgba(20,20,20,${(i / trail.length) * 0.12})`;
+      ctx.beginPath(); ctx.arc(px(t.x), py(t.y), R * S, 0, Math.PI * 2); ctx.fill();
+    }
+    drawStone(stone.x, stone.y, R, stone.z, state === 'fall' ? Math.max(0, stone.z) : 1);
+    drawLoupe();
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
