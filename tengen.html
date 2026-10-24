@@ -30,7 +30,7 @@
     --body: "Zen Kaku Gothic New", "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif;
   }
   [hidden] { display: none !important; }
-  html, body { height: 100%; overflow: hidden; }
+  html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
   body {
     margin: 0;
     background: var(--night);
@@ -121,7 +121,7 @@
   </div>
 
   <footer>
-    <div id="hint">画面を下に引っぱって離すと、引いた長さだけ石が進む。天元で止めよう<span class="spec">実物と同じ寸法：盤 42.4×45.5cm／線の間隔 横22mm・縦23.7mm／石の直径22mm</span></div>
+    <div id="hint">盤に指を置いて、引っぱって離す（向きは自由）。引いた長さだけ石が進む<span class="spec">実物と同じ寸法：盤 42.4×45.5cm／線の間隔 横22mm・縦23.7mm／石の直径22mm</span></div>
     <div id="panel" class="panel" hidden>
       <div class="row">
         <div id="result">天元から 0.00mm</div>
@@ -429,15 +429,18 @@
     e.preventDefault();
     try { stage.setPointerCapture(e.pointerId); } catch {}
     state = 'drag';
-    drag = { y0: pos(e).y, pull: 0 };
+    const q = pos(e);
+    drag = { x0: q.x, y0: q.y, pull: 0 };
   });
   stage.addEventListener('pointermove', (e) => {
     if (state !== 'drag') return;
-    drag.pull = Math.max(0, pos(e).y - drag.y0);
+    const q = pos(e);
+    drag.pull = Math.hypot(q.x - drag.x0, q.y - drag.y0);   // どの方向に引いてもよい
   });
   function release(e) {
     if (state !== 'drag') return;
-    drag.pull = Math.max(0, pos(e).y - drag.y0);
+    const q = pos(e);
+    drag.pull = Math.hypot(q.x - drag.x0, q.y - drag.y0);
     if (drag.pull < 6) { state = 'ready'; drag = null; return; }
     // 進む距離は STEP 刻み。天元までの距離がちょうど 305 刻みなので、0.00mm を狙える
     const D = Math.round(drag.pull / S * PULL_K / STEP) * STEP;
@@ -450,6 +453,10 @@
     sfx.slideStart();
   }
   stage.addEventListener('pointerup', release);
+  // ブラウザのスクロールや「引っぱって更新」が反応しないようにする
+  const block = (e) => { if (e.target.closest && e.target.closest('a, button')) return; e.preventDefault(); };
+  stage.addEventListener('touchstart', block, { passive: false });
+  document.addEventListener('touchmove', block, { passive: false });
   stage.addEventListener('pointercancel', () => { if (state === 'drag') { state = 'ready'; drag = null; } });
   $('again').addEventListener('click', reset);
   window.addEventListener('keydown', (e) => { if ((e.code === 'Space' || e.code === 'Enter') && state === 'done' && !e.target.closest('a, button')) { e.preventDefault(); reset(); } });
