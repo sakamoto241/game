@@ -121,7 +121,7 @@
   </div>
 
   <footer>
-    <div id="hint">盤に指を置いて、引っぱって離す（向きは自由）。引いた長さだけ石が進む<span class="spec">実物と同じ寸法：盤 42.4×45.5cm／線の間隔 横22mm・縦23.7mm／石の直径22mm</span></div>
+    <div id="hint">盤に指を置いて<b>横にスライド</b>して離す。スライドした長さだけ石が進む<span class="spec">実物と同じ寸法：盤 42.4×45.5cm／線の間隔 横22mm・縦23.7mm／石の直径22mm</span></div>
     <div id="panel" class="panel" hidden>
       <div class="row">
         <div id="result">天元から 0.00mm</div>
@@ -374,7 +374,10 @@
     const j = Math.max(0, Math.min(18, Math.round((stone.y - MY) / GY)));
     const pt = pointName(i, j);
     let title = TITLES[TITLES.length - 1];
-    for (const t of TITLES) if (d < t[0]) { title = t; break; }
+    const k = stone.k;
+    const byPx = k === 0 ? 0 : k === 1 ? 1 : k === 2 ? 2 : k === 3 ? 3 : k <= 5 ? 4 : k <= 8 ? 5 : -1;
+    if (byPx >= 0) title = TITLES[byPx];
+    else for (const t of TITLES.slice(6)) if (d < t[0]) { title = t; break; }
     let line = title[2][Math.floor(Math.random() * title[2].length)];
     if (d >= 11) {
       if (pt.name === '小目') line = '小目か。秀策流の布石も小目から始まる。悪くはないが、今日は天元じゃ。';
@@ -418,8 +421,10 @@
   }
 
   // ---------- 入力：下に引っぱって離す（引いた長さに比例して進む） ----------
-  const PULL_K = 0.6;           // 引いた長さ（盤上のmm換算）× PULL_K = 石が進む距離
-  const STEP = (START.y - TY) / 305;   // 約0.70mm
+  // 横にスライドした長さ（整数px）× stepMm = 石が進む距離。
+  // ちょうど tengenPx だけスライドすると天元に止まる（どの画面でも必ず整数pxで狙える）
+  const tengenPx = () => Math.round(W * 0.45);
+  const stepMm = () => (START.y - TY) / tengenPx();
   let drag = null;
   function pos(e) { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
   stage.addEventListener('pointerdown', (e) => {
@@ -434,16 +439,15 @@
   });
   stage.addEventListener('pointermove', (e) => {
     if (state !== 'drag') return;
-    const q = pos(e);
-    drag.pull = Math.hypot(q.x - drag.x0, q.y - drag.y0);   // どの方向に引いてもよい
+    drag.pull = Math.abs(pos(e).x - drag.x0);   // 横の動きだけを見る（縦は無視）
   });
   function release(e) {
     if (state !== 'drag') return;
-    const q = pos(e);
-    drag.pull = Math.hypot(q.x - drag.x0, q.y - drag.y0);
+    drag.pull = Math.abs(pos(e).x - drag.x0);
     if (drag.pull < 6) { state = 'ready'; drag = null; return; }
-    // 進む距離は STEP 刻み。天元までの距離がちょうど 305 刻みなので、0.00mm を狙える
-    const D = Math.round(drag.pull / S * PULL_K / STEP) * STEP;
+    const n = Math.round(drag.pull);
+    const D = n * stepMm();
+    stone.k = Math.abs(n - tengenPx());          // ちょうどから何pxずれたか
     stone.v0 = Math.sqrt(2 * FRICTION * D);
     stone.D = D; stone.t = 0;
     drag = null;
@@ -556,13 +560,13 @@
 
   function drawStartMark() {
     if (state === 'drag' && drag) {
-      // 引っぱりの強さ（数字は出さない）
-      const full = START.y / PULL_K * S;                 // これ以上引くと盤外
+      // スライドの強さ（数字は出さない）
+      const full = START.y / stepMm();                    // これ以上スライドすると盤外
       const k = Math.min(1, drag.pull / full);
-      const gx = px(BW) + 4, gh = BH * S * .8, gy = py(BH * .1);
-      ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(gx, gy, 6, gh);
+      const gw = BW * S * .9, gx = px(BW * .05), gy = py(BH) + 22 * S;
+      ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(gx, gy, gw, 7);
       ctx.fillStyle = k >= 1 ? '#b8402e' : '#c9a24a';
-      ctx.fillRect(gx, gy + gh * (1 - k), 6, gh * k);
+      ctx.fillRect(gx, gy, gw * k, 7);
       // ゴムのように石を手前へ
       const off = Math.min(40, drag.pull * 0.2);
       ctx.strokeStyle = 'rgba(245,239,224,.8)'; ctx.lineWidth = 2;
