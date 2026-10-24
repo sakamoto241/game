@@ -217,6 +217,32 @@
         s.connect(f).connect(g).connect(a.destination); s.start(t);
       });
     },
+    crack() {
+      const a = audio(); if (!a) return;
+      [0, .07, .16].forEach((w, i) => {
+        const t = a.currentTime + w;
+        const s = a.createBufferSource(); s.buffer = noiseBuf(a, .05);
+        const f = a.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 2500 + i * 700;
+        const g = a.createGain(); g.gain.setValueAtTime(.45, t); g.gain.exponentialRampToValueAtTime(.0001, t + .05);
+        s.connect(f).connect(g).connect(a.destination); s.start(t);
+      });
+    },
+    rumble(dur, vol) {
+      const a = audio(); if (!a) return;
+      const t = a.currentTime;
+      const s = a.createBufferSource(); s.buffer = noiseBuf(a, dur);
+      const f = a.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 140;
+      const g = a.createGain(); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + .15); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+      s.connect(f).connect(g).connect(a.destination); s.start(t);
+    },
+    boom() {
+      const a = audio(); if (!a) return;
+      const t = a.currentTime;
+      const o = a.createOscillator(); o.frequency.setValueAtTime(90, t); o.frequency.exponentialRampToValueAtTime(28, t + 1.2);
+      const g = a.createGain(); g.gain.setValueAtTime(.5, t); g.gain.exponentialRampToValueAtTime(.0001, t + 1.4);
+      o.connect(g).connect(a.destination); o.start(t); o.stop(t + 1.5);
+      sfx.rumble(2.2, .9);
+    },
     bell() {
       const a = audio(); if (!a) return;
       [880, 1320, 1760].forEach((fr, i) => {
@@ -302,7 +328,7 @@
   function reset() {
     Object.assign(stone, { x: START.x, y: START.y, vx: 0, vy: 0, z: 1, rot: 0 });
     state = 'ready';
-    result = null; glow = 0;
+    result = null; glow = 0; cine = null;
     $('panel').hidden = true;
     $('hint').hidden = false;
   }
@@ -326,15 +352,21 @@
     return { coord: `${col}の${KANJI[row]}`, name };
   }
 
+  // [ズレの上限mm, 称号, 師匠のひとこと, 被害の段階]
   const TITLES = [
-    [0.3, '名人', ['寸分の狂いもない。見事な一手じゃ。', '天元の点が石に隠れて見えぬ。これぞ天元。']],
-    [1, '本因坊', ['ほぼ真ん中。盤の神も唸っておる。', '1mm足らず。目で見て分かる者はおらぬ。']],
-    [2, '九段', ['良い手つきじゃ。あと一息で名人の域。', 'わずかにズレた。しかし誰も文句は言わぬ。']],
-    [4, '七段', ['筋は良い。指先にまだ迷いがある。', 'ほう、なかなか。']],
-    [7, '五段', ['天元は踏んでおる。だが真ん中ではない。', '惜しい。石の端で天元に触れておる。']],
-    [11, '初段', ['かろうじて天元に触れておる。かろうじてな。', 'まあ天元と言えなくもない。']],
-    [Infinity, '級位者', ['天元に届いておらぬ。石の下に点が見えておる。', '盤は広い。焦らずともよい。']],
+    [0.1, '神の一手', ['……打ちすぎじゃ。宇宙にまでヒビが入っておる。', 'これが千年追い求めた一手か……。宇宙ごと割れたがな。'], 6],
+    [0.5, '神の一手', ['……打ちすぎじゃ。地球が割れてしもうた。', 'これが千年追い求めた一手か……。地球は割れたがな。'], 5],
+    [1, '名人', ['日本列島が割れた。見事だが、加減を覚えよ。', '名人の一手じゃ。列島が二つになったが。'], 4],
+    [2, '本因坊', ['町に亀裂が走った。近所に謝ってまいれ。', '良い一手じゃ。町内会から苦情が来ておる。'], 3],
+    [4, '九段', ['盤が真っ二つじゃ。榧の盤は高いのだぞ。', '見事に割れた。盤の弁償は分割でよい。'], 2],
+    [7, '七段', ['盤にヒビが入った。力が強すぎる。', 'ピシッと鳴ったな。良い手じゃが盤が泣いておる。'], 1],
+    [11, '初段', ['かろうじて天元に触れておる。かろうじてな。', '天元は踏んでおる。だが真ん中ではない。', '惜しい。石の端で天元に触れておる。'], 0],
+    [Infinity, '級位者', ['天元に届いておらぬ。石の下に点が見えておる。', '盤は広い。焦らずともよい。'], 0],
   ];
+  const STAGES = ['crack', 'split', 'town', 'japan', 'earth', 'universe'];
+  const STAGE_DUR = { crack: 1.5, split: 1.5, town: 1.8, japan: 1.9, earth: 2.4, universe: 2.2 };
+  const STAGE_TEXT = { crack: '盤にヒビ', split: '盤が割れた', town: '町が割れた', japan: '日本が割れた', earth: '地球が割れた', universe: '宇宙が割れた' };
+  const EFFECT = ['', '碁盤にヒビが入った', '碁盤が真っ二つに割れた', '町が割れた', '日本列島が割れた', '地球が割れた🌏', '宇宙にヒビが入った🌌'];
   function judge() {
     const d = Math.hypot(stone.x - TX, stone.y - TY);
     const i = Math.max(0, Math.min(18, Math.round((stone.x - MX) / GX)));
@@ -352,7 +384,7 @@
       else if (stone.y > TY + GY * 3) line = '弱い。石に気持ちが乗っておらぬ。';
       else if (stone.y < TY - GY * 3) line = '強すぎる。天元を通り過ぎておる。';
     }
-    return { d, pt, title: title[1], line, off: false };
+    return { d, pt, title: title[1], line, off: false, tier: title[3] };
   }
 
   function finish(res) {
@@ -375,22 +407,21 @@
     const where = res.off ? '' : `（${res.pt.coord}${res.pt.name && res.pt.name !== '天元' ? '・' + res.pt.name : ''}）`;
     const text = res.off
       ? `天元を狙ったら、石が盤の外へ飛んでいった⚫\n称号：観戦者\n#天元ピタリ\n${location.href}`
-      : `碁石を弾いて、天元から${res.d.toFixed(2)}mmに打った⚫${where}\n称号：${res.title}\n#天元ピタリ\n${location.href}`;
+      : res.tier > 0
+        ? `天元に${res.d.toFixed(2)}mmで打ったら、${EFFECT[res.tier]}⚫\n称号：${res.title}\n#天元ピタリ #囲碁\n${location.href}`
+        : `碁石を弾いて、天元から${res.d.toFixed(2)}mmに打った⚫${where}\n称号：${res.title}\n#天元ピタリ #囲碁\n${location.href}`;
     $('share').href = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(text);
     $('hint').hidden = true;
     $('panel').hidden = false;
 
-    if (!res.off && res.d < 1) {
-      glow = 1;
-      sfx.bell();
-      const s = $('shout'); s.textContent = '天元！'; s.classList.remove('show'); void s.offsetWidth; s.classList.add('show');
-    }
+    if (!res.off && res.tier >= 5) { sfx.bell(); shout('神の一手'); }
   }
 
   // ---------- 入力（どこをスワイプしてもよい） ----------
   let samples = [];
   function pos(e) { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top, t: performance.now() }; }
   stage.addEventListener('pointerdown', (e) => {
+    if (state === 'cine') { skipCine(); return; }
     if (state !== 'ready') return;
     audio();
     e.preventDefault();
@@ -435,8 +466,9 @@
         stone.vx = 0; stone.vy = 0;
         sfx.slideStop();
         sfx.snap(0.5);
-        state = 'done';
-        finish(judge());
+        const res = judge();
+        if (res.tier > 0) startCine(res);
+        else { state = 'done'; finish(res); }
         return;
       }
       stone.vx -= stone.vx / sp * dec; stone.vy -= stone.vy / sp * dec;
@@ -465,6 +497,9 @@
   // ---------- 描画 ----------
   function drawBoard() {
     ctx.drawImage(tatamiCanvas, 0, 0, W, H);
+    drawBoardSurface();
+  }
+  function drawBoardSurface() {
     // 盤の厚みと影
     ctx.fillStyle = 'rgba(0,0,0,.45)';
     ctx.fillRect(px(6), py(10), BW * S, BH * S + 16 * S);
@@ -531,7 +566,7 @@
 
   // 結果のルーペ（天元まわりを6倍で拡大）
   function drawLoupe() {
-    if (state !== 'done' || !result || result.off) return;
+    if (state !== 'done' || !result || result.off || (result.tier || 0) >= 2) return;
     const Z = 6;
     const rad = Math.min(W * 0.2, 78);
     const lx = W - rad - 12, ly = rad + 12;
@@ -568,6 +603,289 @@
     ctx.textAlign = 'start';
   }
 
+
+  // ---------- 天元が正確すぎた時の演出 ----------
+  let cine = null;
+  let seed2 = 1;
+  const rnd2 = () => (seed2 = (seed2 * 16807) % 2147483647) / 2147483647;
+  const ease = (t) => 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 3);
+  function shout(text) { const el = $('shout'); el.textContent = text; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); }
+
+  function startCine(res) {
+    seed2 = 12345;
+    // 盤のヒビ（天元から放射状）
+    const cracks = [];
+    for (let k = 0; k < 9; k++) {
+      let a = (k / 9) * Math.PI * 2 + rnd2() * 0.5, x = stone.x, y = stone.y;
+      const pts = [[x, y]];
+      for (let i = 0; i < 16; i++) { a += (rnd2() - .5) * 0.9; const l = 6 + rnd2() * 12; x += Math.cos(a) * l; y += Math.sin(a) * l; pts.push([x, y]); }
+      cracks.push(pts);
+    }
+    // 盤を割る線（縦のギザギザ）
+    const seam = [];
+    for (let y = -10; y <= BH + 30; y += 14) seam.push([TX + (rnd2() - .5) * 14, y]);
+    const stars = Array.from({ length: 160 }, () => ({ x: rnd2(), y: rnd2(), r: rnd2() * 1.4 + .3 }));
+    const debris = Array.from({ length: 40 }, () => ({ a: rnd2() * Math.PI * 2, s: .2 + rnd2() * .9, r: 1 + rnd2() * 3 }));
+    const glass = Array.from({ length: 14 }, (_, k) => {
+      let a = (k / 14) * Math.PI * 2 + rnd2() * .3; const pts = [[0, 0]]; let x = 0, y = 0;
+      for (let i = 0; i < 10; i++) { a += (rnd2() - .5) * .5; x += Math.cos(a) * .09; y += Math.sin(a) * .09; pts.push([x, y]); }
+      return pts;
+    });
+    cine = { res, stages: STAGES.slice(0, res.tier), i: 0, t: 0, cracks, seam, stars, debris, glass, flash: 0 };
+    state = 'cine';
+    enterStage();
+  }
+  function enterStage() {
+    const st = cine.stages[cine.i];
+    shout(STAGE_TEXT[st]);
+    ({
+      crack: () => { sfx.snap(.8); sfx.crack(); },
+      split: () => { sfx.crack(); sfx.rumble(1.2, .5); },
+      town: () => sfx.rumble(1.6, .7),
+      japan: () => sfx.rumble(1.8, .9),
+      earth: () => sfx.boom(),
+      universe: () => { sfx.crack(); sfx.bell(); cine.flash = 1; },
+    })[st]();
+  }
+  function updateCine(dt) {
+    if (!cine || state !== 'cine') return;
+    cine.t += dt;
+    cine.flash = Math.max(0, cine.flash - dt * 1.5);
+    const st = cine.stages[cine.i];
+    if (cine.t >= STAGE_DUR[st]) {
+      if (cine.i < cine.stages.length - 1) { cine.i++; cine.t = 0; enterStage(); }
+      else { cine.t = STAGE_DUR[st]; state = 'done'; finish(cine.res); }
+    }
+  }
+  function skipCine() {
+    if (!cine) return;
+    cine.i = cine.stages.length - 1;
+    cine.t = STAGE_DUR[cine.stages[cine.i]];
+    state = 'done';
+    finish(cine.res);
+  }
+
+  function shakeFor(st, p) {
+    const amp = { crack: 3, split: 6, town: 8, japan: 9, earth: 12, universe: 6 }[st] * (1 - p) * (state === 'cine' ? 1 : 0);
+    return [(Math.random() - .5) * amp, (Math.random() - .5) * amp];
+  }
+
+  function drawCracks(p) {
+    ctx.lineCap = 'round';
+    for (const pts of cine.cracks) {
+      const n = Math.max(1, Math.floor(pts.length * ease(p * 1.3)));
+      for (const [w, c, o] of [[2.4, 'rgba(255,230,180,.35)', .8], [1.6, 'rgba(30,15,5,.92)', 0]]) {
+        ctx.strokeStyle = c; ctx.lineWidth = Math.max(1, w * S);
+        ctx.beginPath();
+        for (let i = 0; i < n; i++) { const [x, y] = pts[i]; i ? ctx.lineTo(px(x) + o, py(y) + o) : ctx.moveTo(px(x) + o, py(y) + o); }
+        ctx.stroke();
+      }
+    }
+  }
+
+  function seamPath(side) {
+    // side -1: 左半分, 1: 右半分 の多角形（画面座標）
+    ctx.beginPath();
+    const edge = side < 0 ? -50 : W + 50;
+    ctx.moveTo(edge, -50);
+    for (const [x, y] of cine.seam) ctx.lineTo(px(x), py(y));
+    ctx.lineTo(edge, H + 50);
+    ctx.closePath();
+  }
+
+  function drawSplit(p) {
+    ctx.drawImage(tatamiCanvas, 0, 0, W, H);
+    const g = ease(p) * 34;  // mm
+    // 割れ目の奥
+    ctx.fillStyle = '#120d08';
+    ctx.fillRect(px(TX - g * 1.2), py(-6), g * 2.4 * S, (BH + 30) * S);
+    for (const side of [-1, 1]) {
+      ctx.save();
+      ctx.translate(side * g * S, Math.abs(side) * g * .15 * S);
+      ctx.translate(px(TX), py(TY)); ctx.rotate(side * ease(p) * 0.035); ctx.translate(-px(TX), -py(TY));
+      seamPath(side); ctx.clip();
+      drawBoardSurface();
+      drawCracks(1);
+      ctx.restore();
+    }
+    // 石は割れ目に落ちていく
+    const z = Math.max(0, 1 - ease(p) * 1.4);
+    if (z > 0) drawStone(stone.x, stone.y, R, z, z);
+  }
+
+  function drawTown(p) {
+    const sky = ctx.createLinearGradient(0, 0, 0, H);
+    sky.addColorStop(0, '#1b1f3a'); sky.addColorStop(.55, '#6b4a6e'); sky.addColorStop(1, '#e09a5c');
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+    const zoom = 1.8 - ease(p) * .8;
+    const gy = H * .68;
+    ctx.save();
+    ctx.translate(W / 2, gy); ctx.scale(zoom, zoom); ctx.translate(-W / 2, -gy);
+    const g = ease(p) * 26;
+    for (const side of [-1, 1]) {
+      ctx.save();
+      ctx.translate(side * g, side > 0 ? g * .4 : 0);
+      ctx.beginPath();
+      if (side < 0) { ctx.rect(-W, -H, W * 1.5, H * 3); } else { ctx.rect(W / 2, -H, W * 1.5, H * 3); }
+      ctx.clip();
+      // 地面
+      ctx.fillStyle = '#2c2a2e'; ctx.fillRect(-W, gy, W * 3, H);
+      // 家並み
+      for (let i = -6; i <= 6; i++) {
+        const hx = W / 2 + i * 54 - 22, hw = 44, hh = 40 + ((i * 37) % 3 + 3) % 3 * 12;
+        const tilt = Math.abs(i) <= 1 ? side * ease(p) * 0.15 : 0;
+        ctx.save();
+        ctx.translate(hx + hw / 2, gy); ctx.rotate(tilt); ctx.translate(-(hx + hw / 2), -gy);
+        ctx.fillStyle = i === 0 ? '#3d3446' : '#2f2b3a';
+        ctx.fillRect(hx, gy - hh, hw, hh);
+        ctx.beginPath(); ctx.moveTo(hx - 4, gy - hh); ctx.lineTo(hx + hw / 2, gy - hh - 18); ctx.lineTo(hx + hw + 4, gy - hh); ctx.fill();
+        ctx.fillStyle = i === 0 ? '#ffd27a' : 'rgba(255,210,120,.55)';
+        ctx.fillRect(hx + 8, gy - hh + 10, 9, 9); ctx.fillRect(hx + hw - 17, gy - hh + 10, 9, 9);
+        ctx.restore();
+      }
+      ctx.restore();
+    }
+    // 亀裂（溶岩の光）
+    ctx.fillStyle = `rgba(255,120,40,${.5 * ease(p)})`;
+    ctx.fillRect(W / 2 - g, gy, g * 2, H);
+    ctx.restore();
+  }
+
+  // ざっくりした日本列島（0〜1の座標）
+  const JAPAN = [
+    [[.66, .14], [.72, .12], [.78, .16], [.76, .22], [.70, .23], [.66, .19]],                               // 北海道
+    [[.64, .28], [.66, .36], [.63, .44], [.58, .52], [.50, .58], [.42, .62], [.34, .65], [.28, .66]],     // 本州
+    [[.38, .70], [.44, .69], [.46, .72], [.40, .74]],                                                       // 四国
+    [[.22, .68], [.27, .70], [.27, .77], [.22, .80], [.19, .74]],                                           // 九州
+  ];
+  function drawJapanShape(cx0, cy0, size) {
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    JAPAN.forEach((pts, k) => {
+      const closed = k !== 1;
+      for (const [w, c] of [[k === 1 ? .075 : .03, '#e8dcb0'], [k === 1 ? .06 : .02, '#5f9a4c']]) {
+        ctx.strokeStyle = c; ctx.fillStyle = c; ctx.lineWidth = w * size;
+        ctx.beginPath();
+        pts.forEach(([x, y], i) => { const X = cx0 + (x - .5) * size, Y = cy0 + (y - .5) * size; i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); });
+        if (closed) { ctx.closePath(); ctx.fill(); }
+        ctx.stroke();
+      }
+    });
+  }
+  function drawJapan(p) {
+    const sea = ctx.createRadialGradient(W / 2, H / 2, 10, W / 2, H / 2, Math.max(W, H));
+    sea.addColorStop(0, '#2f6f9a'); sea.addColorStop(1, '#0f2c44');
+    ctx.fillStyle = sea; ctx.fillRect(0, 0, W, H);
+    const size = Math.min(W, H) * (1.25 - ease(p) * .15);
+    const cx0 = W / 2, cy0 = H / 2;
+    const crackX = cx0 + (.5 - .5) * size;  // 本州の真ん中あたり
+    const g = ease(p) * size * .08;
+    for (const side of [-1, 1]) {
+      ctx.save();
+      ctx.translate(side * g, -side * g * .5);
+      ctx.beginPath();
+      if (side < 0) ctx.rect(-W, -H, crackX + W, H * 3); else ctx.rect(crackX, -H, W * 2, H * 3);
+      ctx.clip();
+      drawJapanShape(cx0, cy0, size);
+      ctx.restore();
+    }
+    ctx.fillStyle = '#b8402e';
+    ctx.beginPath(); ctx.arc(crackX, cy0 + .06 * size, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(245,239,224,.85)'; ctx.font = '900 12px "Zen Kaku Gothic New", sans-serif';
+    ctx.fillText('天元', crackX + 8, cy0 + .06 * size + 4);
+  }
+
+  function drawStars(alpha = 1) {
+    ctx.fillStyle = '#05060c'; ctx.fillRect(0, 0, W, H);
+    for (const s of cine.stars) {
+      ctx.fillStyle = `rgba(255,255,255,${(.4 + s.r / 3) * alpha})`;
+      ctx.fillRect(s.x * W, s.y * H, s.r, s.r);
+    }
+  }
+  function drawEarthHalves(cx0, cy0, rE, g, rot) {
+    // 割れ目の奥に光るコア
+    const core = ctx.createRadialGradient(cx0, cy0, 0, cx0, cy0, rE * .9);
+    core.addColorStop(0, `rgba(255,240,180,${Math.min(1, g / rE * 3)})`); core.addColorStop(.4, `rgba(255,120,30,${Math.min(.9, g / rE * 3)})`); core.addColorStop(1, 'rgba(255,60,0,0)');
+    ctx.fillStyle = core; ctx.beginPath(); ctx.arc(cx0, cy0, rE * .9, 0, Math.PI * 2); ctx.fill();
+    for (const side of [-1, 1]) {
+      ctx.save();
+      ctx.translate(side * g, side * g * .12);
+      ctx.translate(cx0, cy0); ctx.rotate(side * rot); ctx.translate(-cx0, -cy0);
+      ctx.beginPath();
+      const k = rE / 6;
+      ctx.moveTo(cx0 + (side < 0 ? -rE * 2 : rE * 2), cy0 - rE * 2);
+      for (let i = -6; i <= 6; i++) ctx.lineTo(cx0 + ((i % 2) ? k * .35 : -k * .35), cy0 + i * k);
+      ctx.lineTo(cx0 + (side < 0 ? -rE * 2 : rE * 2), cy0 + rE * 2);
+      ctx.closePath(); ctx.clip();
+      const sea = ctx.createRadialGradient(cx0 - rE * .35, cy0 - rE * .35, rE * .1, cx0, cy0, rE);
+      sea.addColorStop(0, '#5fa8e0'); sea.addColorStop(.7, '#1f5f9a'); sea.addColorStop(1, '#0b2c52');
+      ctx.fillStyle = sea; ctx.beginPath(); ctx.arc(cx0, cy0, rE, 0, Math.PI * 2); ctx.fill();
+      ctx.save(); ctx.beginPath(); ctx.arc(cx0, cy0, rE, 0, Math.PI * 2); ctx.clip();
+      ctx.fillStyle = '#4f8f45';
+      for (const [dx, dy, w, h] of [[-.45, -.3, .35, .22], [-.2, .2, .25, .4], [.35, -.15, .3, .3], [.45, .35, .2, .15], [.05, -.55, .3, .12]]) {
+        ctx.beginPath(); ctx.ellipse(cx0 + dx * rE, cy0 + dy * rE, w * rE, h * rE, .4, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.fillStyle = 'rgba(255,255,255,.25)';
+      ctx.beginPath(); ctx.ellipse(cx0, cy0 - rE * .1, rE * .9, rE * .08, -.2, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      // 割れ面のマグマ
+      ctx.strokeStyle = `rgba(255,120,30,${Math.min(1, g / 10)})`; ctx.lineWidth = 3;
+      ctx.beginPath();
+      for (let i = -6; i <= 6; i++) { const X = cx0 + ((i % 2) ? k * .35 : -k * .35), Y = cy0 + i * k; i === -6 ? ctx.moveTo(X, Y) : ctx.lineTo(X, Y); }
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+  function drawEarth(p) {
+    drawStars();
+    const rE = Math.min(W, H) * .3;
+    const cx0 = W / 2, cy0 = H / 2;
+    const g = ease(p) * rE * .55;
+    drawEarthHalves(cx0, cy0, rE, g, ease(p) * .12);
+    for (const d of cine.debris) {
+      const dist = rE * (.3 + ease(p) * d.s * 1.2);
+      ctx.fillStyle = `rgba(150,120,90,${1 - p * .5})`;
+      ctx.fillRect(cx0 + Math.cos(d.a) * dist * .7, cy0 + Math.sin(d.a) * dist, d.r, d.r);
+    }
+  }
+  function drawUniverse(p) {
+    drawStars();
+    const rE = Math.min(W, H) * .12;
+    drawEarthHalves(W / 2, H / 2, rE, rE * .55, .12);
+    // 宇宙そのものにヒビ
+    const L = Math.max(W, H);
+    ctx.lineCap = 'round';
+    for (const pts of cine.glass) {
+      const n = Math.max(1, Math.floor(pts.length * ease(p * 1.2)));
+      for (const [w, c] of [[5, 'rgba(160,200,255,.25)'], [1.5, 'rgba(255,255,255,.95)']]) {
+        ctx.strokeStyle = c; ctx.lineWidth = w;
+        ctx.beginPath();
+        for (let i = 0; i < n; i++) { const [x, y] = pts[i]; const X = W / 2 + x * L, Y = H / 2 + y * L; i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); }
+        ctx.stroke();
+      }
+    }
+    if (cine.flash > 0) { ctx.fillStyle = `rgba(255,255,255,${cine.flash * .8})`; ctx.fillRect(0, 0, W, H); }
+  }
+
+  function drawCine() {
+    const st = cine.stages[cine.i];
+    const p = cine.t / STAGE_DUR[st];
+    const [sx0, sy0] = shakeFor(st, p);
+    ctx.save();
+    ctx.translate(sx0, sy0);
+    if (st === 'crack') {
+      drawBoard(); drawStone(stone.x, stone.y, R); drawCracks(p);
+      const gl = ctx.createRadialGradient(px(TX), py(TY), 0, px(TX), py(TY), 90 * S);
+      gl.addColorStop(0, `rgba(255,220,120,${.5 * (1 - p)})`); gl.addColorStop(1, 'rgba(255,220,120,0)');
+      ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H);
+    }
+    else if (st === 'split') drawSplit(p);
+    else if (st === 'town') drawTown(p);
+    else if (st === 'japan') drawJapan(p);
+    else if (st === 'earth') drawEarth(p);
+    else drawUniverse(p);
+    ctx.restore();
+  }
+
   let last = 0;
   function frame(now) {
     const dt = last ? Math.min(0.033, (now - last) / 1000) : 0;
@@ -575,7 +893,9 @@
     // 物理は細かく刻む
     const n = 4;
     for (let i = 0; i < n; i++) update(dt / n);
+    updateCine(dt);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (cine) { drawCine(); drawLoupe(); requestAnimationFrame(frame); return; }
     drawBoard();
     drawStartMark();
     for (let i = 0; i < trail.length; i++) {
