@@ -121,7 +121,7 @@
   </div>
 
   <footer>
-    <div id="hint">盤に指を置いて<b>横にスライド</b>して離す。スライドした長さだけ石が進む<span class="spec">実物と同じ寸法：盤 42.4×45.5cm／線の間隔 横22mm・縦23.7mm／石の直径22mm</span></div>
+    <div id="hint">画面のどこでも指を置いて<b>引っぱって離す</b>。引いたのと反対向きに、引いた分だけ石が飛ぶ<span class="spec">実物と同じ寸法：盤 42.4×45.5cm／線の間隔 横22mm・縦23.7mm／石の直径22mm</span></div>
     <div id="panel" class="panel" hidden>
       <div class="row">
         <div id="result">天元から 0.00mm</div>
@@ -375,7 +375,7 @@
     const pt = pointName(i, j);
     let title = TITLES[TITLES.length - 1];
     const k = stone.k;
-    const byPx = k === 0 ? 0 : k === 1 ? 1 : k === 2 ? 2 : k === 3 ? 3 : k <= 5 ? 4 : k <= 8 ? 5 : -1;
+    const byPx = k === undefined ? -1 : k === 0 ? 0 : k <= 1 ? 1 : k <= 2 ? 2 : k <= 3 ? 3 : k <= 5 ? 4 : k <= 8 ? 5 : -1;
     if (byPx >= 0) title = TITLES[byPx];
     else for (const t of TITLES.slice(6)) if (d < t[0]) { title = t; break; }
     let line = title[2][Math.floor(Math.random() * title[2].length)];
@@ -385,6 +385,7 @@
       else if (pt.name === '三々') line = '三々……。隅に逃げたな。';
       else if (pt.name === '一の一') line = '一の一。盤の隅で何をしておる。';
       else if (pt.name) line = `${pt.name}に着手。天元はもっと真ん中じゃ。`;
+      else if (Math.abs(stone.x - TX) > Math.abs(stone.y - TY)) line = (stone.x < TX ? '左' : '右') + 'にそれた。まっすぐ引くのじゃ。';
       else if (stone.y > TY + GY * 3) line = '弱い。石に気持ちが乗っておらぬ。';
       else if (stone.y < TY - GY * 3) line = '強すぎる。天元を通り過ぎておる。';
     }
@@ -420,48 +421,50 @@
     if (!res.off && res.tier >= 5) { sfx.bell(); shout('神の一手'); }
   }
 
-  // ---------- 入力：下に引っぱって離す（引いた長さに比例して進む） ----------
-  // 横にスライドした長さ（整数px）× stepMm = 石が進む距離。
-  // ちょうど tengenPx だけスライドすると天元に止まる（どの画面でも必ず整数pxで狙える）
+  // ---------- 入力：画面のどこでも引っぱって離す（パチンコのように反対向きへ飛ぶ） ----------
+  // 引いた量（整数px）× stepMm = 石が進む量。真下にちょうど tengenPx 引くと天元に止まる。
   const tengenPx = () => Math.round(W * 0.45);
   const stepMm = () => (START.y - TY) / tengenPx();
   let drag = null;
-  function pos(e) { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
-  stage.addEventListener('pointerdown', (e) => {
+  const isUI = (el) => el && el.closest && el.closest('a, button, #panel');
+  window.addEventListener('pointerdown', (e) => {
+    if (isUI(e.target)) return;
     if (state === 'cine') { skipCine(); return; }
     if (state !== 'ready') return;
     audio();
     e.preventDefault();
-    try { stage.setPointerCapture(e.pointerId); } catch {}
     state = 'drag';
-    const q = pos(e);
-    drag = { x0: q.x, y0: q.y, pull: 0 };
+    drag = { x0: e.clientX, y0: e.clientY, dx: 0, dy: 0, pull: 0, id: e.pointerId };
   });
-  stage.addEventListener('pointermove', (e) => {
-    if (state !== 'drag') return;
-    drag.pull = Math.abs(pos(e).x - drag.x0);   // 横の動きだけを見る（縦は無視）
+  window.addEventListener('pointermove', (e) => {
+    if (state !== 'drag' || e.pointerId !== drag.id) return;
+    drag.dx = e.clientX - drag.x0; drag.dy = e.clientY - drag.y0;
+    drag.pull = Math.hypot(drag.dx, drag.dy);
   });
   function release(e) {
-    if (state !== 'drag') return;
-    drag.pull = Math.abs(pos(e).x - drag.x0);
+    if (state !== 'drag' || e.pointerId !== drag.id) return;
+    drag.dx = e.clientX - drag.x0; drag.dy = e.clientY - drag.y0;
+    drag.pull = Math.hypot(drag.dx, drag.dy);
     if (drag.pull < 6) { state = 'ready'; drag = null; return; }
-    const n = Math.round(drag.pull);
-    const D = n * stepMm();
-    stone.k = Math.abs(n - tengenPx());          // ちょうどから何pxずれたか
-    stone.v0 = Math.sqrt(2 * FRICTION * D);
-    stone.D = D; stone.t = 0;
+    const nx = Math.round(drag.dx), ny = Math.round(drag.dy);
+    stone.k = Math.hypot(nx, ny - tengenPx());              // ちょうどの位置から何pxずれたか
+    const sx = -nx * stepMm(), sy = -ny * stepMm();           // 引いたのと反対向きに進む
+    const L = Math.hypot(sx, sy);
+    stone.dirx = sx / L; stone.diry = sy / L;
+    stone.v0 = Math.sqrt(2 * FRICTION * L);
+    stone.D = L; stone.t = 0;
     drag = null;
     state = 'slide';
     trail = [];
     sfx.snap(0.25);
     sfx.slideStart();
   }
-  stage.addEventListener('pointerup', release);
-  // ブラウザのスクロールや「引っぱって更新」が反応しないようにする
-  const block = (e) => { if (e.target.closest && e.target.closest('a, button')) return; e.preventDefault(); };
-  stage.addEventListener('touchstart', block, { passive: false });
+  window.addEventListener('pointerup', release);
+  window.addEventListener('pointercancel', () => { if (state === 'drag') { state = 'ready'; drag = null; } });
+  // ブラウザのスクロールや「引っぱって更新」「下に引いて閉じる」が反応しないようにする
+  const block = (e) => { if (isUI(e.target)) return; e.preventDefault(); };
+  document.addEventListener('touchstart', block, { passive: false });
   document.addEventListener('touchmove', block, { passive: false });
-  stage.addEventListener('pointercancel', () => { if (state === 'drag') { state = 'ready'; drag = null; } });
   $('again').addEventListener('click', reset);
   window.addEventListener('keydown', (e) => { if ((e.code === 'Space' || e.code === 'Enter') && state === 'done' && !e.target.closest('a, button')) { e.preventDefault(); reset(); } });
 
@@ -473,13 +476,14 @@
       const t = Math.min(stone.t, tStop);
       const trav = t >= tStop ? stone.D : stone.v0 * t - 0.5 * FRICTION * t * t;
       const sp = stone.v0 - FRICTION * t;
-      stone.y = START.y - trav;
+      stone.x = START.x + stone.dirx * trav;
+      stone.y = START.y + stone.diry * trav;
       sfx.slideVol(sp);
       trail.push({ x: stone.x, y: stone.y });
       if (trail.length > 18) trail.shift();
       // 石の中心が盤の外に出たら落ちる
-      if (stone.y < 0) {
-        stone.vx = 0; stone.vy = -sp;
+      if (stone.x < 0 || stone.x > BW || stone.y < 0 || stone.y > BH) {
+        stone.vx = stone.dirx * sp; stone.vy = stone.diry * sp;
         sfx.slideStop();
         sfx.fall();
         state = 'fall';
@@ -568,10 +572,11 @@
       ctx.fillStyle = k >= 1 ? '#b8402e' : '#c9a24a';
       ctx.fillRect(gx, gy, gw * k, 7);
       // ゴムのように石を手前へ
-      const off = Math.min(40, drag.pull * 0.2);
+      const f = drag.pull ? Math.min(40, drag.pull * 0.2) / drag.pull : 0;
+      const ox2 = drag.dx * f, oy2 = drag.dy * f;
       ctx.strokeStyle = 'rgba(245,239,224,.8)'; ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(px(START.x - 30), py(START.y)); ctx.lineTo(px(START.x), py(START.y) + off);
+      ctx.moveTo(px(START.x - 30), py(START.y)); ctx.lineTo(px(START.x) + ox2, py(START.y) + oy2);
       ctx.lineTo(px(START.x + 30), py(START.y)); ctx.stroke();
       return;
     }
@@ -928,8 +933,8 @@
       ctx.fillStyle = `rgba(20,20,20,${(i / trail.length) * 0.12})`;
       ctx.beginPath(); ctx.arc(px(t.x), py(t.y), R * S, 0, Math.PI * 2); ctx.fill();
     }
-    const pullOff = state === 'drag' && drag ? Math.min(40, drag.pull * 0.2) / S : 0;
-    drawStone(stone.x, stone.y + pullOff, R, stone.z, state === 'fall' ? Math.max(0, stone.z) : 1);
+    const pf = state === 'drag' && drag && drag.pull ? Math.min(40, drag.pull * 0.2) / drag.pull / S : 0;
+    drawStone(stone.x + (pf ? drag.dx * pf : 0), stone.y + (pf ? drag.dy * pf : 0), R, stone.z, state === 'fall' ? Math.max(0, stone.z) : 1);
     drawLoupe();
     requestAnimationFrame(frame);
   }
