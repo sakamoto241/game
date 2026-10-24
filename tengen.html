@@ -2,7 +2,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>天元ピタリ</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<meta name="description" content="碁石を指で弾いて、碁盤のど真ん中「天元」でピタリと止める。ズレはmm単位で判定。">
+<meta name="description" content="碁石を引いて放って、碁盤のど真ん中「天元」でピタリと止める。ズレはmm単位で判定。">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="天元ピタリ">
 <meta property="og:title" content="天元ピタリ ……これが、千年追い求めた一手か">
@@ -75,6 +75,9 @@
     padding-block: 6px 10px;
   }
   .panel {
+    position: absolute; z-index: 3;
+    left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px));
+    bottom: 10px;
     background: var(--washi); color: var(--ink);
     border-radius: 4px; padding: 10px 12px;
     display: grid; gap: 6px;
@@ -118,7 +121,7 @@
   </div>
 
   <footer>
-    <div id="hint">石を上へ弾いて、盤の真ん中の点「天元」で止めよう<span class="spec">実物と同じ寸法：盤 42.4×45.5cm／線の間隔 横22mm・縦23.7mm／石の直径22mm</span></div>
+    <div id="hint">画面を下に引っぱって離すと、引いた長さだけ石が進む。天元で止めよう<span class="spec">実物と同じ寸法：盤 42.4×45.5cm／線の間隔 横22mm・縦23.7mm／石の直径22mm</span></div>
     <div id="panel" class="panel" hidden>
       <div class="row">
         <div id="result">天元から 0.00mm</div>
@@ -150,7 +153,6 @@
   const TX = BW / 2, TY = BH / 2;           // 天元
   const START = { x: TX, y: MY + GY * 18 }; // 手前の一線から弾く
   const FRICTION = 5200;                    // 減速 mm/s²（盤の上を滑る石）
-  const VMAX = 4200;
 
   const ix = (i) => MX + GX * i;
   const iy = (j) => MY + GY * j;
@@ -330,7 +332,6 @@
     state = 'ready';
     result = null; glow = 0; cine = null;
     $('panel').hidden = true;
-    $('hint').hidden = false;
   }
 
   // ---------- 判定 ----------
@@ -411,15 +412,15 @@
         ? `天元に${res.d.toFixed(2)}mmで打ったら、${EFFECT[res.tier]}⚫\n称号：${res.title}\n#天元ピタリ #囲碁\n${location.href}`
         : `碁石を弾いて、天元から${res.d.toFixed(2)}mmに打った⚫${where}\n称号：${res.title}\n#天元ピタリ #囲碁\n${location.href}`;
     $('share').href = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(text);
-    $('hint').hidden = true;
     $('panel').hidden = false;
 
     if (!res.off && res.tier >= 5) { sfx.bell(); shout('神の一手'); }
   }
 
-  // ---------- 入力（どこをスワイプしてもよい） ----------
-  let samples = [];
-  function pos(e) { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top, t: performance.now() }; }
+  // ---------- 入力：下に引っぱって離す（引いた長さに比例して進む） ----------
+  const PULL_K = 0.6;           // 引いた長さ（盤上のmm換算）× PULL_K = 石が進む距離
+  let drag = null;
+  function pos(e) { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
   stage.addEventListener('pointerdown', (e) => {
     if (state === 'cine') { skipCine(); return; }
     if (state !== 'ready') return;
@@ -427,61 +428,56 @@
     e.preventDefault();
     try { stage.setPointerCapture(e.pointerId); } catch {}
     state = 'drag';
-    samples = [pos(e)];
+    drag = { y0: pos(e).y, pull: 0 };
   });
   stage.addEventListener('pointermove', (e) => {
     if (state !== 'drag') return;
-    samples.push(pos(e));
-    const now = performance.now();
-    while (samples.length > 2 && now - samples[0].t > 120) samples.shift();
+    drag.pull = Math.max(0, pos(e).y - drag.y0);
   });
-  function releaseFlick(e) {
+  function release(e) {
     if (state !== 'drag') return;
-    samples.push(pos(e));
-    const now = performance.now();
-    while (samples.length > 2 && now - samples[0].t > 90) samples.shift();
-    const a = samples[0], b = samples[samples.length - 1];
-    const dt = Math.max(0.016, (b.t - a.t) / 1000);
-    let vx = (b.x - a.x) / dt / S, vy = (b.y - a.y) / dt / S;   // mm/s
-    const sp = Math.hypot(vx, vy);
-    if (sp < 60 || vy > 0) { state = 'ready'; return; }            // 弾いていない／下向き
-    if (sp > VMAX) { vx *= VMAX / sp; vy *= VMAX / sp; }
-    stone.vx = vx; stone.vy = vy;
+    drag.pull = Math.max(0, pos(e).y - drag.y0);
+    if (drag.pull < 6) { state = 'ready'; drag = null; return; }
+    const D = drag.pull / S * PULL_K;                    // 進む距離 mm
+    stone.v0 = Math.sqrt(2 * FRICTION * D);
+    stone.D = D; stone.t = 0;
+    drag = null;
     state = 'slide';
     trail = [];
     sfx.snap(0.25);
     sfx.slideStart();
   }
-  stage.addEventListener('pointerup', releaseFlick);
-  stage.addEventListener('pointercancel', () => { if (state === 'drag') state = 'ready'; });
+  stage.addEventListener('pointerup', release);
+  stage.addEventListener('pointercancel', () => { if (state === 'drag') { state = 'ready'; drag = null; } });
   $('again').addEventListener('click', reset);
   window.addEventListener('keydown', (e) => { if ((e.code === 'Space' || e.code === 'Enter') && state === 'done' && !e.target.closest('a, button')) { e.preventDefault(); reset(); } });
 
   // ---------- 物理 ----------
   function update(dt) {
     if (state === 'slide') {
-      const sp = Math.hypot(stone.vx, stone.vy);
-      const dec = FRICTION * dt;
-      if (sp <= dec) {
-        stone.vx = 0; stone.vy = 0;
+      stone.t += dt;
+      const tStop = stone.v0 / FRICTION;
+      const t = Math.min(stone.t, tStop);
+      const trav = t >= tStop ? stone.D : stone.v0 * t - 0.5 * FRICTION * t * t;
+      const sp = stone.v0 - FRICTION * t;
+      stone.y = START.y - trav;
+      sfx.slideVol(sp);
+      trail.push({ x: stone.x, y: stone.y });
+      if (trail.length > 18) trail.shift();
+      // 石の中心が盤の外に出たら落ちる
+      if (stone.y < 0) {
+        stone.vx = 0; stone.vy = -sp;
+        sfx.slideStop();
+        sfx.fall();
+        state = 'fall';
+        return;
+      }
+      if (stone.t >= tStop) {
         sfx.slideStop();
         sfx.snap(0.5);
         const res = judge();
         if (res.tier > 0) startCine(res);
         else { state = 'done'; finish(res); }
-        return;
-      }
-      stone.vx -= stone.vx / sp * dec; stone.vy -= stone.vy / sp * dec;
-      stone.x += stone.vx * dt; stone.y += stone.vy * dt;
-      stone.rot += sp * dt * 0.01;
-      sfx.slideVol(sp);
-      trail.push({ x: stone.x, y: stone.y });
-      if (trail.length > 18) trail.shift();
-      // 石の中心が盤の外に出たら落ちる
-      if (stone.x < 0 || stone.x > BW || stone.y < 0 || stone.y > BH) {
-        sfx.slideStop();
-        sfx.fall();
-        state = 'fall';
       }
     } else if (state === 'fall') {
       stone.x += stone.vx * dt * 0.6; stone.y += stone.vy * dt * 0.6;
@@ -550,7 +546,23 @@
   }
 
   function drawStartMark() {
-    if (state !== 'ready' && state !== 'drag') return;
+    if (state === 'drag' && drag) {
+      // 引っぱりの強さ（数字は出さない）
+      const full = START.y / PULL_K * S;                 // これ以上引くと盤外
+      const k = Math.min(1, drag.pull / full);
+      const gx = px(BW) + 4, gh = BH * S * .8, gy = py(BH * .1);
+      ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(gx, gy, 6, gh);
+      ctx.fillStyle = k >= 1 ? '#b8402e' : '#c9a24a';
+      ctx.fillRect(gx, gy + gh * (1 - k), 6, gh * k);
+      // ゴムのように石を手前へ
+      const off = Math.min(40, drag.pull * 0.2);
+      ctx.strokeStyle = 'rgba(245,239,224,.8)'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(px(START.x - 30), py(START.y)); ctx.lineTo(px(START.x), py(START.y) + off);
+      ctx.lineTo(px(START.x + 30), py(START.y)); ctx.stroke();
+      return;
+    }
+    if (state !== 'ready') return;
     ctx.strokeStyle = 'rgba(245,239,224,.75)';
     ctx.lineWidth = 2;
     ctx.setLineDash([6, 6]);
@@ -560,7 +572,7 @@
     const a = 0.5 + Math.sin(t * 4) * 0.3;
     ctx.fillStyle = `rgba(245,239,224,${a})`;
     ctx.beginPath();
-    ctx.moveTo(px(START.x), py(START.y - 34)); ctx.lineTo(px(START.x - 8), py(START.y - 22)); ctx.lineTo(px(START.x + 8), py(START.y - 22));
+    ctx.moveTo(px(START.x), py(START.y + 30)); ctx.lineTo(px(START.x - 8), py(START.y + 18)); ctx.lineTo(px(START.x + 8), py(START.y + 18));
     ctx.fill();
   }
 
@@ -903,7 +915,8 @@
       ctx.fillStyle = `rgba(20,20,20,${(i / trail.length) * 0.12})`;
       ctx.beginPath(); ctx.arc(px(t.x), py(t.y), R * S, 0, Math.PI * 2); ctx.fill();
     }
-    drawStone(stone.x, stone.y, R, stone.z, state === 'fall' ? Math.max(0, stone.z) : 1);
+    const pullOff = state === 'drag' && drag ? Math.min(40, drag.pull * 0.2) / S : 0;
+    drawStone(stone.x, stone.y + pullOff, R, stone.z, state === 'fall' ? Math.max(0, stone.z) : 1);
     drawLoupe();
     requestAnimationFrame(frame);
   }
