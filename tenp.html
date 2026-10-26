@@ -270,14 +270,25 @@
     { v: 7.5, mode: 'free', bounds: 'paper', flee: true, warp: true, eraser: true, hello: '消しゴム拾った',
       html: `点Pは問題用紙のどこでも、毎秒<del>7</del><ins>7.5</ins>cmで動く。逃げるし、瞬間移動もする。<ins>さらに、消しゴムを手に入れた。</ins>${TAIL}` },
   ];
+  // 問8〜10：グラフの上を走る
+  const GRAPH_LEVELS = {
+    8: { v: 8, mode: 'graph', graph: 'trap', hello: 'グラフに乗りました',
+      html: `右のグラフは、点Pが動いたときの△APDの面積yとx秒の関係を表す。<ins>なぜか点Pがグラフの上を毎秒8cmで走り出した。消しゴムは没収された。</ins>${TAIL}` },
+    9: { v: 9, mode: 'graph', graph: 'para', reverse: true, flee: true, hello: '放物線すべり台',
+      html: `<del>右のグラフは△APDの面積を表す。</del><ins>グラフがy=ax²に変わった。</ins>点Pは放物線の上を毎秒<del>8</del><ins>9</ins>cmで動き、鉛筆が近づくと逃げる。${TAIL}` },
+    10: { v: 10, mode: 'graph', graph: 'wave', reverse: true, flee: true, warp: true, hello: 'グラフは生き物',
+      html: `点Pはグラフの上を毎秒<del>9</del><ins>10</ins>cmで動き、逃げる、瞬間移動する。<ins>しかもグラフは4秒ごとに書き換わる。</ins>${TAIL}` },
+  };
   function getLevel(n) {
     if (n < LEVELS.length) return LEVELS[n];
-    const v = 7.5 + (n - 7) * 0.8, prev = 7.5 + (n - 8) * 0.8;
-    const qText = n === 8 ? '<ins>点Qも戻ってきた。</ins>' : '点Qもいる。';
+    if (GRAPH_LEVELS[n]) return GRAPH_LEVELS[n];
+    const v = 10 + (n - 10) * 0.8, prev = 10 + (n - 11) * 0.8;
+    const head = n === 11 ? '点Pは<del>グラフの上を</del><ins>グラフを飛び出して問題用紙のどこでも</ins>' : '点Pは問題用紙のどこでも';
+    const qText = n === 11 ? '<ins>消しゴムと点Qも戻ってきた。</ins>' : '線を消す。点Qもいる。';
     return {
       v, mode: 'free', bounds: 'paper', flee: true, warp: true, eraser: true, q: 'free',
       hello: `毎秒${fmt(v)}cmです`,
-      html: `点Pは問題用紙のどこでも、毎秒<del>${fmt(prev)}</del><ins>${fmt(v)}</ins>cmで動く。逃げる、瞬間移動する、線を消す。${qText}点Pだけを囲んで捕まえなさい。`,
+      html: `${head}、毎秒<del>${fmt(prev)}</del><ins>${fmt(v)}</ins>cmで動く。逃げる、瞬間移動する。${qText}点Pだけを囲んで捕まえなさい。`,
     };
   }
 
@@ -308,6 +319,7 @@
 
   function drawBase() {
     gB.clearRect(0, 0, W, H);
+    if (S.L && S.L.mode === 'graph') { drawAxes(); return; }
     const a = px({ x: 0, y: 0 });
     gB.strokeStyle = C.print; gB.lineWidth = 1.6;
     gB.strokeRect(a.x, a.y, RECT_W * CM, RECT_H * CM);
@@ -328,6 +340,44 @@
     gB.beginPath(); gB.moveTo(s.x, s.y); gB.lineTo(s.x, s.y + CM * 1.4);
     gB.moveTo(s.x - 4, s.y + CM * 1.4 - 6); gB.lineTo(s.x, s.y + CM * 1.4); gB.lineTo(s.x + 4, s.y + CM * 1.4 - 6);
     gB.stroke();
+  }
+
+  function arrowLine(g, a, b) {
+    const ang = Math.atan2(b.y - a.y, b.x - a.x), k = 8;
+    g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y);
+    g.moveTo(b.x - k * Math.cos(ang - .4), b.y - k * Math.sin(ang - .4)); g.lineTo(b.x, b.y);
+    g.lineTo(b.x - k * Math.cos(ang + .4), b.y - k * Math.sin(ang + .4));
+    g.stroke();
+  }
+
+  // グラフ面の座標軸。グラフの線そのものは動くので上のレイヤーに描く
+  function drawAxes() {
+    const kind = S.L.graph, ox = kind === 'para' ? RECT_W / 2 : 0;
+    const O = px({ x: ox, y: RECT_H }), xe = px({ x: RECT_W + .8, y: RECT_H }), ye = px({ x: ox, y: -.9 });
+    gB.strokeStyle = C.print; gB.fillStyle = C.print; gB.lineWidth = 1.4;
+    arrowLine(gB, px({ x: -.6, y: RECT_H }), xe);
+    arrowLine(gB, px({ x: ox, y: RECT_H + .5 }), ye);
+    gB.font = `italic 700 17px ${C.mincho}`; gB.textAlign = 'center'; gB.textBaseline = 'middle';
+    gB.fillText('x', xe.x - 2, xe.y + 15);
+    gB.fillText('y', ye.x + 13, ye.y + 4);
+    gB.fillText('O', O.x - 11, O.y + 14);
+    gB.font = `500 13px ${C.mincho}`; gB.fillStyle = '#5A5A62';
+    if (kind === 'trap') {
+      gB.fillText('（秒）', xe.x - 4, xe.y + 32);
+      gB.textAlign = 'left'; gB.fillText('（cm²）', ye.x + 22, ye.y + 4); gB.textAlign = 'center';
+      const top = RECT_H * .15;
+      gB.setLineDash([3, 4]); gB.strokeStyle = '#8A8478'; gB.lineWidth = 1;
+      gB.beginPath();
+      for (const s of [8, 20]) { const a = px({ x: s / 28 * RECT_W, y: RECT_H }), b = px({ x: s / 28 * RECT_W, y: top }); gB.moveTo(a.x, a.y); gB.lineTo(b.x, b.y); }
+      const l = px({ x: 0, y: top }), r = px({ x: 8 / 28 * RECT_W, y: top }); gB.moveTo(l.x, l.y); gB.lineTo(r.x, r.y);
+      gB.stroke(); gB.setLineDash([]);
+      for (const s of [8, 20, 28]) { const p = px({ x: s / 28 * RECT_W, y: RECT_H }); gB.fillText(String(s), p.x, p.y + 15); }
+      gB.fillText('48', l.x - 15, l.y);
+    } else {
+      const p = px({ x: RECT_W - 1.4, y: .4 });
+      gB.font = `italic 600 15px ${C.mincho}`; gB.fillStyle = C.print;
+      gB.fillText(kind === 'para' ? 'y = ax²' : 'y = ？', p.x, p.y);
+    }
   }
 
   // ---------- 鉛筆の跡（cm で記録して、リサイズ時に描き直す） ----------
@@ -419,6 +469,46 @@
     s -= RECT_H; return { x: RECT_W - s, y: 0 };
   }
 
+  // ---------- グラフ（cm 座標の折れ線。点Pは長さに対する割合 f で位置を持つ） ----------
+  const G = { pts: [], len: [], total: 1, from: null, to: null, morph: 1, changeT: 4 };
+  function graphShape(kind) {
+    if (kind === 'trap') {
+      // △APD の面積：x = 0, 8, 20, 28 秒で y = 0, 48, 48, 0
+      return [[0, 0], [8, 48], [20, 48], [28, 0]].map(([x, y]) => ({ x: x / 28 * RECT_W, y: RECT_H - y / 48 * RECT_H * .85 }));
+    }
+    const out = [];
+    if (kind === 'para') {
+      for (let i = 0; i <= 40; i++) { const x = -6 + i * .3; out.push({ x: RECT_W / 2 + x, y: RECT_H - x * x / 36 * RECT_H * .9 }); }
+      return out;
+    }
+    for (let i = 0; i < 6; i++) out.push({ x: i / 5 * RECT_W, y: RECT_H - rand(.05, .9) * RECT_H });
+    return out;
+  }
+  function setGraphPts(pts) {
+    G.pts = pts; G.len = [0];
+    for (let i = 1; i < pts.length; i++) G.len.push(G.len[i - 1] + dist(pts[i - 1], pts[i]));
+    G.total = G.len[G.len.length - 1] || 1;
+  }
+  function graphPos(u) {
+    u = clamp(u, 0, G.total);
+    let i = 1;
+    while (i < G.len.length - 1 && G.len[i] < u) i++;
+    const a = G.pts[i - 1], b = G.pts[i], t = (u - G.len[i - 1]) / ((G.len[i] - G.len[i - 1]) || 1);
+    return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+  }
+  function initGraph(kind) { G.morph = 1; G.changeT = 4; setGraphPts(graphShape(kind)); }
+  function updateGraph(dt) {
+    if (S.L.graph !== 'wave') return;
+    if ((G.changeT -= dt) <= 0) {
+      G.changeT = 4; G.from = G.pts.map((p) => ({ ...p })); G.to = graphShape('wave'); G.morph = 0;
+      if (!S.bubble && Math.random() < .5) say('書き換え！', 1);
+    }
+    if (G.morph < 1) {
+      const k = G.morph = Math.min(1, G.morph + dt / .6);
+      setGraphPts(G.from.map((p, i) => ({ x: p.x + (G.to[i].x - p.x) * k, y: p.y + (G.to[i].y - p.y) * k })));
+    }
+  }
+
   function setLevel(n) {
     S.level = n; S.L = getLevel(n); S.lt = 0;
     $('#qno').textContent = n;
@@ -426,7 +516,9 @@
     const P = S.P;
     P.dir = 1; P.revT = rand(1, 2.5); P.warpT = rand(2.5, 3.5); P.ang = rand(0, Math.PI * 2);
     if (S.L.mode === 'edge') { P.s = 0; Object.assign(P, edgePos(0)); }
+    else if (S.L.mode === 'graph') { initGraph(S.L.graph); P.f = 0; Object.assign(P, graphPos(0)); }
     else { P.x = RECT_W / 2; P.y = RECT_H / 2; }
+    drawBase();
     S.Q = null;
     if (S.L.q === 'edge') S.Q = { s: RECT_H + RECT_W, ...edgePos(RECT_H + RECT_W), ang: 0 };
     if (S.L.q === 'free') S.Q = { x: RECT_W * .2, y: RECT_H * .8, ang: rand(0, 6.28) };
@@ -478,7 +570,8 @@
       [3, '定期テスト平均点', '点Qにだまされないように。'],
       [5, '学年上位', '瞬間移動まで追えたら上出来です。'],
       [7, '点Pハンター', '消しゴム持ちの点Pを捕まえるとは。'],
-      [10, '点Pを止めた人', 'もう点Pの方があなたから逃げています。'],
+      [10, 'グラフの支配者', 'グラフの上でも逃がしませんでした。'],
+      [13, '点Pを止めた人', 'もう点Pの方があなたから逃げています。'],
     ];
     let rk = ranks[0];
     for (const r of ranks) if (S.caught >= r[0]) rk = r;
@@ -529,16 +622,36 @@
       if (L.reverse && (P.revT -= dt) <= 0) { P.dir *= -1; P.revT = rand(.8, 2.6); }
       P.s += P.dir * L.v * dt;
       Object.assign(P, edgePos(P.s));
+    } else if (L.mode === 'graph') {
+      updateGraph(dt);
+      if (L.reverse && (P.revT -= dt) <= 0) { P.dir *= -1; P.revT = rand(.8, 2.6); }
+      let sp = L.v;
+      if (L.flee && pen.seen && dist(pen.tip, P) < 3.6) {
+        // 線の上で鉛筆から遠ざかる向きへ
+        const ahead = graphPos((P.f + .03) * G.total), back = graphPos((P.f - .03) * G.total);
+        P.dir = dist(ahead, pen.tip) > dist(back, pen.tip) ? 1 : -1;
+        sp *= 1.4;
+      }
+      P.f += P.dir * sp * dt / G.total;
+      if (P.f > 1) { P.f = 1; P.dir = -1; }
+      if (P.f < 0) { P.f = 0; P.dir = 1; }
+      Object.assign(P, graphPos(P.f * G.total));
     } else {
       wander(P, L.v, bounds(L.bounds), dt, L.flee && pen.seen ? pen.tip : null);
     }
     if (L.warp && (P.warpT -= dt) <= 0) {
       P.warpT = rand(2, 3.5);
-      const b = bounds(L.bounds);
-      let n = { x: rand(b.x0, b.x1), y: rand(b.y0, b.y1) };
-      for (let i = 0; i < 10 && dist(n, pen.tip) < 4; i++) n = { x: rand(b.x0, b.x1), y: rand(b.y0, b.y1) };
       S.ghosts.push({ x: P.x, y: P.y, age: 0 });
-      P.x = n.x; P.y = n.y;
+      if (L.mode === 'graph') {
+        let f = rand(0, 1);
+        for (let i = 0; i < 10 && dist(graphPos(f * G.total), pen.tip) < 4; i++) f = rand(0, 1);
+        P.f = f; Object.assign(P, graphPos(f * G.total));
+      } else {
+        const b = bounds(L.bounds);
+        let n = { x: rand(b.x0, b.x1), y: rand(b.y0, b.y1) };
+        for (let i = 0; i < 10 && dist(n, pen.tip) < 4; i++) n = { x: rand(b.x0, b.x1), y: rand(b.y0, b.y1) };
+        P.x = n.x; P.y = n.y;
+      }
       if (Math.random() < .4) say('こっちだよ', 1.1);
       sfx.warp();
     }
@@ -719,6 +832,12 @@
       gT.setLineDash([3, 3]); gT.strokeStyle = C.print; gT.lineWidth = 1.2;
       gT.beginPath(); gT.arc(p.x, p.y, 7 + g.age * 14, 0, Math.PI * 2); gT.stroke();
       gT.setLineDash([]); gT.globalAlpha = 1;
+    }
+    if (S.L.mode === 'graph' && S.phase !== 'attract') {
+      gT.strokeStyle = C.print; gT.lineWidth = 2; gT.lineJoin = 'round'; gT.lineCap = 'round';
+      gT.beginPath();
+      G.pts.forEach((p, i) => { const q = px(p); i ? gT.lineTo(q.x, q.y) : gT.moveTo(q.x, q.y); });
+      gT.stroke();
     }
     if (S.Q) drawPoint(S.Q, 'Q', false);
     drawPoint(S.P, 'P');
