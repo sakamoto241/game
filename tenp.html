@@ -292,8 +292,19 @@
     };
   }
 
-  const TAUNTS = ['動くよ', '止まらないよ', '毎秒って書いてある', '問題文読んだ？', 'おそいおそい', 'まだまだ', 'x秒後に会おう', 'グラフにしてみたら？'];
-  const NEAR = ['あぶない', 'おっと', 'セーフ', 'ひえっ'];
+  const TAUNTS = ['動くよ', '止まらないよ', '毎秒って書いてある', '問題文読んだ？', 'おそいおそい', 'まだまだ', 'x秒後に会おう', 'グラフにしてみたら？',
+    '式を立てれば？', 'それ何cm？', 'こっちこっち', 'ねえ今何秒？', '教科書見ていいよ', '止まる理由がない', '動くのが仕事なんで',
+    'テスト中ですよ', '字きたないね', '秒速って知ってる？', '面積でも求めてて', 'やる気ある？', 'ふーん', 'あくび出た',
+    '追う側って大変そう', '鉛筆の持ち方…', '解答欄せまくない？', '点だから痛くないよ'];
+  const NEAR = ['あぶない', 'おっと', 'セーフ', 'ひえっ', '近い近い', '残像です', '見えてる？', 'ギリギリ', 'はい外れ',
+    'かすりもしない', 'その線いる？', 'ノーダメ'];
+  const MISS = ['おしい', '惜しくもない', 'ぼくはここ', '円になってないよ', '部分点もないよ', 'どこ囲んだの？', '図形センスが…', '途中式は合ってる'];
+  const CAUGHT = ['あっ', 'え、うそ', '今のなし', '次は本気', 'まぐれでしょ', '点Qのせい', '問題が悪い', '…やるじゃん'];
+  const LOW = ['芯なくなるよ', '削る？', 'あと何cm？', 'もう書けないね', '折れちゃう？', 'HB足りてる？'];
+  const QMISS = ['それは点Q', 'Qくん関係ない', '人違いです', '点Qでした〜'];
+  const ERASE = ['消しちゃった', 'ごしごし', 'その線いらないよね', 'なかったことに'];
+  const WARP = ['こっちだよ', 'ワープ〜', 'どこ見てるの', 'はずれ〜'];
+  const pick = (a) => a[Math.floor(Math.random() * a.length)];
 
   // ---------- 画面サイズと座標（ゲーム内はすべて cm、原点は A） ----------
   let W = 0, H = 0, DPR = 1, CM = 25, R = { x: 0, y: 0 };
@@ -546,7 +557,7 @@
     S.lead = Math.min(LEAD_MAX, S.lead + LEAD_REFILL);
     const seed = Math.random();
     S.effects.push({ t: 'maru', c: { x: S.P.x, y: S.P.y }, r: .9, seed, life: .6, age: 0, label: `問${S.level}` });
-    say('あっ', 1.2);
+    say(pick(CAUGHT), 1.2);
     sfx.catch();
     pen.pts = pen.down ? [{ ...pen.tip }] : [];
     updateHud();
@@ -652,7 +663,7 @@
         for (let i = 0; i < 10 && dist(n, pen.tip) < 4; i++) n = { x: rand(b.x0, b.x1), y: rand(b.y0, b.y1) };
         P.x = n.x; P.y = n.y;
       }
-      if (Math.random() < .4) say('こっちだよ', 1.1);
+      if (Math.random() < .5) say(pick(WARP), 1.1);
       sfx.warp();
     }
     if (S.Q) {
@@ -664,7 +675,7 @@
       addOp({ t: 'erase', c: { x: P.x, y: P.y }, r });
       if (pen.down && pen.pts.some((p) => dist(p, P) < r)) {
         pen.pts = [{ ...pen.tip }];
-        if (S.eraseMsgT <= 0) { say('消しちゃった', 1.2); S.eraseMsgT = 2.5; }
+        if (S.eraseMsgT <= 0) { say(pick(ERASE), 1.2); S.eraseMsgT = 2.5; }
       }
       // 記録が増えすぎないよう、古い消しゴム跡は間引く
       if (inkOps.length > 6000) inkOps = inkOps.filter((op, i) => op.t !== 'erase' || i % 2 === 0);
@@ -694,13 +705,13 @@
     if (hasQ) {
       S.lead -= Q_PENALTY; S.used += Q_PENALTY;
       S.effects.push({ t: 'batsu', c: { x: S.Q.x, y: S.Q.y }, life: .9, age: 0 });
-      say(hasP ? 'Qも入ってるよ' : 'それは点Q', 1.4);
+      say(hasP ? pick(['Qも入ってるよ', '2人まとめては無理']) : pick(QMISS), 1.4);
       sfx.wrong(); updateHud();
       if (S.lead <= 0) gameOver();
       return false;
     }
     const cx = poly.reduce((s, p) => s + p.x, 0) / poly.length, cy = poly.reduce((s, p) => s + p.y, 0) / poly.length;
-    if (Math.hypot(cx - S.P.x, cy - S.P.y) < 2.2 && Math.random() < .6) say('おしい', 1);
+    if (Math.hypot(cx - S.P.x, cy - S.P.y) < 2.2 && Math.random() < .7) say(pick(MISS), 1.1);
     return false;
   }
 
@@ -868,9 +879,9 @@
       updatePoints(dt);
       if (S.phase === 'play') {
         S.lt += dt; S.total += dt;
-        if ((S.tauntT -= dt) <= 0) { if (!S.bubble) say(TAUNTS[Math.floor(Math.random() * TAUNTS.length)]); S.tauntT = rand(4, 7); }
+        if ((S.tauntT -= dt) <= 0) { if (!S.bubble) say(pick(S.lead < LEAD_MAX * .25 && Math.random() < .6 ? LOW : TAUNTS)); S.tauntT = rand(3, 5.5); }
         S.nearT -= dt; S.eraseMsgT -= dt;
-        if (pen.down && S.nearT <= 0 && dist(pen.tip, S.P) < 1.6) { if (!S.bubble) say(NEAR[Math.floor(Math.random() * NEAR.length)], 1); S.nearT = 3; }
+        if (pen.down && S.nearT <= 0 && dist(pen.tip, S.P) < 1.6) { if (!S.bubble) say(pick(NEAR), 1); S.nearT = 3; }
         setScratch(pen.down ? Math.min(.16, pen.speed * .006) : 0);
         pen.speed *= .8;
         updateHud();
