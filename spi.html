@@ -1,0 +1,657 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta property="og:title" content="公式スロット">
+<meta property="og:description" content="SPIの公式を3秒で答えて覚える早押しゲーム。">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://sakamoto241.github.io/game/spi.html">
+<meta name="twitter:card" content="summary">
+<title>公式スロット</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="SPIの公式を3秒で答えて覚える早押しゲーム">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap">
+<style>
+  /* パチスロの筐体1台で固定するため、ライト/ダーク共通の配色。
+     縦1列：スコア → 問題の窓 → リール3本 → 解説の帯 */
+  :root {
+    color-scheme: dark;
+    --cab: #7A0C1E;
+    --cab-deep: #45060F;
+    --gold: #F2C14E;
+    --reel: #FFF4DC;
+    --reel-edge: #D8C39C;
+    --ink: #2B1A12;
+    --hit: #2FBF71;
+    --hit-ink: #082414;
+    --dim: #D7B3AA;
+    --display: "Dela Gothic One", "Hiragino Sans", "Yu Gothic", sans-serif;
+    --body: "Zen Kaku Gothic New", "Hiragino Sans", system-ui, sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--cab-deep);
+    background-image: radial-gradient(ellipse at 50% -10%, #A3162D 0, transparent 60%);
+    color: var(--reel);
+    font-family: var(--body);
+    font-weight: 500;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 12px;
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body.fever {
+    background-image: repeating-linear-gradient(45deg, #7A0C1E 0 22px, #93122A 22px 44px);
+    background-size: 62px 62px;
+    animation: slide .6s linear infinite;
+  }
+  @keyframes slide { to { background-position: 62px 0; } }
+
+  .app { height: 100%; max-width: 480px; margin: 0 auto; display: flex; flex-direction: column; }
+  .screen { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 12px; }
+  .scroll { overflow-y: auto; padding-bottom: 8px; }
+
+  .btn {
+    font-family: var(--display); font-size: 18px; letter-spacing: .04em;
+    background: var(--gold); color: var(--ink); border: 0; border-radius: 12px;
+    padding: 14px 18px; cursor: pointer; box-shadow: 0 5px 0 #A97A16;
+    text-decoration: none; display: inline-flex; align-items: center; justify-content: center;
+  }
+  .btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #A97A16; }
+  .btn.sub {
+    font-family: var(--body); font-weight: 700; font-size: 15px;
+    background: transparent; color: var(--gold); box-shadow: none; border: 2px solid var(--gold); padding: 11px 16px;
+  }
+  .btn:focus-visible, .reel:focus-visible, .icon:focus-visible { outline: 3px solid var(--reel); outline-offset: 3px; }
+  .btn:disabled { opacity: .4; cursor: default; }
+  .btns { display: grid; gap: 10px; }
+  .btns.two { grid-template-columns: 1fr 1fr; }
+
+  /* ---- タイトル ---- */
+  .title { text-align: center; display: grid; gap: 6px; padding-top: 6vh; }
+  .title small { color: var(--dim); font-weight: 700; letter-spacing: .2em; font-size: 12px; }
+  .title h1 {
+    margin: 0; font-family: var(--display); font-weight: 400; color: var(--gold);
+    font-size: clamp(44px, 14vw, 64px); line-height: 1.05; text-shadow: 0 4px 0 #8A1022, 0 0 24px rgba(242, 193, 78, .35);
+  }
+  .title p { margin: 0; color: var(--reel); font-size: 15px; }
+  .lamps { display: flex; justify-content: center; gap: 10px; margin-top: 6px; }
+  .lamps i { width: 10px; height: 10px; border-radius: 50%; background: var(--gold); animation: blink 1s infinite; }
+  .lamps i:nth-child(even) { animation-delay: .5s; }
+  @keyframes blink { 50% { opacity: .2; } }
+  .panel { background: rgba(0, 0, 0, .22); border: 1.5px solid rgba(242, 193, 78, .45); border-radius: 14px; padding: 14px; display: grid; gap: 10px; }
+  .panel h2 { margin: 0; font-size: 13px; color: var(--dim); letter-spacing: .1em; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 99px; background: var(--gold); color: var(--ink); }
+  .chip.locked { background: transparent; color: var(--dim); border: 1px dashed var(--dim); }
+  .note { margin: 0; font-size: 12px; color: var(--dim); }
+  .bests { display: flex; gap: 18px; font-size: 12px; color: var(--dim); }
+  .bests b { display: block; font-family: var(--display); font-weight: 400; color: var(--reel); font-size: 22px; font-variant-numeric: tabular-nums; }
+
+  /* ---- プレイ ---- */
+  .top { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 8px; }
+  .score { font-family: var(--display); color: var(--gold); font-size: 34px; line-height: 1; font-variant-numeric: tabular-nums; }
+  .score small { display: block; font-family: var(--body); font-size: 11px; color: var(--dim); font-weight: 700; letter-spacing: .14em; margin-bottom: 4px; }
+  .combo { text-align: right; font-family: var(--display); line-height: 1; }
+  .combo b { display: block; font-weight: 400; font-size: 30px; color: var(--reel); font-variant-numeric: tabular-nums; }
+  .combo span { font-size: 11px; color: var(--dim); letter-spacing: .14em; }
+  .combo.hot b { color: var(--gold); }
+  .bar { height: 10px; border-radius: 99px; background: rgba(0, 0, 0, .35); overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 100%; background: var(--gold); border-radius: inherit; transform-origin: left; }
+  .bar.thin { height: 6px; }
+  .bar.thin i { background: var(--reel); }
+  .bar.thin.urgent i { background: #FF8A3D; }
+  .meta { display: flex; justify-content: space-between; font-size: 12px; color: var(--dim); font-weight: 700; }
+  .meta b { color: var(--reel); font-variant-numeric: tabular-nums; }
+  .icon { font: inherit; font-size: 12px; font-weight: 700; color: var(--dim); background: none; border: 1px solid var(--dim); border-radius: 6px; padding: 2px 8px; cursor: pointer; }
+
+  .window {
+    position: relative;
+    background: var(--ink); border: 3px solid var(--gold); border-radius: 16px;
+    padding: 14px 16px 16px; display: grid; gap: 8px; min-height: 120px; align-content: center;
+    box-shadow: inset 0 0 0 3px #1A0E09, 0 6px 0 #2A0409;
+  }
+  .window .cat { justify-self: start; }
+  .question { margin: 0; font-weight: 900; font-size: clamp(20px, 6vw, 26px); line-height: 1.4; text-wrap: balance; }
+  .hole {
+    display: inline-block; min-width: 1.6em; padding: 0 .25em; margin: 0 .1em; text-align: center;
+    color: var(--ink); background: var(--gold); border-radius: 6px;
+  }
+
+  .reels { display: grid; gap: 10px; }
+  .reel {
+    position: relative; overflow: hidden;
+    min-height: 64px; padding: 10px 14px 10px 50px; text-align: left;
+    font-family: var(--body); font-weight: 900; font-size: clamp(17px, 5vw, 21px); color: var(--ink);
+    background: linear-gradient(var(--reel-edge), var(--reel) 20%, var(--reel) 80%, var(--reel-edge));
+    border: 3px solid var(--gold); border-radius: 12px; cursor: pointer;
+    box-shadow: 0 4px 0 #2A0409;
+    touch-action: manipulation;
+  }
+  .reel .k {
+    position: absolute; left: 12px; top: 50%; translate: 0 -50%;
+    width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+    background: var(--cab); color: var(--gold); font-family: var(--display); font-size: 14px;
+  }
+  .reel .txt { display: block; }
+  .reel.spin .txt { animation: spin .32s cubic-bezier(.2, .8, .3, 1.2) both; }
+  .reel:nth-child(2).spin .txt { animation-delay: .05s; }
+  .reel:nth-child(3).spin .txt { animation-delay: .1s; }
+  @keyframes spin {
+    0% { transform: translateY(-140%); filter: blur(4px); }
+    70% { transform: translateY(10%); filter: blur(0); }
+    100% { transform: translateY(0); }
+  }
+  .reel.hit { background: var(--hit); color: var(--hit-ink); border-color: var(--reel); }
+  .reel.hit .k { background: var(--hit-ink); color: var(--hit); }
+  .reel.miss { opacity: .5; text-decoration: line-through; text-decoration-thickness: 3px; animation: shake .3s; }
+  @keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+
+  .fb { min-height: 64px; }
+  .explain {
+    border: 2px solid var(--gold); border-radius: 12px; padding: 8px 12px; background: rgba(0, 0, 0, .3);
+    font-size: 14px; line-height: 1.5; display: grid; gap: 2px;
+  }
+  .explain b { color: var(--gold); font-size: 12px; letter-spacing: .1em; }
+
+  .pop {
+    position: fixed; pointer-events: none; z-index: 5;
+    font-family: var(--display); color: var(--gold); font-size: 28px;
+    text-shadow: 0 3px 0 #8A1022; animation: pop .8s ease-out forwards;
+  }
+  @keyframes pop { 0% { transform: translate(-50%, 0) scale(.6); opacity: 0; } 20% { transform: translate(-50%, -10px) scale(1.15); opacity: 1; } 100% { transform: translate(-50%, -70px) scale(1); opacity: 0; } }
+  .banner {
+    position: fixed; left: 50%; top: 38%; z-index: 6; pointer-events: none; white-space: nowrap;
+    font-family: var(--display); font-size: clamp(40px, 13vw, 64px); color: var(--gold);
+    text-shadow: 0 5px 0 #8A1022, 0 0 30px rgba(242, 193, 78, .6);
+    animation: banner 1s ease-out forwards;
+  }
+  @keyframes banner { 0% { transform: translate(-50%, -50%) scale(2.4) rotate(-6deg); opacity: 0; } 25% { transform: translate(-50%, -50%) scale(1) rotate(-3deg); opacity: 1; } 75% { opacity: 1; } 100% { transform: translate(-50%, -60%) scale(1) rotate(-3deg); opacity: 0; } }
+  .app.quake { animation: quake .25s; }
+  @keyframes quake { 25% { transform: translate(4px, -3px); } 50% { transform: translate(-4px, 3px); } 75% { transform: translate(3px, 2px); } }
+
+  /* ---- 結果・振り返り ---- */
+  .head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .head h2 { margin: 0; font-family: var(--display); font-weight: 400; color: var(--gold); font-size: 26px; }
+  .big { font-family: var(--display); color: var(--gold); font-size: clamp(48px, 15vw, 68px); line-height: 1; font-variant-numeric: tabular-nums; text-shadow: 0 4px 0 #8A1022; }
+  .rank { font-weight: 900; font-size: 16px; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .stats div { background: rgba(0, 0, 0, .25); border-radius: 10px; padding: 8px 10px; font-size: 11px; color: var(--dim); font-weight: 700; }
+  .stats b { display: block; font-family: var(--display); font-weight: 400; font-size: 22px; color: var(--reel); font-variant-numeric: tabular-nums; }
+  .unlock { background: var(--gold); color: var(--ink); border-radius: 12px; padding: 10px 14px; font-weight: 900; animation: blink 1s 3; }
+  .list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+  .item { background: var(--reel); color: var(--ink); border-radius: 12px; padding: 10px 12px; display: grid; gap: 4px; }
+  .item .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 11px; font-weight: 700; color: #7A5A4A; }
+  .item .row .chip { background: var(--cab); color: var(--gold); }
+  .item .q { font-weight: 900; font-size: 15px; line-height: 1.4; }
+  .item .a { font-weight: 900; font-size: 15px; color: #13703F; }
+  .item .a::before { content: "答え　"; font-size: 11px; color: #7A5A4A; }
+  .item .ex { font-size: 12px; color: #5A4034; line-height: 1.5; }
+  .item .q .hole { font-size: .9em; }
+  .empty { text-align: center; color: var(--dim); font-size: 14px; line-height: 1.7; padding: 24px 8px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    body.fever, .reel.spin .txt, .app.quake, .lamps i { animation: none; }
+  }
+</style>
+
+<div class="app" id="app">
+  <!-- タイトル -->
+  <section class="screen scroll" id="scrTitle">
+    <div class="title">
+      <small>SPI 非言語 早押し</small>
+      <h1>公式<br>スロット</h1>
+      <div class="lamps" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <p>公式の「？」に入るリールを、3秒以内にタップ。</p>
+    </div>
+    <div class="panel">
+      <div class="bests">
+        <div>ハイスコア<b id="tBest">0</b></div>
+        <div>最大コンボ<b id="tCombo">0</b></div>
+        <div>通算正解<b id="tTotal">0</b></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>出題される分野</h2>
+      <div class="chips" id="tCats"></div>
+      <p class="note" id="tNext"></p>
+    </div>
+    <div class="btns">
+      <button class="btn" id="btnStart" type="button">スタート（60秒）</button>
+      <div class="btns two">
+        <button class="btn sub" id="btnReview" type="button">振り返り</button>
+        <button class="btn sub" id="btnDrill" type="button">ミスだけ特訓</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- プレイ -->
+  <section class="screen" id="scrPlay" hidden>
+    <div class="top">
+      <div class="score"><small id="modeLabel">SCORE</small><span id="score">0</span></div>
+      <div class="combo" id="comboBox"><b id="combo">0</b><span>COMBO</span></div>
+    </div>
+    <div class="bar"><i id="timeBar"></i></div>
+    <div class="meta"><span>残り <b id="timeLeft">60</b> 秒</span><button class="icon" id="mute" type="button" aria-pressed="false">音 ON</button></div>
+    <div class="window">
+      <span class="chip cat" id="qCat">速さ</span>
+      <p class="question" id="question"></p>
+    </div>
+    <div class="bar thin" id="qBarWrap"><i id="qBar"></i></div>
+    <div class="reels" id="reels">
+      <button class="reel" type="button" data-i="0"><span class="k">1</span><span class="txt"></span></button>
+      <button class="reel" type="button" data-i="1"><span class="k">2</span><span class="txt"></span></button>
+      <button class="reel" type="button" data-i="2"><span class="k">3</span><span class="txt"></span></button>
+    </div>
+    <div class="fb" id="fb" aria-live="polite"></div>
+  </section>
+
+  <!-- 結果 -->
+  <section class="screen scroll" id="scrResult" hidden>
+    <div class="head"><h2 id="rTitle">結果</h2><span class="rank" id="rRank"></span></div>
+    <div class="big" id="rScore">0</div>
+    <div class="stats">
+      <div>偏差値<b id="rDev">50</b></div>
+      <div>最大コンボ<b id="rCombo">0</b></div>
+      <div>正解率<b id="rAcc">0%</b></div>
+    </div>
+    <div class="unlock" id="rUnlock" hidden></div>
+    <div class="btns">
+      <button class="btn" id="btnAgain" type="button">もう一回</button>
+      <div class="btns two">
+        <a class="btn sub" id="btnShare" href="#" target="_blank" rel="noopener">Xでシェア</a>
+        <button class="btn sub" id="btnHome" type="button">タイトルへ</button>
+      </div>
+    </div>
+    <div class="panel">
+      <h2 id="rMissHead">今回ミスした問題</h2>
+      <ul class="list" id="rMiss"></ul>
+      <button class="btn sub" id="btnDrill2" type="button">ミスだけ特訓</button>
+    </div>
+  </section>
+
+  <!-- 振り返り -->
+  <section class="screen" id="scrReview" hidden>
+    <div class="head"><h2>振り返り</h2><button class="btn sub" id="btnBack" type="button">戻る</button></div>
+    <p class="note">間違えた問題がたまります。2回続けて正解すると「克服」で消えます。</p>
+    <div class="scroll" style="flex:1;min-height:0">
+      <ul class="list" id="vList"></ul>
+    </div>
+    <button class="btn" id="btnDrill3" type="button">ミスだけ特訓（60秒）</button>
+  </section>
+</div>
+
+<script>
+(() => {
+  // ---------- 問題 ----------
+  // [id, 分野, 問題（？が穴）, 正解, ハズレ1, ハズレ2, 解説]
+  const CATS = {
+    sp: { name: '速さ', unlock: 0 },
+    pl: { name: '損益算', unlock: 0 },
+    cn: { name: '濃度', unlock: 20 },
+    wk: { name: '仕事算', unlock: 50 },
+    pr: { name: '確率・場合の数', unlock: 90 },
+    ot: { name: '集合・その他', unlock: 140 },
+  };
+  const Q = [
+    ['sp1', 'sp', '速さ ＝ ？', '距離 ÷ 時間', '時間 ÷ 距離', '距離 × 時間', 'き・は・じ。速さ ＝ 距離 ÷ 時間'],
+    ['sp2', 'sp', '時間 ＝ ？', '距離 ÷ 速さ', '速さ ÷ 距離', '距離 × 速さ', '時間 ＝ 距離 ÷ 速さ'],
+    ['sp3', 'sp', '距離 ＝ ？', '速さ × 時間', '速さ ÷ 時間', '時間 ÷ 速さ', '距離 ＝ 速さ × 時間'],
+    ['sp4', 'sp', '時速60km ＝ 分速 ？', '1km', '6km', '3.6km', '時速 ÷ 60 ＝ 分速。60 ÷ 60 ＝ 1km'],
+    ['sp5', 'sp', '時速36km ＝ 秒速 ？', '10m', '36m', '6m', '36km ＝ 36000m。÷3600秒 ＝ 秒速10m'],
+    ['sp6', 'sp', '出会うまでの時間 ＝ 距離 ÷ ？', '速さの和', '速さの差', '速さの積', '向かい合って進む → 速さを足す'],
+    ['sp7', 'sp', '追いつくまでの時間 ＝ 距離 ÷ ？', '速さの差', '速さの和', '速さの平均', '同じ向きに進む → 速さを引く'],
+    ['sp8', 'sp', '下りの速さ ＝ ？', '船 ＋ 流れ', '船 − 流れ', '船 × 流れ', '下りは流れに乗る → 足す'],
+    ['sp9', 'sp', '上りの速さ ＝ ？', '船 − 流れ', '船 ＋ 流れ', '流れ − 船', '上りは流れに逆らう → 引く'],
+    ['sp10', 'sp', '流れの速さ ＝ ？', '(下り − 上り) ÷ 2', '(下り ＋ 上り) ÷ 2', '下り − 上り', '船の速さは (下り ＋ 上り) ÷ 2。流れは差を2で割る'],
+    ['sp11', 'sp', '時速4kmで30分歩くと ？', '2km', '1.2km', '8km', '30分 ＝ 0.5時間。4 × 0.5 ＝ 2km'],
+    ['pl1', 'pl', '定価 ＝ 原価 × ？', '(1 ＋ 利益率)', '(1 − 利益率)', '利益率', '利益を上乗せ → 1 ＋ 利益率'],
+    ['pl2', 'pl', '売値 ＝ 定価 × ？', '(1 − 割引率)', '(1 ＋ 割引率)', '割引率', '割り引く → 1 − 割引率'],
+    ['pl3', 'pl', '利益 ＝ ？', '売値 − 原価', '定価 − 原価', '売値 − 定価', '実際に売れた値段から原価を引く'],
+    ['pl4', 'pl', '原価1000円に2割の利益 → 定価 ？', '1200円', '1020円', '1100円', '1000 × 1.2 ＝ 1200円'],
+    ['pl5', 'pl', '定価2000円の3割引 → 売値 ？', '1400円', '1700円', '600円', '2000 × 0.7 ＝ 1400円'],
+    ['pl6', 'pl', '原価1000円、2割増しの定価から1割引 → 売値 ？', '1080円', '1100円', '1000円', '1000 × 1.2 × 0.9 ＝ 1080円'],
+    ['pl7', 'pl', '割合 ＝ ？', '比べる量 ÷ もとにする量', 'もとにする量 ÷ 比べる量', '比べる量 × もとにする量', '「〜の」がついている方が、もとにする量'],
+    ['pl8', 'pl', '原価 ＝ 定価 ÷ ？', '(1 ＋ 利益率)', '(1 − 利益率)', '利益率', '定価 ＝ 原価 ×(1 ＋ 利益率) を逆にする'],
+    ['pl9', 'pl', '500円の4割 ＝ ？', '200円', '400円', '125円', '4割 ＝ 0.4。500 × 0.4 ＝ 200円'],
+    ['pl10', 'pl', '3割引で700円 → 定価 ？', '1000円', '910円', '2100円', '定価 × 0.7 ＝ 700 → 定価 ＝ 1000円'],
+    ['cn1', 'cn', '濃度(%) ＝ ？', '食塩 ÷ 食塩水 × 100', '食塩 ÷ 水 × 100', '食塩水 ÷ 食塩 × 100', '割るのは「水」ではなく「食塩水」'],
+    ['cn2', 'cn', '食塩 ＝ ？', '食塩水 × 濃度', '食塩水 ÷ 濃度', '水 × 濃度', '食塩 ＝ 食塩水 × 濃度'],
+    ['cn3', 'cn', '水を足しても変わらないのは ？', '食塩の量', '濃度', '食塩水の量', '水を足すと濃度は下がるが、食塩の量はそのまま'],
+    ['cn4', 'cn', '10%の食塩水200gの食塩 ＝ ？', '20g', '2g', '10g', '200 × 0.1 ＝ 20g'],
+    ['cn5', 'cn', '食塩20g ＋ 水80g の濃度 ＝ ？', '20%', '25%', '16%', '食塩水は100g。20 ÷ 100 ＝ 20%'],
+    ['cn6', 'cn', '10%の食塩水100gに水100g → 濃度 ？', '5%', '10%', '2%', '食塩10g ÷ 食塩水200g ＝ 5%'],
+    ['cn7', 'cn', '混ぜた濃度 ＝ ？', '食塩の合計 ÷ 食塩水の合計', '濃度の平均', '濃度の合計', '濃度どうしは足さない。食塩と食塩水をそれぞれ足して割る'],
+    ['cn8', 'cn', '5%の食塩水300gの食塩 ＝ ？', '15g', '1.5g', '60g', '300 × 0.05 ＝ 15g'],
+    ['wk1', 'wk', '仕事算では全体の仕事を ？ とおく', '1', '100', '0', '全体を1とおくと、1日の仕事量が分数で出る'],
+    ['wk2', 'wk', '6日かかる人の1日の仕事量 ＝ ？', '1/6', '6', '1/3', '1 ÷ 6 ＝ 1/6'],
+    ['wk3', 'wk', '2人でやる日数 ＝ 1 ÷ ？', '仕事量の和', '仕事量の差', '日数の和', '1日の仕事量を足してから1を割る'],
+    ['wk4', 'wk', 'Aは6日、Bは3日 → 2人で ？', '2日', '4.5日', '9日', '1 ÷ (1/6 ＋ 1/3) ＝ 1 ÷ 1/2 ＝ 2日'],
+    ['wk5', 'wk', 'Aは4日、Bは12日 → 2人で ？', '3日', '8日', '16日', '1 ÷ (1/4 ＋ 1/12) ＝ 1 ÷ 1/3 ＝ 3日'],
+    ['wk6', 'wk', 'Aは10日、Bは15日 → 2人で ？', '6日', '12.5日', '5日', '1 ÷ (1/10 ＋ 1/15) ＝ 1 ÷ 1/6 ＝ 6日'],
+    ['wk7', 'wk', '1時間に全体の1/4進む → 全部で ？', '4時間', '1/4時間', '2時間', '1 ÷ 1/4 ＝ 4時間'],
+    ['pr1', 'pr', '確率 ＝ ？', '起こる場合 ÷ 全部の場合', '全部の場合 ÷ 起こる場合', '起こる場合 − 全部の場合', '確率は必ず0〜1の間になる'],
+    ['pr2', 'pr', '少なくとも1回 ＝ ？', '1 − 1回も起こらない確率', '1回の確率 × 回数', '1 − 1回の確率', '「少なくとも」は全体から「1回もない」を引く'],
+    ['pr3', 'pr', 'AかつB（独立）の確率 → ？', 'かけ算', '足し算', '引き算', '「かつ」はかける'],
+    ['pr4', 'pr', 'AまたはB（同時に起こらない）→ ？', '足し算', 'かけ算', '割り算', '「または」は足す'],
+    ['pr5', 'pr', '順番が関係ある数え方 ＝ ？', '順列 P', '組合せ C', '確率', '並べる → P、選ぶだけ → C'],
+    ['pr6', 'pr', '5C2 ＝ ？', '10', '20', '25', '(5 × 4) ÷ (2 × 1) ＝ 10'],
+    ['pr7', 'pr', '5P2 ＝ ？', '20', '10', '25', '5 × 4 ＝ 20'],
+    ['pr8', 'pr', '4人の並び方 ＝ ？', '24通り', '16通り', '12通り', '4 × 3 × 2 × 1 ＝ 24'],
+    ['pr9', 'pr', 'コイン2枚とも表の確率 ＝ ？', '1/4', '1/2', '1/3', '1/2 × 1/2 ＝ 1/4'],
+    ['pr10', 'pr', 'サイコロ1個で偶数の確率 ＝ ？', '1/2', '1/3', '1/6', '2・4・6 の3通り ÷ 6 ＝ 1/2'],
+    ['pr11', 'pr', '6C2 ＝ ？', '15', '30', '12', '(6 × 5) ÷ (2 × 1) ＝ 15'],
+    ['ot1', 'ot', 'A∪B（どちらか）＝ ？', 'A ＋ B − 両方', 'A ＋ B', 'A ＋ B ＋ 両方', '両方を2回数えているので1回引く'],
+    ['ot2', 'ot', 'どちらでもない ＝ ？', '全体 − A∪B', '全体 − A − B', '全体 − 両方', '全体から「どちらか」を引く'],
+    ['ot3', 'ot', 'A30人・B20人・両方10人 → どちらか ？', '40人', '50人', '60人', '30 ＋ 20 − 10 ＝ 40人'],
+    ['ot4', 'ot', '頭金1/4、残りを3回で均等払い → 1回 ？', '1/4', '1/3', '1/12', '(1 − 1/4) ÷ 3 ＝ 3/4 ÷ 3 ＝ 1/4'],
+    ['ot5', 'ot', '何年たっても変わらないのは ？', '年齢の差', '年齢の比', '年齢の和', '2人とも同じだけ年をとる'],
+    ['ot6', 'ot', '合計 ＝ ？', '平均 × 個数', '平均 ÷ 個数', '平均 ＋ 個数', '平均の問題は合計に戻して考える'],
+    ['ot7', 'ot', 'まっすぐな道の木の本数 ＝ ？', '間の数 ＋ 1', '間の数', '間の数 − 1', '両端に木がある → 1本多い'],
+    ['ot8', 'ot', '池のまわりの木の本数 ＝ ？', '間の数', '間の数 ＋ 1', '間の数 − 1', '円は始まりと終わりがつながる → 同じ数'],
+    ['ot9', 'ot', 'つるかめ算：全部つると仮定 → 足りない数 ÷ ？', '1匹あたりの足の差', '足の合計', '匹数の合計', '全部つるなら足は2本ずつ。差 ÷ (4 − 2)'],
+    ['ot10', 'ot', '平均70点を4回、5回目で平均72点 → 何点 ？', '80点', '72点', '74点', '72 × 5 ＝ 360、70 × 4 ＝ 280。360 − 280 ＝ 80点'],
+  ].map(([id, cat, q, a, w1, w2, ex]) => ({ id, cat, q, a, w: [w1, w2], ex }));
+  const BY_ID = Object.fromEntries(Q.map((x) => [x.id, x]));
+
+  const GAME_TIME = 60;
+  const MASTER_STREAK = 2;
+  const SHARE_URL = /github\.io$/.test(location.hostname) ? location.origin + location.pathname : '';
+
+  // ---------- 保存（使えない環境でも遊べるように） ----------
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem('spi-' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem('spi-' + k, JSON.stringify(v)); } catch (e) {} },
+  };
+  let best = store.get('best', 0), bestCombo = store.get('bestCombo', 0), total = store.get('total', 0);
+  let misses = store.get('miss', {}); // id -> { n: ミス回数, s: 連続正解 }
+  const saveMiss = () => store.set('miss', misses);
+
+  const $ = (s) => document.querySelector(s);
+  const rand = (n) => Math.floor(Math.random() * n);
+  const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = rand(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const fmtNum = (n) => n.toLocaleString('ja-JP');
+  const unlockedCats = (t = total) => Object.keys(CATS).filter((c) => t >= CATS[c].unlock);
+  function holeHTML(q) {
+    const esc = q.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+    return esc.replace('？', '<span class="hole">？</span>');
+  }
+
+  // ---------- 画面 ----------
+  const screens = ['scrTitle', 'scrPlay', 'scrResult', 'scrReview'];
+  function show(id) { for (const s of screens) $('#' + s).hidden = s !== id; }
+
+  function renderTitle() {
+    $('#tBest').textContent = fmtNum(best);
+    $('#tCombo').textContent = bestCombo;
+    $('#tTotal').textContent = total;
+    const box = $('#tCats'); box.innerHTML = '';
+    let next = null;
+    for (const [k, c] of Object.entries(CATS)) {
+      const el = document.createElement('span');
+      const open = total >= c.unlock;
+      el.className = 'chip' + (open ? '' : ' locked');
+      el.textContent = open ? c.name : `${c.name}（あと${c.unlock - total}問）`;
+      box.append(el);
+      if (!open && !next) next = c;
+    }
+    $('#tNext').textContent = next ? `通算正解あと${next.unlock - total}問で「${next.name}」が解放` : '全分野解放済み';
+    const n = Object.keys(misses).length;
+    $('#btnReview').textContent = `振り返り（${n}問）`;
+    $('#btnDrill').disabled = n === 0;
+    show('scrTitle');
+  }
+
+  function itemHTML(x, extra) {
+    return `<li class="item"><div class="row"><span class="chip">${CATS[x.cat].name}</span><span>${extra || ''}</span></div>
+      <div class="q">${holeHTML(x.q)}</div><div class="a">${x.a}</div><div class="ex">${x.ex}</div></li>`;
+  }
+
+  function renderReview() {
+    const ids = Object.keys(misses).filter((id) => BY_ID[id]).sort((a, b) => misses[b].n - misses[a].n);
+    $('#vList').innerHTML = ids.length
+      ? ids.map((id) => itemHTML(BY_ID[id], `ミス${misses[id].n}回・克服まであと${MASTER_STREAK - misses[id].s}回`)).join('')
+      : '<li class="empty">ミスした問題はまだありません。<br>ゲームで間違えると、ここにたまっていきます。</li>';
+    $('#btnDrill3').disabled = ids.length === 0;
+    show('scrReview');
+  }
+
+  // ---------- 音 ----------
+  let AC = null, muted = false;
+  function initAudio() {
+    if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { AC = null; } }
+    AC?.resume?.();
+  }
+  function tone(f, at = 0, dur = .12, type = 'square', vol = .07) {
+    if (!AC || muted) return;
+    const t = AC.currentTime + at, o = AC.createOscillator(), g = AC.createGain();
+    o.type = type; o.frequency.value = f;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .005); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(g).connect(AC.destination); o.start(t); o.stop(t + dur + .02);
+  }
+  const sfx = {
+    hit(combo) { const f = 523 * Math.pow(2, Math.min(combo, 24) / 12); tone(f, 0, .09); tone(f * 1.5, .06, .12); },
+    miss() { tone(140, 0, .25, 'sawtooth', .08); tone(110, .1, .3, 'sawtooth', .08); },
+    spin() { for (let i = 0; i < 3; i++) tone(900 + i * 120, i * .04, .03, 'triangle', .03); },
+    fanfare() { [523, 659, 784, 1047].forEach((f, i) => tone(f, i * .08, .18, 'square', .08)); },
+    tick() { tone(1200, 0, .03, 'square', .03); },
+    end() { [784, 659, 523].forEach((f, i) => tone(f, i * .12, .2, 'triangle', .1)); },
+  };
+
+  // ---------- ゲーム ----------
+  const G = {};
+  const reels = [...document.querySelectorAll('.reel')];
+
+  function startGame(mode) {
+    initAudio();
+    if (mode === 'drill' && !Object.keys(misses).some((id) => BY_ID[id])) return;
+    Object.assign(G, {
+      mode, time: GAME_TIME, score: 0, combo: 0, maxCombo: 0, right: 0, answered: 0, n: 0,
+      roundMiss: [], retry: [], recent: [], cur: null, locked: false, running: true, lastTick: 0,
+      unlockedBefore: unlockedCats().length,
+    });
+    $('#modeLabel').textContent = mode === 'drill' ? 'ミスだけ特訓' : 'SCORE';
+    document.body.classList.remove('fever');
+    updateHud();
+    show('scrPlay');
+    next();
+  }
+
+  function pickItem() {
+    const due = G.retry.findIndex((r) => r.due <= G.n);
+    if (due >= 0) return BY_ID[G.retry.splice(due, 1)[0].id];
+    const pool = G.mode === 'drill'
+      ? Object.keys(misses).map((id) => BY_ID[id]).filter(Boolean)
+      : Q.filter((x) => unlockedCats().includes(x.cat));
+    if (!pool.length) return null;
+    const avoid = Math.min(G.recent.length, pool.length - 1, 6);
+    const recent = G.recent.slice(-avoid);
+    const cands = pool.filter((x) => !recent.includes(x.id));
+    return cands[rand(cands.length)] || pool[rand(pool.length)];
+  }
+
+  function next() {
+    if (!G.running) return;
+    const x = pickItem();
+    if (!x) { endGame(true); return; }
+    G.n++;
+    G.recent.push(x.id);
+    const choices = shuffle([x.a, ...x.w]);
+    const limit = /\d/.test(x.q) ? 4.5 : 3;
+    G.cur = { x, choices, ci: choices.indexOf(x.a), limit, left: limit };
+    G.locked = false;
+    $('#qCat').textContent = CATS[x.cat].name;
+    $('#question').innerHTML = holeHTML(x.q);
+    reels.forEach((r, i) => {
+      r.classList.remove('hit', 'miss', 'spin');
+      r.querySelector('.txt').textContent = choices[i];
+      void r.offsetWidth;
+      r.classList.add('spin');
+    });
+    $('#fb').innerHTML = '';
+    sfx.spin();
+  }
+
+  function answer(i) {
+    if (!G.running || G.locked || !G.cur) return;
+    G.locked = true;
+    const { x, ci, limit, left } = G.cur;
+    G.answered++;
+    if (i === ci) {
+      G.combo++; G.right++;
+      G.maxCombo = Math.max(G.maxCombo, G.combo);
+      total++;
+      const mult = (1 + Math.floor(G.combo / 5) * .5) * (G.combo >= 20 ? 2 : 1);
+      const pts = Math.round((100 + 100 * (left / limit)) * mult) * 10;
+      G.score += pts;
+      reels[i].classList.add('hit');
+      popAt(reels[i], `+${fmtNum(pts)}`);
+      sfx.hit(G.combo);
+      milestone();
+      if (misses[x.id]) {
+        misses[x.id].s++;
+        if (misses[x.id].s >= MASTER_STREAK) { delete misses[x.id]; banner('克服！'); }
+        saveMiss();
+      }
+      updateHud();
+      setTimeout(next, 230);
+    } else {
+      G.combo = 0;
+      document.body.classList.remove('fever');
+      if (i >= 0) reels[i].classList.add('miss');
+      reels[ci].classList.add('hit');
+      sfx.miss();
+      $('#fb').innerHTML = `<div class="explain"><b>${i < 0 ? '時間切れ' : 'ミス'}</b>${x.ex}</div>`;
+      misses[x.id] = { n: (misses[x.id]?.n || 0) + 1, s: 0 };
+      saveMiss();
+      if (!G.roundMiss.includes(x.id)) G.roundMiss.push(x.id);
+      G.retry.push({ id: x.id, due: G.n + 3 });
+      updateHud();
+      setTimeout(next, 1300);
+    }
+  }
+
+  function milestone() {
+    const c = G.combo;
+    if (c === 20) { document.body.classList.add('fever'); banner('FEVER ×2'); sfx.fanfare(); quake(); }
+    else if (c >= 5 && c % 5 === 0) { banner(`${c} COMBO!`); quake(); if (c % 10 === 0) sfx.fanfare(); }
+  }
+
+  function endGame(allClear = false) {
+    if (!G.running) return;
+    G.running = false; G.cur = null;
+    document.body.classList.remove('fever');
+    sfx.end();
+    store.set('total', total);
+    const newBest = G.mode === 'normal' && G.score > best;
+    if (newBest) { best = G.score; store.set('best', best); }
+    if (G.maxCombo > bestCombo) { bestCombo = G.maxCombo; store.set('bestCombo', bestCombo); }
+    const dev = Math.max(35, Math.min(80, Math.round(38 + G.score / 2500)));
+    const acc = G.answered ? Math.round(G.right / G.answered * 100) : 0;
+    const ranks = [[35, '公式まだまだ'], [45, '筆記で落ちる人'], [52, '平均くらい'], [58, '筆記は通る'], [65, '大手も狙える'], [72, 'SPIの鬼']];
+    let rank = ranks[0][1];
+    for (const [d, r] of ranks) if (dev >= d) rank = r;
+    $('#rTitle').textContent = allClear ? '全部克服！' : newBest ? 'ハイスコア更新！' : G.mode === 'drill' ? '特訓おわり' : '結果';
+    $('#rRank').textContent = rank;
+    $('#rDev').textContent = dev;
+    $('#rCombo').textContent = G.maxCombo;
+    $('#rAcc').textContent = `${acc}%`;
+    countUp($('#rScore'), G.score);
+    const opened = unlockedCats().slice(G.unlockedBefore);
+    const un = $('#rUnlock');
+    un.hidden = !opened.length;
+    if (opened.length) { un.textContent = `新しい分野が解放：${opened.map((c) => CATS[c].name).join('、')}`; setTimeout(sfx.fanfare, 500); }
+    $('#rMissHead').textContent = G.roundMiss.length ? `今回ミスした問題（${G.roundMiss.length}問）` : '今回はノーミス';
+    $('#rMiss').innerHTML = G.roundMiss.map((id) => itemHTML(BY_ID[id], '')).join('');
+    $('#btnDrill2').hidden = !Object.keys(misses).length;
+    const text = `SPI「公式スロット」で${fmtNum(G.score)}点\n偏差値${dev}・最大${G.maxCombo}コンボ（${rank}）\n#公式スロット`;
+    const q = new URLSearchParams({ text });
+    if (SHARE_URL) q.set('url', SHARE_URL);
+    $('#btnShare').href = `https://twitter.com/intent/tweet?${q}`;
+    show('scrResult');
+  }
+
+  // ---------- 演出 ----------
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function popAt(el, text) {
+    const r = el.getBoundingClientRect(), p = document.createElement('div');
+    p.className = 'pop'; p.textContent = text;
+    p.style.left = `${r.left + r.width * .7}px`; p.style.top = `${r.top - 6}px`;
+    document.body.append(p); setTimeout(() => p.remove(), 850);
+  }
+  function banner(text) {
+    const b = document.createElement('div');
+    b.className = 'banner'; b.textContent = text;
+    document.body.append(b); setTimeout(() => b.remove(), 1000);
+  }
+  function quake() {
+    if (reduce) return;
+    const a = $('#app'); a.classList.remove('quake'); void a.offsetWidth; a.classList.add('quake');
+  }
+  function countUp(el, to) {
+    const t0 = performance.now(), dur = reduce ? 0 : 900;
+    const step = (t) => {
+      const k = dur ? Math.min(1, (t - t0) / dur) : 1;
+      el.textContent = fmtNum(Math.round(to * (1 - Math.pow(1 - k, 3))));
+      if (k < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+  function updateHud() {
+    $('#score').textContent = fmtNum(G.score);
+    $('#combo').textContent = G.combo;
+    $('#comboBox').classList.toggle('hot', G.combo >= 5);
+  }
+
+  // ---------- ループ ----------
+  let last = performance.now();
+  function frame(t) {
+    const dt = Math.min(.1, (t - last) / 1000); last = t;
+    if (G.running) {
+      G.time -= dt;
+      if (G.cur && !G.locked) {
+        G.cur.left -= dt;
+        if (G.cur.left <= 0) answer(-1);
+      }
+      const sec = Math.ceil(Math.max(0, G.time));
+      $('#timeLeft').textContent = sec;
+      $('#timeBar').style.transform = `scaleX(${Math.max(0, G.time / GAME_TIME)})`;
+      if (G.cur) {
+        const k = Math.max(0, G.cur.left / G.cur.limit);
+        $('#qBar').style.transform = `scaleX(${G.locked ? 0 : k})`;
+        $('#qBarWrap').classList.toggle('urgent', k < .35);
+      }
+      if (sec <= 5 && sec !== G.lastTick && sec > 0) { G.lastTick = sec; sfx.tick(); }
+      if (G.time <= 0) endGame();
+    }
+    requestAnimationFrame(frame);
+  }
+
+  // ---------- 入力 ----------
+  reels.forEach((r) => r.addEventListener('pointerdown', (e) => { e.preventDefault(); answer(+r.dataset.i); }));
+  reels.forEach((r) => r.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); answer(+r.dataset.i); } }));
+  document.addEventListener('keydown', (e) => { if (['1', '2', '3'].includes(e.key)) answer(+e.key - 1); });
+  $('#btnStart').addEventListener('click', () => startGame('normal'));
+  $('#btnAgain').addEventListener('click', () => startGame(G.mode || 'normal'));
+  $('#btnDrill').addEventListener('click', () => startGame('drill'));
+  $('#btnDrill2').addEventListener('click', () => startGame('drill'));
+  $('#btnDrill3').addEventListener('click', () => startGame('drill'));
+  $('#btnReview').addEventListener('click', renderReview);
+  $('#btnBack').addEventListener('click', renderTitle);
+  $('#btnHome').addEventListener('click', renderTitle);
+  $('#mute').addEventListener('click', (e) => {
+    muted = !muted;
+    e.currentTarget.textContent = muted ? '音 OFF' : '音 ON';
+    e.currentTarget.setAttribute('aria-pressed', String(muted));
+  });
+
+  renderTitle();
+  requestAnimationFrame(frame);
+})();
+</script>
