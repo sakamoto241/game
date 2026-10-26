@@ -1,0 +1,787 @@
+<title>点Pを捕まえろ</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="動く点Pを鉛筆で囲んで捕まえる、数学の小テスト風ゲーム">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700;800&family=Klee+One:wght@600&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<style>
+  /* わら半紙の小テスト1枚を机に置いた構成で固定するため、ライト/ダーク共通の配色。
+     上に問題文、残りすべてが図と点Pの舞台 */
+  :root {
+    color-scheme: light;
+    --desk: #2F3634;
+    --paper: #ECE7D8;
+    --print: #26262B;
+    --graphite: #4A4A52;
+    --red: #C8322B;
+    --rule: #B7B09E;
+    --mincho: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", serif;
+    --hand: "Klee One", "Hiragino Maru Gothic ProN", "Yu Gothic", cursive;
+    --ui: "Zen Kaku Gothic New", "Hiragino Sans", system-ui, sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--desk);
+    color: var(--print);
+    font-family: var(--ui);
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 12px;
+    overscroll-behavior: none;
+  }
+  .paper {
+    position: relative;
+    height: 100%;
+    max-width: 560px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--paper);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .3 0 0 0 0 .2 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .35);
+    overflow: hidden;
+  }
+
+  /* ---- 答案用紙の頭 ---- */
+  .head {
+    display: flex; align-items: stretch; gap: 10px;
+    padding: 10px 14px 8px;
+    border-bottom: 1.5px solid var(--print);
+  }
+  .subj { display: grid; gap: 2px; flex: 1; min-width: 0; }
+  .subj small { font-size: 11px; letter-spacing: .14em; color: var(--graphite); }
+  .subj strong { font-family: var(--mincho); font-weight: 800; font-size: 19px; line-height: 1.2; }
+  .score {
+    display: grid; grid-template-columns: auto 64px; align-items: stretch;
+    border: 1.5px solid var(--print); font-size: 11px;
+  }
+  .score > span:first-child {
+    writing-mode: vertical-rl; padding: 4px 3px; border-right: 1.5px solid var(--print);
+    letter-spacing: .2em; display: grid; place-items: center;
+  }
+  .scorebox {
+    display: grid; place-items: center;
+    font-family: var(--hand); font-weight: 600; color: var(--red);
+    font-size: 26px; line-height: 1; font-variant-numeric: tabular-nums;
+  }
+
+  /* ---- 問題文 ---- */
+  .q {
+    display: grid; grid-template-columns: auto 1fr; gap: 8px;
+    padding: 10px 14px 6px;
+  }
+  .qno {
+    font-family: var(--mincho); font-weight: 800; font-size: 15px;
+    border: 1.5px solid var(--print); padding: 1px 6px; align-self: start; white-space: nowrap;
+  }
+  .question {
+    margin: 0; min-width: 0;
+    font-family: var(--mincho); font-weight: 500; font-size: 15px; line-height: 1.75;
+    min-height: calc(1.75em * 3);
+  }
+  .question del {
+    text-decoration: line-through; text-decoration-color: var(--red); text-decoration-thickness: 2px;
+    color: var(--graphite);
+  }
+  .question ins {
+    text-decoration: none; color: var(--red);
+    font-family: var(--hand); font-weight: 600;
+    animation: write .6s ease-out both;
+  }
+  @keyframes write { from { opacity: 0; letter-spacing: .3em; } to { opacity: 1; letter-spacing: 0; } }
+
+  .hud {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px;
+    padding: 4px 14px 8px; font-size: 12px; color: var(--graphite);
+    border-bottom: 1px dashed var(--rule);
+  }
+  .hud b { font-family: var(--mincho); font-weight: 700; font-size: 16px; color: var(--print); font-variant-numeric: tabular-nums; }
+  .lead { display: inline-flex; align-items: center; gap: 6px; flex: 1; min-width: 120px; }
+  .leadbar { flex: 1; height: 8px; border: 1px solid var(--print); position: relative; max-width: 160px; }
+  .leadbar i { position: absolute; inset: 1px auto 1px 1px; background: var(--graphite); width: 100%; transition: width .2s; }
+  .leadbar.low i { background: var(--red); }
+  .mute {
+    font: inherit; font-size: 12px; color: var(--print); background: none;
+    border: 1px solid var(--print); padding: 2px 8px; border-radius: 3px; cursor: pointer;
+  }
+
+  /* ---- 図の舞台 ---- */
+  .stage { position: relative; flex: 1; min-height: 280px; touch-action: none; user-select: none; -webkit-user-select: none; }
+  .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #cvTop { cursor: none; }
+
+  .overlay {
+    position: absolute; inset: 0; display: grid; place-items: center; padding: 16px;
+    background: rgba(236, 231, 216, .55);
+  }
+  .card {
+    width: 100%; max-width: 340px;
+    background: var(--paper); border: 1.5px solid var(--print);
+    box-shadow: 5px 5px 0 rgba(38, 38, 43, .2);
+    padding: 20px 20px 18px; display: grid; gap: 14px;
+  }
+  .card h1, .card h2 {
+    margin: 0; font-family: var(--mincho); font-weight: 800; line-height: 1.2; text-wrap: balance;
+  }
+  .card h1 { font-size: 32px; }
+  .card h2 { font-size: 18px; }
+  .card h1 em { font-style: italic; font-family: var(--mincho); }
+  .rules { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 13px; line-height: 1.6; }
+  .rules li { display: grid; grid-template-columns: 1.4em 1fr; }
+  .rules li::before { content: "・"; }
+  .best { margin: 0; font-size: 12px; color: var(--graphite); }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; }
+  .btn {
+    font-family: var(--ui); font-weight: 700; font-size: 15px; letter-spacing: .06em;
+    background: var(--print); color: var(--paper); border: 1.5px solid var(--print);
+    padding: 11px 20px; border-radius: 4px; cursor: pointer; text-decoration: none;
+    display: inline-flex; align-items: center; justify-content: center; flex: 1;
+  }
+  .btn.ghost { background: transparent; color: var(--print); }
+  .btn:focus-visible, .mute:focus-visible { outline: 3px solid var(--red); outline-offset: 2px; }
+
+  .result-score {
+    display: flex; align-items: baseline; gap: 10px;
+    color: var(--red); font-family: var(--hand); font-weight: 600;
+  }
+  .result-score span { font-size: 56px; line-height: 1; font-variant-numeric: tabular-nums; }
+  .result-score small { font-size: 18px; }
+  .stats { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-size: 13px; }
+  .stats dt { color: var(--graphite); }
+  .stats dd { margin: 0; font-family: var(--mincho); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .comment {
+    margin: 0; color: var(--red); font-family: var(--hand); font-weight: 600; font-size: 16px; line-height: 1.5;
+    border-top: 1px dashed var(--rule); padding-top: 10px;
+  }
+  .peek-hint {
+    position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%);
+    font-size: 12px; background: var(--print); color: var(--paper); padding: 6px 12px; border-radius: 99px;
+    pointer-events: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .question ins { animation: none; }
+  }
+</style>
+
+<div class="paper" id="paper">
+  <header class="head">
+    <div class="subj">
+      <small>第2学年　数学　小テスト</small>
+      <strong>点Pを捕まえろ</strong>
+    </div>
+    <div class="score"><span>得点</span><span class="scorebox" id="scoreBox"></span></div>
+  </header>
+
+  <div class="q">
+    <span class="qno">問<span id="qno">1</span></span>
+    <p class="question" id="question"></p>
+  </div>
+
+  <div class="hud">
+    <span>経過 <b id="time">0.0</b> 秒</span>
+    <span>捕獲 <b id="caught">0</b></span>
+    <span class="lead">芯 <span class="leadbar" id="leadWrap"><i id="leadBar"></i></span></span>
+    <button class="mute" id="mute" type="button" aria-pressed="false">音 ON</button>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="cvBase" aria-hidden="true"></canvas>
+    <canvas id="cvInk" aria-hidden="true"></canvas>
+    <canvas id="cvTop" role="img" aria-label="長方形ABCDと動く点P。鉛筆でなぞって点Pを囲む"></canvas>
+
+    <div class="overlay" id="startOv">
+      <div class="card">
+        <h1>点<em>P</em>を<br>捕まえろ</h1>
+        <ul class="rules">
+          <li>鉛筆で点Pをぐるっと囲むと捕獲。</li>
+          <li>線を引くと芯が減る。芯がなくなったら試験終了。</li>
+          <li>捕まえるたびに、問題文が書き換わる。</li>
+        </ul>
+        <p class="best" id="bestLine" hidden></p>
+        <div class="row"><button class="btn" id="startBtn" type="button">はじめ</button></div>
+      </div>
+    </div>
+
+    <div class="overlay" id="resultOv" hidden>
+      <div class="card">
+        <h2 id="endReason">芯が折れた</h2>
+        <div class="result-score"><span id="resScore">0</span><small>点</small></div>
+        <dl class="stats">
+          <dt>捕獲</dt><dd id="resCaught">0問</dd>
+          <dt>使った芯</dt><dd id="resLead">0cm</dd>
+          <dt>評価</dt><dd id="resTitle">—</dd>
+        </dl>
+        <p class="comment" id="resComment"></p>
+        <div class="row">
+          <button class="btn" id="retryBtn" type="button">もう一度</button>
+          <a class="btn ghost" id="shareBtn" href="#" target="_blank" rel="noopener">Xでシェア</a>
+        </div>
+        <div class="row"><button class="btn ghost" id="peekBtn" type="button">答案を見る</button></div>
+      </div>
+    </div>
+    <div class="peek-hint" id="peekHint" hidden>タップで結果に戻る</div>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ---------- 設定 ----------
+  const RECT_W = 12, RECT_H = 8;       // 長方形ABCD（cm）
+  const LEAD_MAX = 240;                // 芯の総量（cm）
+  const LEAD_REFILL = 50;              // 捕獲ごとの回復（cm）
+  const Q_PENALTY = 20;                // 点Qを囲んだときの減り（cm）
+  const TOUCH_OFFSET = { x: -14, y: -58 }; // 指で隠れないよう鉛筆の先を上にずらす（px）
+  const SHARE_URL = /github\.io$/.test(location.hostname) ? location.origin + location.pathname : '';
+
+  const $ = (s) => document.querySelector(s);
+  const stage = $('#stage');
+  const cvBase = $('#cvBase'), cvInk = $('#cvInk'), cvTop = $('#cvTop');
+  const gB = cvBase.getContext('2d'), gI = cvInk.getContext('2d'), gT = cvTop.getContext('2d');
+  const C = {
+    print: '#26262B', graphite: 'rgba(60,60,68,.85)', red: '#C8322B', paper: '#ECE7D8',
+    mincho: '"Shippori Mincho","Hiragino Mincho ProN","Yu Mincho",serif',
+    hand: '"Klee One","Hiragino Maru Gothic ProN","Yu Gothic",cursive',
+  };
+
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  const fmt = (v) => (Number.isInteger(v) ? String(v) : v.toFixed(1));
+
+  // ---------- 問題 ----------
+  const TAIL = '点Pを鉛筆で囲んで捕まえなさい。';
+  const LEVELS = [null,
+    { v: 2, mode: 'edge', hello: '毎秒2cmで動きます',
+      html: `長方形ABCDの辺上を、点PはAを出発して毎秒2cmの速さでB、C、Dの順に動く。${TAIL}` },
+    { v: 5, mode: 'edge', reverse: true, hello: '気分で戻ります',
+      html: `長方形ABCDの辺上を、点PはAを出発して毎秒<del>2</del><ins>5</ins>cmの速さで動く。<ins>ただし、気まぐれに向きを変える。</ins>${TAIL}` },
+    { v: 5, mode: 'edge', reverse: true, q: 'edge', hello: 'Qと組みました',
+      html: `点Pは辺上を毎秒5cmで動き、気まぐれに向きを変える。<ins>点QもCを出発して毎秒4cmで動く。</ins>点P<ins>だけ</ins>を鉛筆で囲んで捕まえなさい。` },
+    { v: 6, mode: 'free', bounds: 'rect', hello: '辺とか知らない',
+      html: `点Pは<del>辺上を</del><ins>長方形ABCDの内部を自由に</ins>、毎秒<del>5</del><ins>6</ins>cmの速さで動く。<del>点Qも動く。</del>${TAIL}` },
+    { v: 6, mode: 'free', bounds: 'rect', flee: true, hello: '鉛筆こわい',
+      html: `点Pは長方形ABCDの内部を自由に、毎秒6cmの速さで動く。<ins>ただし、鉛筆が近づくと逃げる。</ins>${TAIL}` },
+    { v: 7, mode: 'free', bounds: 'paper', flee: true, warp: true, hello: '紙の上ならどこでも',
+      html: `点Pは<del>長方形ABCDの内部を</del><ins>問題用紙のどこでも</ins>自由に、毎秒<del>6</del><ins>7</ins>cmで動く。鉛筆が近づくと逃げる。<ins>ときどき瞬間移動もする。</ins>${TAIL}` },
+    { v: 7.5, mode: 'free', bounds: 'paper', flee: true, warp: true, eraser: true, hello: '消しゴム拾った',
+      html: `点Pは問題用紙のどこでも、毎秒<del>7</del><ins>7.5</ins>cmで動く。逃げるし、瞬間移動もする。<ins>さらに、消しゴムを手に入れた。</ins>${TAIL}` },
+  ];
+  function getLevel(n) {
+    if (n < LEVELS.length) return LEVELS[n];
+    const v = 7.5 + (n - 7) * 0.8, prev = 7.5 + (n - 8) * 0.8;
+    const qText = n === 8 ? '<ins>点Qも戻ってきた。</ins>' : '点Qもいる。';
+    return {
+      v, mode: 'free', bounds: 'paper', flee: true, warp: true, eraser: true, q: 'free',
+      hello: `毎秒${fmt(v)}cmです`,
+      html: `点Pは問題用紙のどこでも、毎秒<del>${fmt(prev)}</del><ins>${fmt(v)}</ins>cmで動く。逃げる、瞬間移動する、線を消す。${qText}点Pだけを囲んで捕まえなさい。`,
+    };
+  }
+
+  const TAUNTS = ['動くよ', '止まらないよ', '毎秒って書いてある', '問題文読んだ？', 'おそいおそい', 'まだまだ', 'x秒後に会おう', 'グラフにしてみたら？'];
+  const NEAR = ['あぶない', 'おっと', 'セーフ', 'ひえっ'];
+
+  // ---------- 画面サイズと座標（ゲーム内はすべて cm、原点は A） ----------
+  let W = 0, H = 0, DPR = 1, CM = 25, R = { x: 0, y: 0 };
+  const px = (p) => ({ x: R.x + p.x * CM, y: R.y + p.y * CM });
+  const cm = (x, y) => ({ x: (x - R.x) / CM, y: (y - R.y) / CM });
+  function bounds(kind) {
+    if (kind === 'rect') return { x0: .3, y0: .3, x1: RECT_W - .3, y1: RECT_H - .3 };
+    const m = 18;
+    return { x0: (m - R.x) / CM, y0: (m - R.y) / CM, x1: (W - m - R.x) / CM, y1: (H - m - R.y) / CM };
+  }
+
+  function layout() {
+    const r = stage.getBoundingClientRect();
+    if (Math.abs(r.width - W) < 1 && Math.abs(r.height - H) < 1) return;
+    W = r.width; H = r.height; DPR = Math.min(2, window.devicePixelRatio || 1);
+    for (const c of [cvBase, cvInk, cvTop]) { c.width = Math.round(W * DPR); c.height = Math.round(H * DPR); }
+    for (const g of [gB, gI, gT]) g.setTransform(DPR, 0, 0, DPR, 0, 0);
+    CM = Math.min((W - 64) / RECT_W, (H * 0.6) / RECT_H);
+    R = { x: (W - RECT_W * CM) / 2, y: (H - RECT_H * CM) / 2 + 4 };
+    drawBase();
+    replayInk();
+  }
+
+  function drawBase() {
+    gB.clearRect(0, 0, W, H);
+    const a = px({ x: 0, y: 0 });
+    gB.strokeStyle = C.print; gB.lineWidth = 1.6;
+    gB.strokeRect(a.x, a.y, RECT_W * CM, RECT_H * CM);
+    gB.fillStyle = C.print;
+    gB.font = `700 18px ${C.mincho}`;
+    gB.textAlign = 'center'; gB.textBaseline = 'middle';
+    const o = 14;
+    const corners = [['A', 0, 0, -1, -1], ['B', 0, RECT_H, -1, 1], ['C', RECT_W, RECT_H, 1, 1], ['D', RECT_W, 0, 1, -1]];
+    for (const [t, x, y, dx, dy] of corners) { const p = px({ x, y }); gB.fillText(t, p.x + dx * o, p.y + dy * o); }
+    gB.font = `500 13px ${C.mincho}`;
+    gB.fillStyle = '#5A5A62';
+    const mb = px({ x: RECT_W / 2, y: RECT_H }); gB.fillText('12cm', mb.x, mb.y + 16);
+    const ml = px({ x: 0, y: RECT_H / 2 });
+    gB.save(); gB.translate(ml.x - 16, ml.y); gB.rotate(-Math.PI / 2); gB.fillText('8cm', 0, 0); gB.restore();
+    // Aからの向き（↓）
+    const s = px({ x: .45, y: .5 });
+    gB.strokeStyle = '#5A5A62'; gB.lineWidth = 1.2;
+    gB.beginPath(); gB.moveTo(s.x, s.y); gB.lineTo(s.x, s.y + CM * 1.4);
+    gB.moveTo(s.x - 4, s.y + CM * 1.4 - 6); gB.lineTo(s.x, s.y + CM * 1.4); gB.lineTo(s.x + 4, s.y + CM * 1.4 - 6);
+    gB.stroke();
+  }
+
+  // ---------- 鉛筆の跡（cm で記録して、リサイズ時に描き直す） ----------
+  let inkOps = [];
+  function drawSeg(a, b) {
+    const p = px(a), q = px(b);
+    gI.globalCompositeOperation = 'source-over';
+    gI.lineCap = 'round'; gI.lineJoin = 'round';
+    gI.strokeStyle = C.graphite; gI.lineWidth = Math.max(1.6, CM * .08);
+    gI.beginPath(); gI.moveTo(p.x, p.y); gI.lineTo(q.x, q.y); gI.stroke();
+    gI.strokeStyle = 'rgba(60,60,68,.22)'; gI.lineWidth = 1;
+    gI.beginPath(); gI.moveTo(p.x + .8, p.y - .6); gI.lineTo(q.x + .8, q.y - .6); gI.stroke();
+  }
+  function drawErase(c, r) {
+    const p = px(c);
+    gI.globalCompositeOperation = 'destination-out';
+    gI.beginPath(); gI.arc(p.x, p.y, r * CM, 0, Math.PI * 2); gI.fill();
+    gI.globalCompositeOperation = 'source-over';
+  }
+  function drawMaru(g, c, r, frac, seed, label) {
+    const p = px(c), rr = r * CM, steps = 56, a0 = seed * 6.283, total = Math.PI * 2.2 * frac;
+    g.strokeStyle = C.red; g.lineWidth = 2.6; g.lineCap = 'round'; g.lineJoin = 'round';
+    g.beginPath();
+    for (let i = 0; i <= steps; i++) {
+      const a = a0 + total * i / steps;
+      const k = rr * (1 + .06 * Math.sin(3 * a + seed * 9)) * (1 + .08 * i / steps);
+      const x = p.x + Math.cos(a) * k * 1.12, y = p.y + Math.sin(a) * k * .92;
+      i ? g.lineTo(x, y) : g.moveTo(x, y);
+    }
+    g.stroke();
+    if (label && frac >= 1) {
+      g.fillStyle = C.red; g.font = `600 14px ${C.hand}`; g.textAlign = 'left'; g.textBaseline = 'middle';
+      g.fillText(label, p.x + rr * 1.25, p.y - rr * .9);
+    }
+  }
+  function applyOp(op) {
+    if (op.t === 'seg') drawSeg(op.a, op.b);
+    else if (op.t === 'erase') drawErase(op.c, op.r);
+    else if (op.t === 'maru') drawMaru(gI, op.c, op.r, 1, op.seed, op.label);
+  }
+  function addOp(op) { inkOps.push(op); applyOp(op); }
+  function replayInk() { gI.clearRect(0, 0, W, H); for (const op of inkOps) applyOp(op); }
+
+  // ---------- 音 ----------
+  let AC = null, scratch = null, muted = false;
+  function initAudio() {
+    if (AC) { AC.resume?.(); return; }
+    try {
+      AC = new (window.AudioContext || window.webkitAudioContext)();
+      const len = AC.sampleRate;
+      const buf = AC.createBuffer(1, len, AC.sampleRate), d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (Math.random() < .3 ? 1 : .35);
+      const src = AC.createBufferSource(); src.buffer = buf; src.loop = true;
+      const bp = AC.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2800; bp.Q.value = .8;
+      scratch = AC.createGain(); scratch.gain.value = 0;
+      src.connect(bp).connect(scratch).connect(AC.destination); src.start();
+    } catch (e) { AC = null; }
+  }
+  function tone(f, at, dur, type = 'sine', vol = .14) {
+    if (!AC || muted) return;
+    const t = AC.currentTime + at, o = AC.createOscillator(), g = AC.createGain();
+    o.type = type; o.frequency.value = f;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .01); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(g).connect(AC.destination); o.start(t); o.stop(t + dur + .05);
+  }
+  function setScratch(v) { if (scratch) scratch.gain.setTargetAtTime(muted ? 0 : v, AC.currentTime, .03); }
+  const sfx = {
+    catch() { tone(988, 0, .25); tone(1319, .12, .45); },
+    wrong() { tone(180, 0, .3, 'square', .06); tone(150, .12, .35, 'square', .06); },
+    warp() { tone(1400, 0, .08, 'triangle', .05); tone(700, .05, .1, 'triangle', .05); },
+    snap() { tone(90, 0, .25, 'sawtooth', .1); },
+  };
+
+  // ---------- 状態 ----------
+  const S = {
+    phase: 'attract', level: 1, L: null, lt: 0, total: 0, caught: 0, times: [],
+    lead: LEAD_MAX, used: 0, phaseT: 0,
+    P: { x: 0, y: 0, s: 0, dir: 1, ang: 0, revT: 2, warpT: 3 },
+    Q: null, ghosts: [], effects: [], bubble: null, tauntT: 3, nearT: 0, eraseMsgT: 0,
+  };
+  const pen = { tip: { x: RECT_W + 2, y: RECT_H + 1 }, down: false, pts: [], touch: false, speed: 0, seen: false };
+
+  function edgePos(s) {
+    const per = 2 * (RECT_W + RECT_H);
+    s = ((s % per) + per) % per;
+    if (s < RECT_H) return { x: 0, y: s };
+    s -= RECT_H; if (s < RECT_W) return { x: s, y: RECT_H };
+    s -= RECT_W; if (s < RECT_H) return { x: RECT_W, y: RECT_H - s };
+    s -= RECT_H; return { x: RECT_W - s, y: 0 };
+  }
+
+  function setLevel(n) {
+    S.level = n; S.L = getLevel(n); S.lt = 0;
+    $('#qno').textContent = n;
+    $('#question').innerHTML = S.L.html;
+    const P = S.P;
+    P.dir = 1; P.revT = rand(1, 2.5); P.warpT = rand(2.5, 3.5); P.ang = rand(0, Math.PI * 2);
+    if (S.L.mode === 'edge') { P.s = 0; Object.assign(P, edgePos(0)); }
+    else { P.x = RECT_W / 2; P.y = RECT_H / 2; }
+    S.Q = null;
+    if (S.L.q === 'edge') S.Q = { s: RECT_H + RECT_W, ...edgePos(RECT_H + RECT_W), ang: 0 };
+    if (S.L.q === 'free') S.Q = { x: RECT_W * .2, y: RECT_H * .8, ang: rand(0, 6.28) };
+    S.ghosts = [];
+    say(S.L.hello, 2.2);
+    S.tauntT = rand(4, 6);
+  }
+
+  function say(text, life = 1.6) { S.bubble = { text, t: 0, life }; }
+
+  function start() {
+    initAudio();
+    inkOps = []; replayInk();
+    Object.assign(S, { caught: 0, times: [], lead: LEAD_MAX, used: 0, total: 0, effects: [], phase: 'play' });
+    pen.pts = []; pen.down = false;
+    $('#scoreBox').textContent = '';
+    $('#startOv').hidden = true; $('#resultOv').hidden = true; $('#peekHint').hidden = true;
+    setLevel(1);
+    updateHud();
+  }
+
+  function capture() {
+    S.phase = 'captured'; S.phaseT = 0;
+    S.caught++; S.times.push(S.lt);
+    S.lead = Math.min(LEAD_MAX, S.lead + LEAD_REFILL);
+    const seed = Math.random();
+    S.effects.push({ t: 'maru', c: { x: S.P.x, y: S.P.y }, r: .9, seed, life: .6, age: 0, label: `問${S.level}` });
+    say('あっ', 1.2);
+    sfx.catch();
+    pen.pts = pen.down ? [{ ...pen.tip }] : [];
+    updateHud();
+  }
+
+  function gameOver() {
+    S.phase = 'over'; S.phaseT = 0;
+    setScratch(0); sfx.snap();
+    say('おつかれ', 2);
+  }
+
+  function showResult() {
+    const score = S.caught * 10;
+    $('#scoreBox').textContent = score;
+    $('#resScore').textContent = score;
+    $('#resCaught').textContent = `${S.caught}問`;
+    $('#resLead').textContent = `${Math.round(S.used)}cm`;
+    const ranks = [
+      [0, '点Pに翻弄された人', '点Pは止まってくれません。'],
+      [1, '中学1年生レベル', '問題文をよく読みましょう。'],
+      [3, '定期テスト平均点', '点Qにだまされないように。'],
+      [5, '学年上位', '瞬間移動まで追えたら上出来です。'],
+      [7, '点Pハンター', '消しゴム持ちの点Pを捕まえるとは。'],
+      [10, '点Pを止めた人', 'もう点Pの方があなたから逃げています。'],
+    ];
+    let rk = ranks[0];
+    for (const r of ranks) if (S.caught >= r[0]) rk = r;
+    $('#resTitle').textContent = rk[1];
+    $('#resComment').textContent = rk[2];
+    const text = `数学の小テストで${score}点でした。\n点Pを${S.caught}回捕まえた（芯${Math.round(S.used)}cm使用）\n評価：${rk[1]}\n#点Pを捕まえろ`;
+    const q = new URLSearchParams({ text });
+    if (SHARE_URL) q.set('url', SHARE_URL);
+    $('#shareBtn').href = `https://twitter.com/intent/tweet?${q}`;
+    let best = 0;
+    try { best = +localStorage.getItem('tenp-best') || 0; if (S.caught > best) localStorage.setItem('tenp-best', S.caught); } catch (e) {}
+    $('#endReason').textContent = S.caught > best && best > 0 ? '芯が折れた（自己ベスト更新）' : '芯が折れた';
+    $('#resultOv').hidden = false;
+  }
+
+  function updateHud() {
+    $('#time').textContent = S.lt.toFixed(1);
+    $('#caught').textContent = S.caught;
+    const f = clamp(S.lead / LEAD_MAX, 0, 1);
+    $('#leadBar').style.width = `calc(${f * 100}% - 2px)`;
+    $('#leadWrap').classList.toggle('low', f < .25);
+  }
+
+  // ---------- 点の動き ----------
+  function wander(o, v, b, dt, fleeFrom) {
+    o.ang += (Math.random() - .5) * 5 * dt;
+    let vx = Math.cos(o.ang) * v, vy = Math.sin(o.ang) * v;
+    if (fleeFrom) {
+      const dx = o.x - fleeFrom.x, dy = o.y - fleeFrom.y, d = Math.hypot(dx, dy), FR = 3.6;
+      if (d < FR && d > .01) {
+        const k = v * 1.5 * (1 - d / FR);
+        vx += dx / d * k; vy += dy / d * k;
+        const target = Math.atan2(dy, dx);
+        let da = Math.atan2(Math.sin(target - o.ang), Math.cos(target - o.ang));
+        o.ang += da * Math.min(1, 4 * dt);
+      }
+    }
+    o.x += vx * dt; o.y += vy * dt;
+    if (o.x < b.x0) { o.x = b.x0; o.ang = Math.PI - o.ang; }
+    if (o.x > b.x1) { o.x = b.x1; o.ang = Math.PI - o.ang; }
+    if (o.y < b.y0) { o.y = b.y0; o.ang = -o.ang; }
+    if (o.y > b.y1) { o.y = b.y1; o.ang = -o.ang; }
+  }
+
+  function updatePoints(dt) {
+    const L = S.L, P = S.P;
+    if (L.mode === 'edge') {
+      if (L.reverse && (P.revT -= dt) <= 0) { P.dir *= -1; P.revT = rand(.8, 2.6); }
+      P.s += P.dir * L.v * dt;
+      Object.assign(P, edgePos(P.s));
+    } else {
+      wander(P, L.v, bounds(L.bounds), dt, L.flee && pen.seen ? pen.tip : null);
+    }
+    if (L.warp && (P.warpT -= dt) <= 0) {
+      P.warpT = rand(2, 3.5);
+      const b = bounds(L.bounds);
+      let n = { x: rand(b.x0, b.x1), y: rand(b.y0, b.y1) };
+      for (let i = 0; i < 10 && dist(n, pen.tip) < 4; i++) n = { x: rand(b.x0, b.x1), y: rand(b.y0, b.y1) };
+      S.ghosts.push({ x: P.x, y: P.y, age: 0 });
+      P.x = n.x; P.y = n.y;
+      if (Math.random() < .4) say('こっちだよ', 1.1);
+      sfx.warp();
+    }
+    if (S.Q) {
+      if (L.q === 'edge') { S.Q.s -= 4 * dt; Object.assign(S.Q, edgePos(S.Q.s)); }
+      else wander(S.Q, L.v * .6, bounds('paper'), dt, null);
+    }
+    if (L.eraser) {
+      const r = .7;
+      addOp({ t: 'erase', c: { x: P.x, y: P.y }, r });
+      if (pen.down && pen.pts.some((p) => dist(p, P) < r)) {
+        pen.pts = [{ ...pen.tip }];
+        if (S.eraseMsgT <= 0) { say('消しちゃった', 1.2); S.eraseMsgT = 2.5; }
+      }
+      // 記録が増えすぎないよう、古い消しゴム跡は間引く
+      if (inkOps.length > 6000) inkOps = inkOps.filter((op, i) => op.t !== 'erase' || i % 2 === 0);
+    }
+  }
+
+  // ---------- 囲み判定 ----------
+  function segX(p1, p2, p3, p4) {
+    const d = (p2.x - p1.x) * (p4.y - p3.y) - (p2.y - p1.y) * (p4.x - p3.x);
+    if (Math.abs(d) < 1e-9) return null;
+    const t = ((p3.x - p1.x) * (p4.y - p3.y) - (p3.y - p1.y) * (p4.x - p3.x)) / d;
+    const u = ((p3.x - p1.x) * (p2.y - p1.y) - (p3.y - p1.y) * (p2.x - p1.x)) / d;
+    return t > 0 && t <= 1 && u >= 0 && u <= 1 ? { x: p1.x + t * (p2.x - p1.x), y: p1.y + t * (p2.y - p1.y) } : null;
+  }
+  function inside(pt, poly) {
+    let c = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const a = poly[i], b = poly[j];
+      if ((a.y > pt.y) !== (b.y > pt.y) && pt.x < (b.x - a.x) * (pt.y - a.y) / (b.y - a.y) + a.x) c = !c;
+    }
+    return c;
+  }
+  // 囲みが閉じたときの判定。捕獲したら true
+  function judge(poly) {
+    const hasP = inside(S.P, poly), hasQ = S.Q && inside(S.Q, poly);
+    if (hasP && !hasQ) { capture(); return true; }
+    if (hasQ) {
+      S.lead -= Q_PENALTY; S.used += Q_PENALTY;
+      S.effects.push({ t: 'batsu', c: { x: S.Q.x, y: S.Q.y }, life: .9, age: 0 });
+      say(hasP ? 'Qも入ってるよ' : 'それは点Q', 1.4);
+      sfx.wrong(); updateHud();
+      if (S.lead <= 0) gameOver();
+      return false;
+    }
+    const cx = poly.reduce((s, p) => s + p.x, 0) / poly.length, cy = poly.reduce((s, p) => s + p.y, 0) / poly.length;
+    if (Math.hypot(cx - S.P.x, cy - S.P.y) < 2.2 && Math.random() < .6) say('おしい', 1);
+    return false;
+  }
+
+  function addPoint(p) {
+    const pts = pen.pts, n = pts.length;
+    if (!n) { pts.push(p); return; }
+    const last = pts[n - 1], d = dist(last, p);
+    if (d < .08) return;
+    addOp({ t: 'seg', a: last, b: p });
+    S.lead -= d; S.used += d;
+    // 新しい線分が、自分の線と交差したら輪ができた
+    let first = null;
+    for (let j = n - 3; j >= 0; j--) {
+      const X = segX(last, p, pts[j], pts[j + 1]);
+      if (!X) continue;
+      const poly = [X, ...pts.slice(j + 1)];
+      if (!first) first = X;
+      if (inside(S.P, poly) || (S.Q && inside(S.Q, poly))) { first = X; if (judge(poly)) return; break; }
+    }
+    if (S.phase !== 'play') return;
+    if (first) pen.pts = [first, p];
+    else pts.push(p);
+    if (S.lead <= 0) { S.lead = 0; gameOver(); }
+  }
+
+  // ---------- 入力 ----------
+  function tipFrom(e) {
+    const r = stage.getBoundingClientRect();
+    let x = e.clientX - r.left, y = e.clientY - r.top;
+    if (pen.touch) { x += TOUCH_OFFSET.x; y += TOUCH_OFFSET.y; }
+    return cm(clamp(x, 0, W), clamp(y, 0, H));
+  }
+  cvTop.addEventListener('pointerdown', (e) => {
+    pen.touch = e.pointerType !== 'mouse'; pen.seen = true;
+    pen.tip = tipFrom(e);
+    if (S.phase !== 'play') return;
+    cvTop.setPointerCapture(e.pointerId);
+    pen.down = true; pen.pts = [{ ...pen.tip }];
+    e.preventDefault();
+  });
+  cvTop.addEventListener('pointermove', (e) => {
+    pen.touch = e.pointerType !== 'mouse'; pen.seen = true;
+    const t = tipFrom(e);
+    pen.speed = dist(t, pen.tip) * CM;
+    pen.tip = t;
+    if (pen.down && S.phase === 'play') addPoint({ ...t });
+  });
+  const lift = () => {
+    if (pen.down && S.phase === 'play') {
+      const pts = pen.pts;
+      if (pts.length > 8 && dist(pts[0], pts[pts.length - 1]) < .9) judge(pts);
+    }
+    pen.down = false; pen.pts = []; setScratch(0);
+  };
+  cvTop.addEventListener('pointerup', lift);
+  cvTop.addEventListener('pointercancel', lift);
+  cvTop.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') lift(); });
+
+  $('#startBtn').addEventListener('click', start);
+  $('#retryBtn').addEventListener('click', start);
+  $('#peekBtn').addEventListener('click', (e) => { e.stopPropagation(); $('#resultOv').hidden = true; $('#peekHint').hidden = false; });
+  stage.addEventListener('click', () => {
+    if (S.phase === 'over' && !$('#peekHint').hidden) { $('#peekHint').hidden = true; $('#resultOv').hidden = false; }
+  });
+  $('#mute').addEventListener('click', (e) => {
+    muted = !muted;
+    e.currentTarget.textContent = muted ? '音 OFF' : '音 ON';
+    e.currentTarget.setAttribute('aria-pressed', String(muted));
+    if (muted) setScratch(0);
+  });
+  try { const b = +localStorage.getItem('tenp-best'); if (b) { const el = $('#bestLine'); el.textContent = `自己ベスト：${b}問`; el.hidden = false; } } catch (e) {}
+
+  // ---------- 描画 ----------
+  function drawPoint(o, label, filled = true) {
+    const p = px(o);
+    gT.fillStyle = C.print;
+    gT.beginPath(); gT.arc(p.x, p.y, 4.5, 0, Math.PI * 2);
+    if (filled) gT.fill(); else { gT.lineWidth = 1.6; gT.strokeStyle = C.print; gT.stroke(); }
+    gT.font = `italic 700 17px ${C.mincho}`; gT.textAlign = 'left'; gT.textBaseline = 'alphabetic';
+    gT.fillText(label, p.x + 7, p.y - 7);
+  }
+
+  function drawBubble() {
+    const b = S.bubble; if (!b) return;
+    const p = px(S.P);
+    gT.font = `600 14px ${C.hand}`;
+    const tw = gT.measureText(b.text).width, bw = tw + 18, bh = 26;
+    let x = clamp(p.x - bw / 2 + 10, 4, W - bw - 4), y = p.y - 52;
+    if (y < 4) y = p.y + 22;
+    const a = Math.min(1, b.t * 8, (b.life - b.t) * 5);
+    gT.globalAlpha = clamp(a, 0, 1);
+    gT.fillStyle = '#F7F3E8'; gT.strokeStyle = C.print; gT.lineWidth = 1.2;
+    gT.beginPath(); gT.roundRect ? gT.roundRect(x, y, bw, bh, 6) : gT.rect(x, y, bw, bh); gT.fill(); gT.stroke();
+    gT.fillStyle = C.print; gT.textAlign = 'left'; gT.textBaseline = 'middle';
+    gT.fillText(b.text, x + 9, y + bh / 2 + 1);
+    gT.globalAlpha = 1;
+  }
+
+  // 鉛筆は芯の残りに合わせて短くなる
+  function drawPencil() {
+    const t = px(pen.tip);
+    const len = 36 + 150 * clamp(S.lead / LEAD_MAX, 0, 1);
+    gT.save();
+    gT.translate(t.x, t.y);
+    gT.rotate(Math.atan2(-.8, .6));
+    const hw = 7, cone = 22, end = cone + len;
+    gT.fillStyle = 'rgba(30,25,15,.16)';
+    gT.beginPath(); gT.moveTo(6, 7); gT.lineTo(cone + 6, 7 - hw); gT.lineTo(end + 6, 7 - hw); gT.lineTo(end + 6, 7 + hw); gT.lineTo(cone + 6, 7 + hw); gT.fill();
+    gT.fillStyle = '#E3BC8C';
+    gT.beginPath(); gT.moveTo(0, 0); gT.lineTo(cone, -hw); gT.lineTo(cone, hw); gT.closePath(); gT.fill();
+    gT.fillStyle = '#2A2A30';
+    gT.beginPath(); gT.moveTo(0, 0); gT.lineTo(7, -2.2); gT.lineTo(7, 2.2); gT.closePath(); gT.fill();
+    gT.fillStyle = '#2F6B4B'; gT.fillRect(cone, -hw, len, hw * 2);
+    gT.fillStyle = '#3F8460'; gT.fillRect(cone, -hw, len, hw * .7);
+    gT.fillStyle = '#245839'; gT.fillRect(cone, hw * .35, len, hw * .65);
+    gT.fillStyle = '#E3BC8C'; gT.fillRect(cone, -hw, 1.5, hw * 2);
+    gT.fillStyle = '#7A5A33'; gT.fillRect(end - 2, -hw, 2, hw * 2);
+    if (len > 70) {
+      gT.fillStyle = '#D9B45A'; gT.font = `700 9px ${C.mincho}`; gT.textAlign = 'center'; gT.textBaseline = 'middle';
+      gT.fillText('HB', end - 18, 0);
+    }
+    gT.restore();
+  }
+
+  function render() {
+    gT.clearRect(0, 0, W, H);
+    for (const g of S.ghosts) {
+      const p = px(g); gT.globalAlpha = Math.max(0, 1 - g.age / .8);
+      gT.setLineDash([3, 3]); gT.strokeStyle = C.print; gT.lineWidth = 1.2;
+      gT.beginPath(); gT.arc(p.x, p.y, 7 + g.age * 14, 0, Math.PI * 2); gT.stroke();
+      gT.setLineDash([]); gT.globalAlpha = 1;
+    }
+    if (S.Q) drawPoint(S.Q, 'Q', false);
+    drawPoint(S.P, 'P');
+    for (const f of S.effects) {
+      if (f.t === 'maru') drawMaru(gT, f.c, f.r, Math.min(1, f.age / f.life), f.seed, null);
+      if (f.t === 'batsu') {
+        const p = px(f.c), k = 9;
+        gT.globalAlpha = Math.max(0, 1 - f.age / f.life);
+        gT.strokeStyle = C.red; gT.lineWidth = 3; gT.lineCap = 'round';
+        gT.beginPath(); gT.moveTo(p.x - k, p.y - k); gT.lineTo(p.x + k, p.y + k); gT.moveTo(p.x + k, p.y - k); gT.lineTo(p.x - k, p.y + k); gT.stroke();
+        gT.globalAlpha = 1;
+      }
+    }
+    drawBubble();
+    if (S.phase === 'over') {
+      gT.fillStyle = C.red; gT.font = `600 28px ${C.hand}`; gT.textAlign = 'center'; gT.textBaseline = 'middle';
+      gT.fillText('芯が折れた！', W / 2, R.y - 30 > 20 ? R.y - 30 : 30);
+    }
+    if (pen.seen || S.phase !== 'attract') drawPencil();
+  }
+
+  // ---------- ループ ----------
+  let lastT = performance.now();
+  function frame(now) {
+    const dt = Math.min(.05, (now - lastT) / 1000); lastT = now;
+    layout();
+    if (S.phase === 'play' || S.phase === 'attract') {
+      updatePoints(dt);
+      if (S.phase === 'play') {
+        S.lt += dt; S.total += dt;
+        if ((S.tauntT -= dt) <= 0) { if (!S.bubble) say(TAUNTS[Math.floor(Math.random() * TAUNTS.length)]); S.tauntT = rand(4, 7); }
+        S.nearT -= dt; S.eraseMsgT -= dt;
+        if (pen.down && S.nearT <= 0 && dist(pen.tip, S.P) < 1.6) { if (!S.bubble) say(NEAR[Math.floor(Math.random() * NEAR.length)], 1); S.nearT = 3; }
+        setScratch(pen.down ? Math.min(.16, pen.speed * .006) : 0);
+        pen.speed *= .8;
+        updateHud();
+      }
+    } else if (S.phase === 'captured') {
+      if ((S.phaseT += dt) > 1.1) {
+        const f = S.effects.find((e) => e.t === 'maru');
+        if (f) addOp({ t: 'maru', c: f.c, r: f.r, seed: f.seed, label: f.label });
+        S.effects = S.effects.filter((e) => e !== f);
+        S.phase = 'play';
+        setLevel(S.level + 1);
+      }
+    } else if (S.phase === 'over') {
+      if ((S.phaseT += dt) > 1.2 && $('#resultOv').hidden && $('#peekHint').hidden) showResult();
+    }
+    for (const g of S.ghosts) g.age += dt;
+    S.ghosts = S.ghosts.filter((g) => g.age < .8);
+    for (const f of S.effects) f.age += dt;
+    S.effects = S.effects.filter((f) => f.t === 'maru' || f.age < f.life);
+    if (S.bubble && (S.bubble.t += dt) > S.bubble.life) S.bubble = null;
+    render();
+    requestAnimationFrame(frame);
+  }
+
+  // 待機画面でも第1問の点Pは動いている
+  S.L = getLevel(1);
+  $('#question').innerHTML = S.L.html;
+  Object.assign(S.P, edgePos(0));
+  S.bubble = null;
+  (document.fonts?.ready || Promise.resolve()).then(() => { W = 0; layout(); });
+  requestAnimationFrame(frame);
+})();
+</script>
