@@ -84,6 +84,7 @@
   .itemline b { font-weight: 900; font-size: 15px; }
   .itemline span { font-size: 12px; color: var(--muted); }
   .rN { color: var(--r-n); } .rR { color: var(--r-r); } .rSR { color: var(--r-sr); } .rSSR { color: var(--r-ssr); }
+  .rUR { background: linear-gradient(90deg, #FF7A7A, #FFD65A, #7AE0A0, #7AC8F0, #C59BFF); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .floors { display: flex; flex-wrap: wrap; gap: 8px; }
   .floorbtn {
     font: inherit; font-weight: 900; font-size: 14px; cursor: pointer;
@@ -166,6 +167,23 @@
   .mcard.rSSR { background: linear-gradient(135deg, #3A2E12, #232838 45%, #3A2E12); border-color: var(--r-ssr); box-shadow: 0 0 40px rgba(232, 176, 75, .45); animation: glow 1.2s ease-in-out infinite; }
   .mcard.rSR { border-color: var(--r-sr); box-shadow: 0 0 28px rgba(181, 126, 220, .35); }
   .mcard.rR { border-color: var(--r-r); }
+  .mcard.rUR {
+    border: 2px solid transparent; color: var(--text); -webkit-background-clip: padding-box, border-box;
+    background: linear-gradient(var(--panel), var(--panel)) padding-box, linear-gradient(135deg, #FF7A7A, #FFD65A, #7AE0A0, #7AC8F0, #C59BFF) border-box;
+    box-shadow: 0 0 60px rgba(255, 214, 90, .5); animation: glow 1.2s ease-in-out infinite;
+  }
+  .mcard.boss h2 { color: var(--hanko); }
+  .newbadge { justify-self: center; background: var(--gold); color: var(--ink); font-weight: 900; font-size: 12px; padding: 3px 12px; border-radius: 99px; }
+  .skill { font-size: 14px; font-weight: 900; color: var(--gold); }
+  .enote { font-size: 12px; font-weight: 700; color: var(--gold); min-height: 1.3em; text-align: center; }
+  .enemy.rare { text-shadow: 0 0 26px #FFD65A, 0 6px 0 rgba(0, 0, 0, .35); }
+  .fx.heal { color: var(--hp); font-size: 20px; top: 12%; }
+  .dexitem { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; gap: 3px; }
+  .dexitem .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .dexitem b { font-size: 16px; font-weight: 900; }
+  .dexitem .unk { color: var(--muted); }
+  .dexitem .dskill { font-size: 13px; font-weight: 700; }
+  .dexitem .from { font-size: 12px; color: var(--muted); }
   @keyframes glow { 50% { box-shadow: 0 0 70px rgba(232, 176, 75, .7); } }
   .iname { font-weight: 900; font-size: 20px; color: var(--text); }
   .istat { font-size: 15px; font-weight: 700; }
@@ -201,7 +219,7 @@
   .check input { width: 20px; height: 20px; accent-color: var(--hanko); }
 
   @media (prefers-reduced-motion: reduce) {
-    .enemy, .enemy .eyes i::after, .mcard.rSSR { animation: none; }
+    .enemy, .enemy .eyes i::after, .mcard.rSSR, .mcard.rUR { animation: none; }
   }
 </style>
 
@@ -236,6 +254,7 @@
         <button class="btn sub" id="btnReview" type="button">振り返り</button>
         <button class="btn sub" id="btnWords" type="button">自分の単語</button>
       </div>
+      <button class="btn sub" id="btnDex" type="button">レア装備図鑑</button>
     </div>
   </section>
 
@@ -249,6 +268,7 @@
     </div>
     <div class="arena" id="arena">
       <div class="ename"><span id="eName">お祈りメール</span><span class="boss" id="eBoss" hidden>BOSS</span></div>
+      <div class="enote" id="eNote"></div>
       <div class="hpbar"><i id="eHp"></i></div>
       <div class="enemy" id="enemy"><span id="eGlyph">祈</span><span class="eyes" aria-hidden="true"><i></i><i></i></span></div>
     </div>
@@ -271,6 +291,13 @@
     <div class="head"><h2>振り返り</h2><button class="btn sub" id="btnBack1" type="button">町へ</button></div>
     <p class="note">間違えた語句がたまります。2回続けて正解すると「克服」で消えます。ミスした語句は戦闘でも出やすくなります。</p>
     <div class="scroll" style="flex:1;min-height:0"><ul class="list" id="rList"></ul></div>
+  </section>
+
+  <!-- レア装備図鑑 -->
+  <section class="screen" id="scrDex" hidden>
+    <div class="head"><h2>レア装備図鑑</h2><button class="btn sub" id="btnBack3" type="button">町へ</button></div>
+    <p class="note">URはスキルつきの固有装備です。各ボスが自分の装備をまれに落とします。集めた数：<b id="dexCount">0</b></p>
+    <div class="scroll" style="flex:1;min-height:0"><ul class="list" id="dexList"></ul></div>
   </section>
 
   <!-- 自分の単語 -->
@@ -571,7 +598,7 @@
     get(k, d) { try { const v = localStorage.getItem('goi-' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem('goi-' + k, JSON.stringify(v)); } catch (e) {} },
   };
-  const P = Object.assign({ gold: 0, best: 1, cleared: 0, total: 0, eq: { weapon: null, armor: null, charm: null } }, store.get('save', {}));
+  const P = Object.assign({ gold: 0, best: 1, cleared: 0, total: 0, found: [], eq: { weapon: null, armor: null, charm: null } }, store.get('save', {}));
   let misses = store.get('miss', {});
   let custom = store.get('custom', { text: '', only: false });
   const save = () => store.set('save', P);
@@ -603,8 +630,8 @@
   const SHARE_URL = /github\.io$/.test(location.hostname) ? location.origin + location.pathname : '';
 
   // ---------- 装備 ----------
-  const RAR = ['N', 'R', 'SR', 'SSR'];
-  const RMUL = [1, 1.45, 2, 2.8];
+  const RAR = ['N', 'R', 'SR', 'SSR', 'UR'];
+  const RMUL = [1, 1.45, 2, 2.8, 3.4];
   const PREFIX = [['使い古しの', 'ふつうの', '購買の'], ['よく削れた', '新品の', '限定の'], ['達筆の', '内定者の', '人事も認めた'], ['伝説の', '神ってる', '満点の']];
   const BASES = {
     weapon: ['赤ペン', 'シャーペン', '蛍光ペン', '万年筆', '定規ソード', '国語辞典', '単語帳ブレード', '漢和辞典の角'],
@@ -613,6 +640,30 @@
   };
   const CHARM_TXT = { time: (v) => `制限時間 +${v}秒`, crit: (v) => `会心率 +${v}%`, heal: (v) => `正解ごとにHP +${v}`, gold: (v) => `お金 +${v}%` };
   const SLOT_NAME = { weapon: '武器', armor: '防具', charm: 'お守り' };
+
+  // 固有のレア装備（UR）。どれもスキルつき
+  const UNIQUES = [
+    { id: 'jinji', slot: 'weapon', name: '人事部長の赤ペン', skill: 'critx', from: '人事部長がまれに落とす' },
+    { id: 'kagami', slot: 'charm', kind: 'heal', name: 'お祈りをはね返す手鏡', skill: 'drain', from: 'お祈りの女王がまれに落とす' },
+    { id: 'suit', slot: 'armor', name: '役員室の重厚スーツ', skill: 'guts', from: '役員面接の番人がまれに落とす' },
+    { id: 'dempa', slot: 'charm', kind: 'time', name: '受検用の電波時計', skill: 'clock', from: 'Webテストの支配者がまれに落とす' },
+    { id: 'tie', slot: 'armor', name: '魔王のネクタイ', skill: 'keep', from: '最終面接の魔王がまれに落とす' },
+    { id: 'manten', slot: 'weapon', name: '満点の解答用紙', skill: 'first', from: 'SPIの化身がまれに落とす' },
+    { id: 'kinpen', slot: 'weapon', name: '金のシャーペン', skill: 'gold2', from: 'レア敵「内定スライム」が落とす' },
+    { id: 'eraser', slot: 'charm', kind: 'crit', name: '消せるボールペン', skill: 'reveal', wild: true, from: 'どの敵からもごくまれ。宝箱でも' },
+    { id: 'badge', slot: 'charm', kind: 'heal', name: '内定者のバッジ', skill: 'regen', wild: true, from: 'どの敵からもごくまれ。宝箱でも' },
+  ];
+  const SKILL_TXT = {
+    critx: '会心のダメージが2.5倍',
+    drain: '与えたダメージの15%だけHP回復',
+    guts: '1回の出撃で1度だけ、HP1で踏みとどまる',
+    clock: '時間切れで受けるダメージが半分',
+    keep: 'ミスしてもコンボが半分残る',
+    first: '敵ごとに最初の正解が必ず会心',
+    gold2: '手に入るお金が2倍',
+    reveal: '選択肢のハズレが1つ消える',
+    regen: '次の階に進むたびにHP全回復',
+  };
 
   function rollRarity(w) {
     let r = Math.random() * w.reduce((a, b) => a + b, 0);
@@ -638,6 +689,18 @@
     }
     return it;
   }
+  function makeUnique(u, floor) {
+    const p = (4 + floor * 1.5) * RMUL[4];
+    const it = { slot: u.slot, r: 4, uid: u.id, name: u.name, skill: u.skill, sell: Math.round(p * 12) };
+    if (u.slot === 'weapon') it.atk = Math.round(p);
+    if (u.slot === 'armor') { it.hp = Math.round(p * 3); it.def = Math.round(p * .45); }
+    if (u.slot === 'charm') {
+      it.kind = u.kind;
+      it.val = { time: Math.min(4, Math.round((2 + floor * .03) * 10) / 10), crit: Math.min(50, Math.round(20 + floor * .4)), heal: Math.round(4 + p * .5) }[u.kind];
+    }
+    if (!P.found.includes(u.id)) { P.found.push(u.id); it.isNew = true; save(); }
+    return it;
+  }
   function itemText(it) {
     if (!it) return 'なし';
     if (it.slot === 'weapon') return `攻撃 +${it.atk}`;
@@ -650,6 +713,7 @@
     return {
       hp: 100 + (armor?.hp || 0), atk: 10 + (weapon?.atk || 0), def: armor?.def || 0,
       time: c('time'), crit: c('crit'), heal: c('heal'), gold: c('gold'),
+      skills: new Set([weapon, armor, charm].map((x) => x?.skill).filter(Boolean)),
     };
   }
   function compare(it) {
@@ -660,7 +724,8 @@
     if (it.slot === 'weapon') line = d(it.atk, cur.atk, '攻撃');
     else if (it.slot === 'armor') line = `${d(it.hp, cur.hp, 'HP')}　${d(it.def, cur.def, '守り')}`;
     else line = cur.kind === it.kind ? d(it.val, cur.val, '効果') : '効果の種類が違う';
-    return `いま：<span class="r${RAR[cur.r]}">${esc(cur.name)}</span>（${itemText(cur)}）<br>${line}`;
+    const lost = cur.skill && cur.skill !== it.skill ? `<br><span class="down">いまのスキル「${SKILL_TXT[cur.skill]}」はなくなる</span>` : '';
+    return `いま：<span class="r${RAR[cur.r]}">${esc(cur.name)}</span>（${itemText(cur)}）<br>${line}${lost}`;
   }
 
   // ---------- 敵 ----------
@@ -669,22 +734,60 @@
     ['Webテストの亡霊', '網', '#9EE7F0'], ['GDの仕切り屋', '仕', '#F29E6B'], ['説明会の長話', '長', '#C9A6F2'],
     ['逆質問ゴースト', '逆', '#B8C2D6'], ['電話面接ベル', '鈴', '#F27B9E'], ['圧迫面接官', '圧', '#E4572E'],
   ];
-  const BOSSES = [['人事部長', '人', '#E8B04B'], ['役員面接の番人', '役', '#E07AD8'], ['最終面接の魔王', '魔', '#FF5A5A'], ['SPIの化身', '試', '#7AE0E0']];
+  // 5階ごとのボス。それぞれ技を持ち、固有装備（sig）をまれに落とす
+  const BOSSES = [
+    { name: '人事部長', glyph: '人', color: '#E8B04B', kind: 'pressure', sig: 'jinji', desc: '3問ごとに「圧迫質問」。制限時間が半分になる' },
+    { name: 'お祈りの女王', glyph: '祈', color: '#F27BB0', kind: 'heal', sig: 'kagami', desc: 'こちらがミスするたびにHPを回復する' },
+    { name: '役員面接の番人', glyph: '役', color: '#E07AD8', kind: 'rage', sig: 'suit', desc: 'HPが半分を切ると怒り、攻撃力が1.5倍になる' },
+    { name: 'Webテストの支配者', glyph: '網', color: '#7AC8F0', kind: 'speed', sig: 'dempa', desc: '語句を見て意味を選ぶ問題だけ。制限時間も短い' },
+    { name: '最終面接の魔王', glyph: '魔', color: '#FF5A5A', kind: 'charge', sig: 'tie', desc: '2回続けてミスすると大技（ダメージ3倍）' },
+    { name: 'SPIの化身', glyph: '試', color: '#7AE0E0', kind: 'all', sig: 'manten', desc: 'これまでのボスの技をすべて使う' },
+  ];
+  const RARE_MOB = { name: '内定スライム', glyph: '内', color: '#FFD65A', sig: 'kinpen' };
+  const has = (e, k) => !!e && e.boss && (e.kind === k || e.kind === 'all');
   const PER_FLOOR = 3;
 
   function spawn() {
     const f = R.floor, boss = f % 5 === 0 && R.idx === PER_FLOOR - 1;
-    const tier = Math.min(MOBS.length, 3 + Math.floor(f / 2));
-    const [name, glyph, color] = boss ? BOSSES[Math.floor(f / 5 - 1) % BOSSES.length] : MOBS[ri(tier)];
-    const hp = Math.round(26 * Math.pow(1.17, f - 1) * (boss ? 3.2 : 1));
-    R.e = { name, glyph, color, boss, hp, max: hp, atk: Math.round(7 * Math.pow(1.13, f - 1) * (boss ? 1.5 : 1)), gold: Math.round(5 * Math.pow(1.12, f - 1) * (boss ? 5 : 1)) };
-    $('#eName').textContent = name;
-    $('#eBoss').hidden = !boss;
-    $('#eGlyph').textContent = glyph;
+    const rare = !boss && Math.random() < .04;
+    let base;
+    if (boss) {
+      // 全員倒すと2周目は「・改」になる
+      const n = Math.floor(f / 5) - 1, b = BOSSES[n % BOSSES.length], lap = Math.floor(n / BOSSES.length);
+      base = { ...b, name: b.name + (lap ? `・改${lap > 1 ? lap : ''}` : '') };
+    } else if (rare) base = { ...RARE_MOB };
+    else { const [name, glyph, color] = MOBS[ri(Math.min(MOBS.length, 3 + Math.floor(f / 2)))]; base = { name, glyph, color }; }
+    const hp = Math.round(26 * Math.pow(1.17, f - 1) * (boss ? 3.2 : rare ? 1.4 : 1));
+    R.e = {
+      ...base, boss, rare, hp, max: hp,
+      atk: Math.round(7 * Math.pow(1.13, f - 1) * (boss ? 1.5 : 1)),
+      gold: Math.round(5 * Math.pow(1.12, f - 1) * (boss ? 5 : rare ? 12 : 1)),
+      turn: 0, missRun: 0, raged: false, first: true,
+    };
+    $('#eName').textContent = R.e.name;
+    $('#eBoss').hidden = !(boss || rare);
+    $('#eBoss').textContent = boss ? 'BOSS' : 'レア';
+    $('#eGlyph').textContent = base.glyph;
     const el = $('#enemy');
-    el.style.setProperty('--ec', color);
-    el.className = 'enemy enter' + (boss ? ' boss' : '');
-    updateBars();
+    el.style.setProperty('--ec', base.color);
+    el.className = 'enemy enter' + (boss ? ' boss' : '') + (rare ? ' rare' : '');
+    updateBars(); updateNote();
+  }
+
+  function updateNote() {
+    const e = R.e;
+    let t = '';
+    if (e.rare) t = `あと${Math.min(6, 7 - e.turn)}問で逃げる！`;
+    else if (e.boss) {
+      const parts = [];
+      if (has(e, 'pressure')) parts.push(e.turn > 0 && e.turn % 3 === 0 ? '圧迫質問中！' : `圧迫質問まであと${3 - (e.turn % 3)}問`);
+      if (has(e, 'rage')) parts.push(e.raged ? '怒り状態' : 'HP半分で怒る');
+      if (has(e, 'charge') && e.missRun) parts.push('大技の構え！');
+      if (has(e, 'heal')) parts.push('ミスで回復');
+      if (has(e, 'speed')) parts.push('時間短め');
+      t = parts.join('・');
+    }
+    $('#eNote').textContent = t;
   }
 
   // ---------- 音 ----------
@@ -702,13 +805,14 @@
     crit() { tone(1320, 0, .08); tone(1760, .05, .15); tone(2640, .1, .2, 'triangle'); },
     hurt() { tone(160, 0, .2, 'sawtooth', .08); tone(100, .08, .25, 'sawtooth', .08); },
     kill() { [523, 659, 784].forEach((f, i) => tone(f, i * .06, .14)); },
-    drop(r) { const s = [[784, 988], [784, 988, 1175], [659, 784, 988, 1319], [523, 659, 784, 1047, 1319, 1568]][r]; s.forEach((f, i) => tone(f, i * .09, .22, 'square', .07)); },
+    drop(r) { const s = [[784, 988], [784, 988, 1175], [659, 784, 988, 1319], [523, 659, 784, 1047, 1319, 1568], [523, 659, 784, 1047, 784, 1047, 1319, 1568, 2093]][r]; s.forEach((f, i) => tone(f, i * .09, .22, 'square', .07)); },
+    boss() { [110, 104, 98, 92].forEach((f, i) => tone(f, i * .18, .35, 'sawtooth', .09)); },
     floor() { [392, 523, 659, 784].forEach((f, i) => tone(f, i * .1, .2, 'triangle', .09)); },
     lose() { [392, 330, 262, 196].forEach((f, i) => tone(f, i * .16, .3, 'triangle', .09)); },
   };
 
   // ---------- 画面 ----------
-  const SCR = ['scrTown', 'scrBattle', 'scrReview', 'scrWords'];
+  const SCR = ['scrTown', 'scrBattle', 'scrReview', 'scrWords', 'scrDex'];
   const show = (id) => { for (const s of SCR) $('#' + s).hidden = s !== id; };
   let startFloor = 1;
 
@@ -718,7 +822,7 @@
     $('#sBest').textContent = `B${P.best}F`;
     $('#eqList').innerHTML = ['weapon', 'armor', 'charm'].map((k) => {
       const it = P.eq[k];
-      return `<li><span class="slot">${SLOT_NAME[k]}</span><span class="itemline"><b class="${it ? 'r' + RAR[it.r] : ''}">${it ? `[${RAR[it.r]}] ${esc(it.name)}` : 'なし'}</b><span>${itemText(it)}</span></span></li>`;
+      return `<li><span class="slot">${SLOT_NAME[k]}</span><span class="itemline"><b class="${it ? 'r' + RAR[it.r] : ''}">${it ? `[${RAR[it.r]}] ${esc(it.name)}` : 'なし'}</b><span>${itemText(it)}${it?.skill ? `<br>★ ${SKILL_TXT[it.skill]}` : ''}</span></span></li>`;
     }).join('');
     const starts = [1]; for (let f = 6; f <= P.cleared + 1; f += 5) starts.push(f);
     if (!starts.includes(startFloor)) startFloor = 1;
@@ -726,6 +830,7 @@
     $('#btnChest').disabled = P.gold < 150;
     $('#btnReview').textContent = `振り返り（${Object.keys(misses).length}）`;
     $('#btnWords').textContent = `自分の単語（${CUSTOM.length}）`;
+    $('#btnDex').textContent = `レア装備図鑑（${P.found.length}/${UNIQUES.length}）`;
     document.body.classList.remove('zone');
     show('scrTown');
   }
@@ -737,6 +842,16 @@
       return `<li class="wcard"><div class="top"><span><span class="w">${esc(x.w)}</span> <span class="r">${esc(x.r)}</span></span><span class="cnt">ミス${m.n}回・克服まであと${2 - m.s}回</span></div><div class="m">${esc(x.m)}</div><a class="dict" href="${dictUrl(x.w)}" target="_blank" rel="noopener">辞書で確かめる</a></li>`;
     }).join('') : '<li class="empty">まだミスした語句はありません。<br>戦闘で間違えると、ここにたまっていきます。</li>';
     show('scrReview');
+  }
+
+  function renderDex() {
+    $('#dexCount').textContent = `${P.found.length} / ${UNIQUES.length}`;
+    $('#dexList').innerHTML = UNIQUES.map((u) => {
+      const got = P.found.includes(u.id);
+      return `<li class="dexitem"><div class="top"><b class="${got ? 'rUR' : 'unk'}">${got ? esc(u.name) : '？？？'}</b><span class="slot">${SLOT_NAME[u.slot]}</span></div>
+        <div class="dskill">${got ? `★ ${SKILL_TXT[u.skill]}` : 'スキル：？？？'}</div><div class="from">入手：${esc(u.from)}</div></li>`;
+    }).join('');
+    show('scrDex');
   }
 
   function renderWords() {
@@ -759,8 +874,10 @@
     const c = modal(`
       <h2>${title}</h2>
       <div class="rarity r${RAR[it.r]}">${RAR[it.r]}</div>
+      ${it.isNew ? '<div class="newbadge">図鑑に登録！</div>' : ''}
       <div class="iname">${esc(it.name)}</div>
       <div class="istat">${SLOT_NAME[it.slot]}：${itemText(it)}</div>
+      ${it.skill ? `<div class="skill">★ ${SKILL_TXT[it.skill]}</div>` : ''}
       <div class="cmp">${compare(it)}</div>
       <div class="two"><button class="btn" type="button" data-a="eq">装備する</button><button class="btn sub" type="button" data-a="sell">売る +${it.sell}G</button></div>`, 'r' + RAR[it.r]);
     sfx.drop(it.r);
@@ -774,7 +891,7 @@
   function startRun() {
     initAudio();
     const s = stats();
-    Object.assign(R, { active: true, floor: startFloor, idx: 0, hp: s.hp, combo: 0, maxCombo: 0, gold: 0, kills: 0, right: 0, n: 0, retry: [], recent: [], q: null, locked: false });
+    Object.assign(R, { active: true, floor: startFloor, idx: 0, hp: s.hp, combo: 0, maxCombo: 0, gold: 0, kills: 0, right: 0, n: 0, retry: [], recent: [], q: null, locked: false, gutsUsed: false });
     show('scrBattle');
     $('#bFloor').textContent = `B${R.floor}F`;
     spawn();
@@ -795,16 +912,23 @@
 
   function nextQ() {
     if (!R.active) return;
+    const e = R.e, s = stats();
+    if (e.boss || e.rare) e.turn++;
+    if (e.rare && e.turn > 6) { flee(); return; }
     const x = pickWord();
     R.n++; R.recent.push(x.id);
-    const type = Math.random() < .55 ? 'm2w' : 'w2m';
+    let type = Math.random() < .55 ? 'm2w' : 'w2m';
+    let mul = 1, tag = '';
+    if (has(e, 'speed')) { type = 'w2m'; mul *= .75; }
+    if (has(e, 'pressure') && e.turn % 3 === 0) { mul *= .5; tag = '圧迫質問！'; banner(tag); }
     const key = type === 'm2w' ? 'w' : 'm';
-    const others = shuffle(allWords().filter((y) => y.id !== x.id && y[key] !== x[key] && !sameGroup(x.w, y.w))).slice(0, 3);
+    const others = shuffle(allWords().filter((y) => y.id !== x.id && y[key] !== x[key] && !sameGroup(x.w, y.w))).slice(0, s.skills.has('reveal') ? 2 : 3);
     const opts = shuffle([x, ...others]);
-    const limit = (type === 'm2w' ? 6 : 7) + stats().time;
+    const limit = ((type === 'm2w' ? 6 : 7) + s.time) * mul;
     R.q = { x, type, opts, ci: opts.indexOf(x), limit, left: limit };
     R.locked = false;
-    $('#qLabel').textContent = type === 'm2w' ? 'この意味の語句は？' : 'この語句の意味は？';
+    updateNote();
+    $('#qLabel').textContent = (tag ? tag + '　' : '') + (type === 'm2w' ? 'この意味の語句は？' : 'この語句の意味は？');
     const qt = $('#qText');
     qt.className = 'qtext' + (type === 'w2m' ? ' word' : '');
     qt.textContent = type === 'm2w' ? x.m : x.w;
@@ -819,48 +943,80 @@
     R.locked = true;
     const { x, ci, limit, left } = R.q;
     const btns = [...document.querySelectorAll('.choice')];
-    const s = stats();
+    const s = stats(), e = R.e;
     if (i === ci) {
       R.combo++; R.right++; P.total++;
       R.maxCombo = Math.max(R.maxCombo, R.combo);
       btns[i].classList.add('ok');
       const fast = left / limit > .6;
-      const crit = fast || Math.random() * 100 < s.crit;
+      const crit = fast || Math.random() * 100 < s.crit || (s.skills.has('first') && e.first);
+      e.first = false; e.missRun = 0;
       const zone = R.combo >= 10;
       document.body.classList.toggle('zone', zone);
-      const dmg = Math.round(s.atk * (1 + Math.min(R.combo, 20) * .08) * (crit ? 1.8 : 1) * (zone ? 1.3 : 1) * rand(.9, 1.1));
-      R.e.hp = Math.max(0, R.e.hp - dmg);
-      if (s.heal) R.hp = Math.min(s.hp, R.hp + s.heal);
+      const critMul = s.skills.has('critx') ? 2.5 : 1.8;
+      const dmg = Math.round(s.atk * (1 + Math.min(R.combo, 20) * .08) * (crit ? critMul : 1) * (zone ? 1.3 : 1) * rand(.9, 1.1));
+      e.hp = Math.max(0, e.hp - dmg);
+      const heal = s.heal + (s.skills.has('drain') ? Math.round(dmg * .15) : 0);
+      if (heal) R.hp = Math.min(s.hp, R.hp + heal);
       hitFx(dmg, crit);
       crit ? sfx.crit() : sfx.hit(R.combo);
-      if (R.combo === 10) banner('ゾーン突入');
+      if (has(e, 'rage') && !e.raged && e.hp > 0 && e.hp < e.max / 2) { e.raged = true; banner('怒った！'); sfx.boss(); }
+      else if (R.combo === 10) banner('ゾーン突入');
       else if (R.combo > 0 && R.combo % 5 === 0) banner(`${R.combo} COMBO`);
       if (misses[x.id]) {
         misses[x.id].s++;
         if (misses[x.id].s >= 2) { delete misses[x.id]; fx('克服！', 'gold'); }
         saveMiss();
       }
-      updateBars();
-      if (R.e.hp <= 0) setTimeout(kill, 260);
+      updateBars(); updateNote();
+      if (e.hp <= 0) setTimeout(kill, 260);
       else setTimeout(nextQ, 320);
     } else {
-      R.combo = 0;
-      document.body.classList.remove('zone');
+      R.combo = s.skills.has('keep') ? Math.floor(R.combo / 2) : 0;
+      document.body.classList.toggle('zone', R.combo >= 10);
       if (i >= 0) btns[i].classList.add('ng');
       btns[ci].classList.add('ok');
-      const dmg = Math.max(1, Math.round(R.e.atk * rand(.9, 1.1) - s.def * .5));
+      let mul = 1;
+      if (has(e, 'rage') && e.raged) mul *= 1.5;
+      if (has(e, 'charge') && ++e.missRun >= 2) { mul *= 3; e.missRun = 0; banner('大技！'); }
+      if (i < 0 && s.skills.has('clock')) mul *= .5;
+      // 内定スライムは攻撃してこない
+      const dmg = e.rare ? 0 : Math.max(1, Math.round(e.atk * mul * rand(.9, 1.1) - s.def * .5));
       R.hp = Math.max(0, R.hp - dmg);
-      const en = $('#enemy'); en.classList.remove('hit', 'lunge', 'enter'); void en.offsetWidth; en.classList.add('lunge');
-      const app = $('#app'); app.classList.remove('hurt'); void app.offsetWidth; app.classList.add('hurt');
-      fx(`-${dmg}`, 'hurt');
-      sfx.hurt();
+      if (R.hp <= 0 && s.skills.has('guts') && !R.gutsUsed) { R.hp = 1; R.gutsUsed = true; setTimeout(() => banner('踏みとどまった！'), 300); }
+      if (has(e, 'heal')) { const h = Math.round(e.max * .08); e.hp = Math.min(e.max, e.hp + h); setTimeout(() => fx(`回復 +${h}`, 'heal'), 250); }
+      if (dmg) {
+        const en = $('#enemy'); en.classList.remove('hit', 'lunge', 'enter'); void en.offsetWidth; en.classList.add('lunge');
+        const app = $('#app'); app.classList.remove('hurt'); void app.offsetWidth; app.classList.add('hurt');
+        fx(`-${dmg}`, 'hurt');
+        sfx.hurt();
+      } else fx('様子を見ている', 'heal');
       misses[x.id] = { n: (misses[x.id]?.n || 0) + 1, s: 0 };
       saveMiss();
       R.retry.push({ id: x.id, due: R.n + 3 });
-      updateBars();
+      updateBars(); updateNote();
       const chosen = i >= 0 ? R.q.opts[i] : null;
       setTimeout(() => showMiss(x, chosen), 450);
     }
+  }
+
+  function bossIntro(done) {
+    const e = R.e, sig = UNIQUES.find((u) => u.id === e.sig);
+    const c = modal(`<h2>BOSS出現</h2>
+      <div class="rarity" style="color:${e.color}">${esc(e.glyph)}</div>
+      <div class="iname">${esc(e.name)}</div>
+      <div class="cmp">${esc(e.desc)}</div>
+      <p class="note">まれに落とす装備：${P.found.includes(sig.id) ? `<span class="rUR">${esc(sig.name)}</span>` : '？？？'}</p>
+      <button class="btn" type="button" data-a="fight">戦う</button>`, 'boss');
+    sfx.boss();
+    c.querySelector('[data-a="fight"]').onclick = () => { closeModal(); done(); };
+  }
+
+  function flee() {
+    R.locked = true;
+    banner('逃げられた…');
+    $('#enemy').className = 'enemy dead rare';
+    setTimeout(advance, 800);
   }
 
   // ミスしたら時間を止めて、正解と選んだ語句を並べて見せる
@@ -908,18 +1064,22 @@
   function kill() {
     const e = R.e, s = stats();
     R.kills++;
-    const g = Math.round(e.gold * (1 + s.gold / 100) * rand(.9, 1.2));
+    const g = Math.round(e.gold * (1 + s.gold / 100) * (s.skills.has('gold2') ? 2 : 1) * rand(.9, 1.2));
     P.gold += g; R.gold += g;
     $('#enemy').className = 'enemy dead' + (e.boss ? ' boss' : '');
     fx(`+${g}G`, 'gold');
     sfx.kill();
     save(); updateBars();
-    const drop = e.boss || Math.random() < .3;
+    // ボスは固有装備を25%、内定スライムは40%。どの敵もごくまれにどこでも出るURを落とす
+    const sig = e.sig && UNIQUES.find((u) => u.id === e.sig);
+    let item = null;
+    if (sig && Math.random() < (e.rare ? .4 : .25)) item = makeUnique(sig, R.floor);
+    else if (Math.random() < .005) item = makeUnique(pick(UNIQUES.filter((u) => u.wild)), R.floor);
+    else if (e.boss || e.rare || Math.random() < .3) item = makeItem(R.floor, e.rare ? [0, 0, 70, 30] : e.boss ? [0, 50, 38, 12] : [62, 27, 9, 2]);
     setTimeout(() => {
       if (!R.active) return;
-      const after = () => advance();
-      if (drop) showItem(makeItem(R.floor, e.boss ? [0, 50, 38, 12] : [62, 27, 9, 2]), e.boss ? 'ボス撃破！' : 'ドロップ！', after);
-      else after();
+      if (item) showItem(item, item.r === 4 ? 'レア装備！' : e.boss ? 'ボス撃破！' : 'ドロップ！', advance);
+      else advance();
     }, 600);
   }
 
@@ -931,13 +1091,16 @@
       R.floor++; R.idx = 0;
       P.best = Math.max(P.best, R.floor);
       const s = stats();
-      R.hp = Math.min(s.hp, R.hp + Math.round(s.hp * .25));
+      R.hp = s.skills.has('regen') ? s.hp : Math.min(s.hp, R.hp + Math.round(s.hp * .25));
       save();
       $('#bFloor').textContent = `B${R.floor}F`;
       banner(`B${R.floor}F`); sfx.floor();
     }
     spawn();
-    setTimeout(nextQ, 350);
+    setTimeout(() => {
+      if (R.e.boss) bossIntro(nextQ);
+      else { if (R.e.rare) banner('レア出現！'); nextQ(); }
+    }, 350);
   }
 
   function lose() {
@@ -988,12 +1151,16 @@
     if (P.gold < 150) return;
     initAudio();
     P.gold -= 150; save();
-    showItem(makeItem(Math.max(1, P.best), [40, 40, 16, 4]), '宝箱', renderTown);
+    const f = Math.max(1, P.best);
+    const it = Math.random() < .03 ? makeUnique(pick(UNIQUES), f) : makeItem(f, [40, 40, 16, 4]);
+    showItem(it, it.r === 4 ? '宝箱：レア装備！' : '宝箱', renderTown);
   });
   $('#btnReview').addEventListener('click', renderReview);
   $('#btnWords').addEventListener('click', renderWords);
   $('#btnBack1').addEventListener('click', renderTown);
   $('#btnBack2').addEventListener('click', renderTown);
+  $('#btnBack3').addEventListener('click', renderTown);
+  $('#btnDex').addEventListener('click', renderDex);
   $('#btnSaveWords').addEventListener('click', () => {
     custom = { text: $('#wText').value, only: $('#wOnly').checked };
     CUSTOM = parseCustom(custom.text);
