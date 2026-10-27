@@ -57,7 +57,7 @@
   .logo h1, .enemy, .qtext.word, .choices.words .choice, .mw .w, .wcard .w, .iname, .head h2, .mcard h2, .dexitem b { font-weight: 700; }
 
   /* ---- ウィンドウ ---- */
-  .panel, .qcard, .mcard, .fb, .banner { background: var(--bg); border: 6px double var(--line); border-radius: 8px; }
+  .panel, .qcard, .mcard, .banner { background: var(--bg); border: 6px double var(--line); border-radius: 8px; }
   .panel { padding: 10px 14px 12px; display: grid; gap: 8px; }
   .panel h2 { margin: 0; font-size: 13px; font-weight: 400; color: var(--muted); }
   .note { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.6; }
@@ -164,8 +164,6 @@
   .choices.words .choice { font-size: clamp(22px, 7vw, 28px); text-align: center; min-height: 60px; padding-left: 24px; }
   .choice.ok { background: var(--text); color: var(--bg); }
   .choice.ng { color: var(--muted); border-color: var(--muted); text-decoration: line-through; }
-  .fb { min-height: 64px; padding: 6px 12px; font-size: 14px; line-height: 1.6; }
-  .fb b { color: var(--yellow); }
 
   /* ---- モーダル ---- */
   .modal { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 16px; background: rgba(0, 0, 0, .6); }
@@ -276,7 +274,6 @@
       <div class="tbar" id="tWrap"><i id="tBar"></i></div>
     </div>
     <div class="choices" id="choices"></div>
-    <div class="fb" id="fb" aria-live="polite"></div>
   </section>
 
   <!-- 振り返り -->
@@ -765,7 +762,6 @@
     el.style.setProperty('--ec', base.color);
     el.className = 'enemy enter' + (boss ? ' boss' : '') + (rare ? ' rare' : '');
     updateBars(); updateNote();
-    log(boss ? `${R.e.name}が たちはだかった！` : rare ? `${R.e.name}が あらわれた！ にげられる まえに たおせ！` : `${R.e.name}が あらわれた！`);
   }
 
   function updateNote() {
@@ -952,7 +948,6 @@
       const heal = s.heal + (s.skills.has('drain') ? Math.round(dmg * .15) : 0);
       if (heal) R.hp = Math.min(s.hp, R.hp + heal);
       hitFx(dmg, crit);
-      log(`${crit ? 'かいしんの いちげき！ ' : ''}${e.name}に ${dmg}の ダメージ！`);
       crit ? sfx.crit() : sfx.hit(R.combo);
       if (has(e, 'rage') && !e.raged && e.hp > 0 && e.hp < e.max / 2) { e.raged = true; banner('怒った！'); sfx.boss(); }
       else if (R.combo === 10) banner('ゾーン突入');
@@ -984,8 +979,7 @@
         const app = $('#app'); app.classList.remove('hurt'); void app.offsetWidth; app.classList.add('hurt');
         fx(`-${dmg}`, 'hurt');
         sfx.hurt();
-        log(`${e.name}の こうげき！ ${dmg}の ダメージを うけた！`);
-      } else { fx('様子を見ている', 'heal'); log(`${e.name}は ようすを みている。`); }
+      } else fx('様子を見ている', 'heal');
       misses[x.id] = { n: (misses[x.id]?.n || 0) + 1, s: 0 };
       saveMiss();
       R.retry.push({ id: x.id, due: R.n + 3 });
@@ -1010,7 +1004,6 @@
   function flee() {
     R.locked = true;
     banner('逃げられた…');
-    log(`${R.e.name}は にげだした！`);
     $('#enemy').className = 'enemy dead rare';
     setTimeout(advance, 800);
   }
@@ -1048,7 +1041,6 @@
     $('#arena').append(sl); setTimeout(() => sl.remove(), 300);
     fx(crit ? `会心！${dmg}` : `${dmg}`, crit ? 'crit' : '');
   }
-  function log(t) { $('#fb').textContent = t; }
   function fx(text, cls) {
     const d = document.createElement('div'); d.className = 'fx ' + cls; d.textContent = text;
     $('#arena').append(d); setTimeout(() => d.remove(), 850);
@@ -1065,7 +1057,6 @@
     P.gold += g; R.gold += g;
     $('#enemy').className = 'enemy dead' + (e.boss ? ' boss' : '');
     fx(`+${g}G`, 'gold');
-    log(`${e.name}を たおした！ ${g}ゴールドを てにいれた！`);
     sfx.kill();
     save(); updateBars();
     // ボスは固有装備を25%、内定スライムは40%。どの敵もごくまれにどこでも出るURを落とす
