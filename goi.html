@@ -12,7 +12,7 @@
 <meta name="description" content="SPIの熟語を早押しで答えて、就活の魔物を倒すダンジョンRPG">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=DotGothic16&display=swap">
 <style>
   /* 昔のRPGの黒い画面と白い二重線のウィンドウ、という一つの見た目で固定する（ライト/ダーク共通）。
      縦1列：階層 → 魔物 → じぶんのHP → 問題 → 選択肢 → メッセージ */
@@ -29,27 +29,32 @@
     --r-r: #58A8F8;
     --r-sr: #C878F8;
     --r-ssr: #F8D040;
-    --pix: "DotGothic16", "MS Gothic", "Osaka-Mono", monospace;
+    --jp: "BIZ UDPGothic", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
+    --pix: "DotGothic16", "MS Gothic", "Osaka-Mono", monospace; /* 漢字を含まない数字・英字だけに使う */
     /* JS 側から参照している名前 */
     --paper: var(--text); --ink: var(--bg); --gold: var(--yellow); --hanko: var(--red); --hp: var(--text);
-    --display: var(--pix); --body: var(--pix);
+    --display: var(--jp); --body: var(--jp);
   }
   *, *::before, *::after { box-sizing: border-box; }
   [hidden] { display: none !important; }
   html, body { height: 100%; }
   body {
     margin: 0; background: var(--bg); color: var(--text);
-    font-family: var(--pix); font-size: 15px; line-height: 1.5;
+    font-family: var(--jp); font-size: 15px; line-height: 1.5;
     padding-left: max(16px, env(safe-area-inset-left, 0px));
     padding-right: max(16px, env(safe-area-inset-right, 0px));
     padding-block: 12px;
     overscroll-behavior: none; -webkit-tap-highlight-color: transparent;
-    -webkit-font-smoothing: none;
   }
   .app { height: 100%; max-width: 480px; margin: 0 auto; display: flex; flex-direction: column; position: relative; }
   .screen { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
   .scroll { overflow-y: auto; padding-bottom: 12px; }
   b { font-weight: 400; }
+
+  /* 数字と英字だけのところはドット文字のまま */
+  .floor, .stats b, .money, .combo, .rarity, .me-row b, .ename .boss { font-family: var(--pix); }
+  /* 漢字を大きく見せるところは太字 */
+  .logo h1, .enemy, .qtext.word, .choices.words .choice, .mw .w, .wcard .w, .iname, .head h2, .mcard h2, .dexitem b { font-weight: 700; }
 
   /* ---- ウィンドウ ---- */
   .panel, .qcard, .mcard, .fb, .banner { background: var(--bg); border: 6px double var(--line); border-radius: 8px; }
@@ -59,7 +64,7 @@
 
   /* ---- コマンド（ボタン） ---- */
   .btn, .choice, .floorbtn, .icon {
-    position: relative; font-family: var(--pix); font-weight: 400; color: var(--text); background: var(--bg);
+    position: relative; font-family: var(--jp); font-weight: 400; color: var(--text); background: var(--bg);
     border: 3px solid var(--line); border-radius: 6px; cursor: pointer; text-decoration: none;
   }
   .btn { font-size: 16px; padding: 10px 14px 10px 30px; display: flex; align-items: center; justify-content: flex-start; }
@@ -78,7 +83,7 @@
   /* ---- 町 ---- */
   .logo { text-align: center; padding-top: 2vh; display: grid; gap: 2px; }
   .logo small { color: var(--muted); font-size: 13px; }
-  .logo h1 { margin: 0; font-family: var(--pix); font-weight: 400; font-size: clamp(36px, 11vw, 50px); line-height: 1.15; letter-spacing: .04em; }
+  .logo h1 { margin: 0; font-family: var(--jp); font-weight: 400; font-size: clamp(36px, 11vw, 50px); line-height: 1.15; letter-spacing: .04em; }
   .logo p { margin: 0; font-size: 14px; }
   .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
   .stats div { font-size: 12px; color: var(--muted); }
@@ -110,7 +115,7 @@
   .hpbar.me.low i { background: var(--orange); }
   .enemy {
     position: relative; width: 140px; height: 128px; display: grid; place-items: center;
-    font-family: var(--pix); font-size: 112px; line-height: 1; color: var(--ec, #8FA3FF);
+    font-family: var(--jp); font-size: 112px; line-height: 1; color: var(--ec, #8FA3FF);
     animation: bob 1s steps(1) infinite; user-select: none;
   }
   .enemy.boss { font-size: 132px; width: 170px; height: 148px; }
@@ -165,7 +170,7 @@
   /* ---- モーダル ---- */
   .modal { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 16px; background: rgba(0, 0, 0, .6); }
   .mcard { width: 100%; max-width: 360px; padding: 14px 16px 16px; display: grid; gap: 10px; text-align: center; }
-  .mcard h2 { margin: 0; font-family: var(--pix); font-weight: 400; font-size: 22px; }
+  .mcard h2 { margin: 0; font-family: var(--jp); font-weight: 400; font-size: 22px; }
   .mcard.boss h2 { color: var(--red); }
   .mcard.rR { border-color: var(--r-r); } .mcard.rSR { border-color: var(--r-sr); } .mcard.rSSR { border-color: var(--r-ssr); }
   .mcard.rUR { color: var(--text); animation: urb 1s steps(1) infinite; }
@@ -183,7 +188,7 @@
 
   /* ---- 振り返り・単語・図鑑 ---- */
   .head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-  .head h2 { margin: 0; font-family: var(--pix); font-weight: 400; font-size: 24px; }
+  .head h2 { margin: 0; font-family: var(--jp); font-weight: 400; font-size: 24px; }
   .head .btn { padding-block: 6px; }
   .list { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
   .wcard, .dexitem, .mw { background: var(--bg); border: 3px solid var(--line); border-radius: 6px; padding: 8px 12px; display: grid; gap: 2px; text-align: left; }
@@ -202,7 +207,7 @@
   .dexitem .dskill { font-size: 13px; }
   .dexitem .from { font-size: 12px; color: var(--muted); }
   .empty { text-align: center; color: var(--muted); font-size: 14px; line-height: 1.7; padding: 24px 8px; border: 0; }
-  textarea { width: 100%; min-height: 200px; resize: vertical; background: var(--bg); color: var(--text); border: 3px solid var(--line); border-radius: 6px; padding: 10px; font: 14px/1.6 var(--pix); }
+  textarea { width: 100%; min-height: 200px; resize: vertical; background: var(--bg); color: var(--text); border: 3px solid var(--line); border-radius: 6px; padding: 10px; font: 14px/1.6 var(--jp); }
   .check { display: flex; gap: 8px; align-items: center; font-size: 14px; }
   .check input { width: 20px; height: 20px; accent-color: var(--yellow); }
 
