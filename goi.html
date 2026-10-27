@@ -186,6 +186,15 @@
   .wcard .r { font-size: 12px; color: #7B6F5E; font-weight: 700; }
   .wcard .m { font-size: 14px; font-weight: 700; line-height: 1.5; }
   .wcard .cnt { font-size: 11px; color: #9C3519; font-weight: 900; white-space: nowrap; }
+  .wcard .dict, .mw a { justify-self: start; font-size: 12px; font-weight: 700; color: #2B5DA8; }
+  .mcard.miss { gap: 10px; }
+  .mw { background: var(--paper); color: var(--ink); border-radius: 12px; padding: 10px 12px; display: grid; gap: 3px; text-align: left; }
+  .mw .ml { font-size: 11px; font-weight: 900; letter-spacing: .08em; }
+  .mw.good .ml { color: #1E7A45; }
+  .mw.bad .ml { color: #9C3519; }
+  .mw .w { font-family: var(--display); font-size: 28px; line-height: 1.2; }
+  .mw .r { font-size: 12px; font-weight: 700; color: #7B6F5E; }
+  .mw .m { font-size: 15px; font-weight: 700; line-height: 1.5; }
   .empty { text-align: center; color: var(--muted); font-size: 14px; line-height: 1.7; padding: 24px 8px; }
   textarea { width: 100%; min-height: 200px; resize: vertical; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 10px; font: 14px/1.6 var(--body); }
   .check { display: flex; gap: 8px; align-items: center; font-size: 14px; font-weight: 700; }
@@ -367,7 +376,7 @@
 陥穽|かんせい|人をおとしいれるわな
 謳歌|おうか|恵まれた状況を思う存分楽しむこと
 粉飾|ふんしょく|うわべだけを立派に見せること
-因習|いんしゅう|昔から続いている悪い習わし
+因習|いんしゅう|昔から伝わる古いしきたり（悪い意味で使うことが多い）
 悠長|ゆうちょう|のんびりしていて急がないこと
 遺憾|いかん|期待どおりにならず残念なこと
 逸脱|いつだつ|決まりや本筋から外れること
@@ -398,9 +407,13 @@
 看破|かんぱ|隠れた本質を見抜くこと
 捏造|ねつぞう|ないことを事実のように作り上げること
 未然|みぜん|まだそうなっていないこと
-画一|かくいつ|どれも同じで個性がないこと
+画一|かくいつ|すべてを一様にそろえること
 享受|きょうじゅ|受け入れて味わい楽しむこと`;
   const BASE = RAW.split('\n').map((l) => { const [w, r, m] = l.split('|'); return { id: w, w, r, m }; });
+  // 意味が近くて正解が2つに見える組み合わせは、同じ問題の選択肢に並べない
+  const SIMILAR = [['刮目', '瞠目', '一瞥'], ['寛容', '鷹揚'], ['糊塗', '粉飾'], ['罷免', '更迭'], ['懐柔', '迎合'], ['傑出', '白眉'], ['端緒', '嚎矢']];
+  const sameGroup = (a, b) => SIMILAR.some((g) => g.includes(a) && g.includes(b));
+  const dictUrl = (w) => `https://kotobank.jp/search?q=${encodeURIComponent(w)}`;
 
   // ---------- 保存（使えない環境でも遊べるように） ----------
   const store = {
@@ -570,7 +583,7 @@
     const ids = Object.keys(misses).filter(byId).sort((a, b) => misses[b].n - misses[a].n);
     $('#rList').innerHTML = ids.length ? ids.map((id) => {
       const x = byId(id), m = misses[id];
-      return `<li class="wcard"><div class="top"><span><span class="w">${esc(x.w)}</span> <span class="r">${esc(x.r)}</span></span><span class="cnt">ミス${m.n}回・克服まであと${2 - m.s}回</span></div><div class="m">${esc(x.m)}</div></li>`;
+      return `<li class="wcard"><div class="top"><span><span class="w">${esc(x.w)}</span> <span class="r">${esc(x.r)}</span></span><span class="cnt">ミス${m.n}回・克服まであと${2 - m.s}回</span></div><div class="m">${esc(x.m)}</div><a class="dict" href="${dictUrl(x.w)}" target="_blank" rel="noopener">辞書で確かめる</a></li>`;
     }).join('') : '<li class="empty">まだミスした語句はありません。<br>戦闘で間違えると、ここにたまっていきます。</li>';
     show('scrReview');
   }
@@ -635,7 +648,7 @@
     R.n++; R.recent.push(x.id);
     const type = Math.random() < .55 ? 'm2w' : 'w2m';
     const key = type === 'm2w' ? 'w' : 'm';
-    const others = shuffle(allWords().filter((y) => y.id !== x.id && y[key] !== x[key])).slice(0, 3);
+    const others = shuffle(allWords().filter((y) => y.id !== x.id && y[key] !== x[key] && !sameGroup(x.w, y.w))).slice(0, 3);
     const opts = shuffle([x, ...others]);
     const limit = (type === 'm2w' ? 6 : 7) + stats().time;
     R.q = { x, type, opts, ci: opts.indexOf(x), limit, left: limit };
@@ -690,14 +703,39 @@
       const app = $('#app'); app.classList.remove('hurt'); void app.offsetWidth; app.classList.add('hurt');
       fx(`-${dmg}`, 'hurt');
       sfx.hurt();
-      $('#fb').innerHTML = `${i < 0 ? '時間切れ' : 'ミス'}：<b>${esc(x.w)}</b>${x.r ? `（${esc(x.r)}）` : ''} ＝ ${esc(x.m)}`;
       misses[x.id] = { n: (misses[x.id]?.n || 0) + 1, s: 0 };
       saveMiss();
       R.retry.push({ id: x.id, due: R.n + 3 });
       updateBars();
-      if (R.hp <= 0) setTimeout(lose, 900);
-      else setTimeout(nextQ, 1500);
+      const chosen = i >= 0 ? R.q.opts[i] : null;
+      setTimeout(() => showMiss(x, chosen), 450);
     }
+  }
+
+  // ミスしたら時間を止めて、正解と選んだ語句を並べて見せる
+  function wordBlock(y, label, cls) {
+    return `<div class="mw ${cls}"><span class="ml">${label}</span>
+      <div><span class="w">${esc(y.w)}</span>${y.r ? ` <span class="r">${esc(y.r)}</span>` : ''}</div>
+      <div class="m">${esc(y.m)}</div>
+      <a href="${dictUrl(y.w)}" target="_blank" rel="noopener">辞書で確かめる</a></div>`;
+  }
+  function showMiss(x, chosen) {
+    if (!R.active) return;
+    const c = modal(`<h2>${chosen ? 'ミス' : '時間切れ'}</h2>
+      ${wordBlock(x, '正解', 'good')}
+      ${chosen ? wordBlock(chosen, 'あなたが選んだ語句', 'bad') : ''}
+      <button class="btn" type="button" data-a="next">${R.hp <= 0 ? '結果を見る' : '次へ'}</button>`, 'miss');
+    let done = false;
+    const go = () => {
+      if (done) return;
+      done = true;
+      document.removeEventListener('keydown', onKey);
+      closeModal();
+      if (R.hp <= 0) lose(); else nextQ();
+    };
+    const onKey = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } };
+    document.addEventListener('keydown', onKey);
+    c.querySelector('[data-a="next"]').onclick = go;
   }
 
   function hitFx(dmg, crit) {
