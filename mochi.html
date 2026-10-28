@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#fff9ef">
+  <meta name="description" content="おやつ、ほめる、おひるね。あなたの育て方で、ちょっと変なもちに育つ。放置しても育つ、ゆるい育成ゲーム。">
+  <meta property="og:title" content="もちの様子がおかしい。">
+  <meta property="og:description" content="甘やかしたら、こうなった。あなたのもち、どんなもち？">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://sakamoto241.github.io/game/mochi.html">
+  <meta property="og:image" content="https://sakamoto241.github.io/game/mochi-og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="もちの様子がおかしい。甘やかしたら、こうなった。全12種のもちが育つ放置ゲーム。">
+  <meta name="twitter:card" content="summary_large_image">
+  <title>もちの様子がおかしい。｜放置・育成ゲーム</title>
+  <style>
+    :root{--paper:#fff9ef;--ink:#3b3434;--muted:#81766e;--orange:#e96a4d;--orange-dark:#be482e;--line:#e9dfce;--yellow:#f7d87a;--pink:#f9d6d1;--green:#e5ead5;--font:ui-rounded,"Hiragino Maru Gothic ProN","Yu Gothic",Meiryo,sans-serif}
+    *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);font-weight:600;-webkit-font-smoothing:antialiased}button,input,a{-webkit-tap-highlight-color:transparent}button,input{font:inherit}button,a{touch-action:manipulation}button{color:inherit;cursor:pointer}button:disabled{cursor:default}button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid #a86bda;outline-offset:5px}button{border:0}button,a{outline-offset:4px}[hidden]{display:none!important}svg{display:block}a{color:inherit}button:active:not(:disabled){transform:translateY(2px)}
+    .site{max-width:1152px;padding:0 32px;margin:auto}.header{height:92px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);gap:16px}.brand{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:900;letter-spacing:.025em;text-decoration:none}.brand-mark{width:42px;height:36px}.brand small{display:block;font-size:9px;letter-spacing:.17em;color:var(--muted);margin-top:3px}.nav{display:flex;align-items:center;gap:20px}.nav-button{display:flex;gap:7px;align-items:center;background:transparent;font-size:12px;padding:10px 0}.nav-button svg{width:17px;height:17px}.nav-button .num{font-size:10px;color:var(--orange)}.sound-button{width:34px;height:34px;border:1px solid var(--line);border-radius:50%;display:grid;place-items:center;background:transparent;font-size:15px}
+    .intro{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:38px 0 30px}.eyebrow{font-size:11px;color:var(--muted);letter-spacing:.11em;margin:0 0 12px}.title{font-size:clamp(28px,4vw,46px);letter-spacing:-.065em;line-height:1.3;font-weight:950;margin:0}.title em{font-style:normal;color:var(--orange);position:relative}.title em::after{content:"";position:absolute;bottom:0;left:0;right:0;height:5px;border-radius:50%;background:var(--orange);opacity:.2;transform:rotate(-2deg)}.intro-note{font-size:12px;line-height:2;color:var(--muted);max-width:260px;margin:0}.intro-note b{color:var(--ink)}.intro-stamp{display:inline-block;border:1px solid var(--orange);color:var(--orange);border-radius:5px;padding:4px 8px;font-size:10px;transform:rotate(-6deg);margin-left:12px;vertical-align:middle;letter-spacing:.08em}
+    .layout{display:grid;grid-template-columns:minmax(0,1fr) 288px;gap:24px;align-items:start}.game-column{min-width:0}.scene{height:392px;border:1px solid #e4d7c2;border-radius:22px;position:relative;overflow:hidden;background-color:#f4eedf;background-image:linear-gradient(#e8dfcc66 1px,transparent 1px),linear-gradient(90deg,#e8dfcc66 1px,transparent 1px);background-size:32px 32px;isolation:isolate}.scene::before{content:"";position:absolute;inset:60% -20% -100%;border-radius:50%;background:#ece5d3;border-top:1px solid #e1d8c1;z-index:-1}.scene-label{position:absolute;top:22px;left:22px;font-size:10px;letter-spacing:.09em;color:#8c816f;display:flex;align-items:center;gap:7px}.live-dot{width:6px;height:6px;border-radius:50%;background:#91a177;box-shadow:0 0 0 4px #91a17716}.scene-no{position:absolute;right:22px;top:22px;font-size:10px;letter-spacing:.13em;color:#8c816f}.speech{position:absolute;top:65px;left:50%;transform:translateX(-50%) rotate(-3deg);background:#fffdf8;border:1px solid #d9ceba;border-radius:50% 50% 44% 44% / 48% 48% 50% 50%;padding:14px 23px;white-space:nowrap;font-size:12px;min-width:170px;text-align:center;box-shadow:2px 3px 0 #ded3bd66;z-index:2}.speech::after{content:"";position:absolute;bottom:-8px;right:29%;width:13px;height:13px;background:#fffdf8;border-right:1px solid #d9ceba;border-bottom:1px solid #d9ceba;transform:skew(10deg) rotate(45deg)}.pet-wrap{position:absolute;left:50%;top:115px;transform:translateX(-50%);width:300px;height:245px}.pet-button{width:100%;height:100%;background:transparent;padding:0;position:relative}.pet-button:active:not(:disabled){transform:scale(.97)}.pet-art{width:100%;height:100%;overflow:visible;filter:drop-shadow(0 8px 0 #c6b89515)}.pet-body{transform-origin:150px 180px;animation:breathe 3.8s ease-in-out infinite}.pet-eyes{animation:blink 5.8s infinite;transform-origin:150px 146px}.pet-shadow{animation:shadow 3.8s ease-in-out infinite;transform-origin:center}.pet-button.boop .pet-body{animation:boop .5s ease}.scene-spark{position:absolute;font-weight:400;color:#d29e4a;font-size:29px;user-select:none}.spark-a{top:145px;left:16%;transform:rotate(-15deg)}.spark-b{top:189px;right:15%;font-size:20px;transform:rotate(18deg)}.spark-c{top:251px;left:20%;font-size:11px}.scene-caption{position:absolute;bottom:20px;left:0;right:0;display:flex;justify-content:center;align-items:center;gap:7px;font-size:10px;color:#95866f}.scene-caption svg{width:12px;height:12px}.floating{position:absolute;pointer-events:none;top:35%;left:50%;font-size:20px;z-index:10;animation:float-away 1.1s ease-out forwards}.evolve-flash{position:absolute;inset:0;background:#fff9e8;pointer-events:none;z-index:5;animation:flash 1.2s ease-out forwards}
+    .care-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:22px 0 12px}.section-label{font-size:12px;margin:0;display:flex;align-items:center;gap:8px}.section-label::before{content:"";width:4px;height:12px;background:var(--orange);border-radius:5px}.care-help{font-size:10px;color:var(--muted)}.care-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.care{border:1px solid var(--line);background:#fffdf8;border-radius:15px;padding:16px 8px 13px;position:relative;overflow:hidden;min-height:119px;transition:background .15s,border-color .15s,box-shadow .15s}.care:hover:not(:disabled){border-color:#d3b293;box-shadow:0 3px 0 #d5bba522}.care-icon{width:38px;height:34px;margin:0 auto 9px}.care b{display:block;font-size:13px;font-weight:800}.care small{display:block;font-size:10px;margin-top:5px;color:var(--muted)}.care:disabled{opacity:.65}.care:nth-child(1){background:#fff8ed}.care:nth-child(2){background:#fff1ed}.care:nth-child(3){background:#f0f3e8}.care .cooldown{position:absolute;bottom:0;left:0;height:3px;background:#ccbba7;width:0}.care.wait .cooldown{animation:cooldown 2.4s linear}.care-foot{font-size:10px;color:#a29383;text-align:center;margin:12px 0 0;line-height:1.7}
+    .sidebar{display:grid;gap:16px}.profile{background:#fffdf8;border:1px solid var(--line);border-radius:19px;padding:22px}.card-top{display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--muted);letter-spacing:.08em}.pencil{background:transparent;padding:3px;color:#998b7c}.pencil svg{width:14px;height:14px}.pet-name{font-size:25px;font-weight:900;margin:14px 0 4px;letter-spacing:-.04em;overflow-wrap:anywhere}.species{font-size:11px;color:var(--muted);margin:0}.profile-divider{height:1px;background:var(--line);margin:19px 0}.growth-label{display:flex;justify-content:space-between;align-items:center;font-size:11px}.growth-label strong{font-size:13px;color:var(--orange);font-variant-numeric:tabular-nums}.growth-label strong span{font-size:10px;color:var(--muted);font-weight:500}.growth-track{height:8px;border-radius:20px;background:#eee6d9;margin-top:10px;position:relative;overflow:hidden}.growth-fill{height:100%;border-radius:20px;background:var(--orange);transition:width .5s ease}.growth-message{font-size:10px;line-height:1.8;color:var(--muted);margin:9px 0 0}.steps{display:flex;justify-content:space-between;margin-top:16px}.step{display:grid;justify-items:center;gap:5px;color:#a69888;font-size:9px}.step i{display:block;border:1px solid #ddcfbc;width:15px;height:15px;border-radius:50%;background:var(--paper);position:relative}.step.on{color:var(--orange)}.step.on i{background:var(--orange);border-color:var(--orange)}.step.on i::after{content:"";position:absolute;inset:4px;border-radius:50%;background:#fffaf0}.personality{margin-top:20px}.trait{display:grid;grid-template-columns:57px 1fr 20px;gap:7px;align-items:center;font-size:10px;margin:10px 0;color:var(--muted)}.trait-track{height:5px;background:#f0e9dd;border-radius:10px;overflow:hidden}.trait-track i{display:block;height:100%;width:0;transition:width .4s;border-radius:10px}.trait:nth-child(1) i{background:#e4ae66}.trait:nth-child(2) i{background:#e69d93}.trait:nth-child(3) i{background:#a6b187}.trait-count{text-align:right;font-variant-numeric:tabular-nums}.journal{border-radius:16px;background:#f0eadc;padding:18px 20px;transform:rotate(1deg);position:relative}.journal::before{content:"";width:46px;height:14px;position:absolute;top:-6px;left:calc(50% - 23px);background:#dfcd9c77;transform:rotate(-5deg)}.journal-label{font-size:9px;color:#988775;letter-spacing:.12em;margin:0 0 10px}.journal p:last-child{font-size:11px;line-height:1.9;font-weight:500;margin:0}.journal time{display:block;font-size:9px;color:#a4937d;margin-top:9px;font-variant-numeric:tabular-nums}.share-button{display:flex;justify-content:center;align-items:center;gap:9px;background:var(--orange);border:1px solid var(--orange);color:#fff9f2;border-radius:12px;padding:15px;width:100%;font-size:12px;font-weight:800;box-shadow:0 3px 0 #bb4e35;transition:background .15s}.share-button:hover{background:var(--orange-dark)}.share-button svg{width:16px;height:16px}.share-hint{font-size:9px;text-align:center;line-height:1.7;color:var(--muted);margin:10px 0 0}.next-pet{margin-top:13px;width:100%;border:1px solid #c6cfac;background:#ecf0df;border-radius:10px;padding:12px;font-size:11px}
+    .collection-strip{margin:34px 0 0;padding:24px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.collection-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:17px}.text-button{font-size:10px;color:var(--muted);background:none;padding:5px}.collection-preview{display:grid;grid-template-columns:repeat(8,1fr);gap:10px}.mini{border:1px dashed #dbcfbd;border-radius:14px;aspect-ratio:1;background:#f3edde;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:0}.mini svg{width:90%;height:90%}.mini.locked svg{opacity:.23;filter:grayscale(1)}.mini.locked::after{content:"?";position:absolute;top:44%;font-size:17px;color:#a99c87}.mini-number{position:absolute;bottom:5px;left:8px;font-size:8px;color:#a79a87;letter-spacing:.04em}.mini.discovered{background:#fffdf6;border:1px solid #e4cfa9}.mini.discovered::before{content:"NEW";position:absolute;top:6px;right:5px;color:var(--orange);font-size:6px}.collection-teaser{font-size:10px;color:var(--muted);margin:14px 0 0;text-align:center}.footer{display:flex;align-items:center;justify-content:space-between;padding:22px 0 30px;gap:12px;font-size:9px;color:#a39686;line-height:1.7}.footer .how-button{background:none;padding:0;text-decoration:underline;text-underline-offset:3px;font-size:9px;color:var(--muted)}
+    .toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff9ef;border-radius:14px;padding:13px 22px;font-size:12px;text-align:center;z-index:100;max-width:calc(100vw - 32px);width:max-content;box-shadow:0 5px 24px #30261a22;line-height:1.7}.toast[hidden]{display:none}.modal{border:1px solid var(--line);border-radius:22px;background:var(--paper);padding:25px;color:var(--ink);width:min(480px,calc(100vw - 28px));max-height:calc(100dvh - 32px);overflow:auto;box-shadow:0 20px 100px #30261a30}.modal::backdrop{background:#332e3055;backdrop-filter:blur(5px)}.modal-head{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:18px}.modal h2{font-size:18px;margin:0;font-weight:900;letter-spacing:-.03em}.close{background:#eee6d9;border-radius:50%;width:29px;height:29px;font-size:19px;line-height:1}.modal p{font-size:12px;line-height:1.9;color:var(--muted)}.modal .primary{display:block;width:100%;border-radius:11px;background:var(--orange);color:white;padding:13px 16px;font-size:12px;text-align:center;text-decoration:none;font-weight:800}.modal .secondary{display:block;width:100%;border-radius:11px;background:#eee7da;padding:13px 16px;font-size:12px;text-align:center;text-decoration:none;border:1px solid #e0d6c5}.modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:14px}.share-canvas{display:block;width:100%;height:auto;border-radius:13px;border:1px solid var(--line)}.share-copy{background:#f0eadf;border-radius:10px;padding:12px;font-size:11px!important;white-space:pre-line;color:var(--ink)!important;margin-bottom:0}.share-instruction{font-size:10px!important;margin:12px 0}.all-collection{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.collection-item{padding:0 0 12px;background:#fffdf8;border:1px solid var(--line);border-radius:13px;overflow:hidden;min-width:0}.collection-item:disabled{cursor:default}.collection-item .art{height:104px;background:#f1ebdf;position:relative}.collection-item .art svg{width:100%;height:100%}.collection-item.locked .art svg{opacity:.18;filter:grayscale(1)}.collection-item.locked .art::after{content:"?";position:absolute;left:45%;top:44%;font-size:20px;color:#a99c87}.collection-item b{display:block;font-size:10px;margin:10px 5px 0;line-height:1.5;word-break:keep-all;overflow-wrap:anywhere}.collection-item small{display:block;font-size:8px;color:var(--muted);margin-top:4px}.modal label{font-size:12px;display:block;margin:16px 0 8px}.modal input{width:100%;border:1px solid #d7c9b5;background:#fffef9;border-radius:10px;padding:12px;color:var(--ink)}.evolution-art{width:240px;height:200px;margin:auto}.evolution-name{text-align:center;font-size:25px!important;color:var(--ink)!important;line-height:1.5!important;font-weight:900;margin:6px 0 12px!important}.evolution-tag{text-align:center;font-size:10px!important;color:var(--orange)!important;letter-spacing:.1em}.evolution-description{text-align:center;margin:0 0 20px}.welcome-number{font-size:35px;color:var(--orange);font-weight:900;margin:12px 0}.help-list{padding-left:20px;color:var(--muted);font-size:12px;line-height:2.1}.danger{background:none;color:#a66a58;text-decoration:underline;padding:8px 0;font-size:10px}.storage-warning{background:#fff0cc;border:1px solid #ead189;border-radius:10px;padding:12px;font-size:11px;line-height:1.8;margin-bottom:18px}
+    @keyframes breathe{0%,100%{transform:translateY(0) scale(1,1)}50%{transform:translateY(-6px) scale(1.025,.975)}}@keyframes blink{0%,43%,47%,100%{transform:scaleY(1)}45%{transform:scaleY(.12)}}@keyframes shadow{0%,100%{transform:scaleX(1);opacity:.35}50%{transform:scaleX(.93);opacity:.25}}@keyframes boop{0%,100%{transform:scale(1)}35%{transform:scale(1.12,.85) translateY(13px)}70%{transform:scale(.95,1.06) translateY(-4px)}}@keyframes float-away{0%{opacity:0;transform:translate(-50%,0) rotate(-10deg)}20%{opacity:1}100%{opacity:0;transform:translate(-50%,-95px) rotate(12deg)}}@keyframes flash{0%{opacity:0}25%{opacity:.9}100%{opacity:0}}@keyframes cooldown{from{width:100%}to{width:0}}
+    @media(min-width:1000px){.scene{height:407px}.pet-wrap{top:125px;width:320px;height:255px}.speech{top:70px}.care{min-height:124px}.collection-strip{margin-top:36px}}
+    @media(max-width:800px){.site{padding:0 22px}.layout{grid-template-columns:minmax(0,1fr) 250px;gap:18px}.profile{padding:18px}.intro-note{max-width:205px;font-size:11px}.intro-stamp{display:none}.scene{height:365px}.pet-wrap{width:270px;top:110px}.speech{font-size:11px;padding:12px 16px}.care{padding:13px 5px}.care small{font-size:9px}.collection-preview{gap:7px}}
+    @media(max-width:640px){.site{padding:0 18px}.header{height:72px}.brand{font-size:12px;gap:7px}.brand-mark{width:34px}.brand small{font-size:7px}.nav{gap:14px}.nav-button{font-size:10px;gap:4px}.nav-button svg{width:15px}.sound-button{width:30px;height:30px}.intro{padding:25px 0 23px;display:block}.eyebrow{font-size:10px;margin-bottom:10px}.title{font-size:34px}.intro-note{max-width:none;font-size:10px;margin-top:13px;line-height:1.8}.intro-note br{display:none}.intro-note b{font-weight:600}.layout{display:flex;flex-direction:column;gap:22px}.game-column,.sidebar{width:100%}.scene{height:340px;border-radius:18px}.scene-label,.scene-no{top:18px;font-size:9px}.scene-label{left:17px}.scene-no{right:17px}.speech{top:55px}.pet-wrap{top:95px;width:275px;height:232px}.scene-caption{bottom:16px}.spark-a{top:124px;left:11%}.spark-b{right:10%;top:177px}.care-head{margin-top:18px}.care-help{font-size:9px}.care-grid{gap:9px}.care{min-height:113px;border-radius:13px;padding:12px 5px}.care b{font-size:12px}.care-icon{width:32px;height:30px;margin-bottom:8px}.care-foot{font-size:9px;margin-top:10px}.sidebar{grid-template-columns:1fr;gap:17px}.profile{padding:20px;border-radius:16px;display:grid;grid-template-columns:1fr 1fr;gap:0 25px}.profile .card-top{grid-column:1/-1}.profile-identity{grid-column:1}.pet-name{margin-top:13px;font-size:23px}.profile-divider{display:none}.growth-area{grid-column:2;grid-row:2;align-self:center;margin-top:13px}.growth-label{font-size:10px}.growth-message{font-size:9px;min-height:32px}.growth-track{margin-top:8px}.steps{margin-top:11px}.step{font-size:8px}.step i{width:12px;height:12px}.step.on i::after{inset:3px}.personality{grid-column:1/-1;display:flex;gap:12px;margin-top:17px;padding-top:13px;border-top:1px solid var(--line)}.trait{display:flex;flex:1;flex-wrap:wrap;gap:5px;margin:0;font-size:9px}.trait-track{width:100%;order:3;flex-basis:100%}.trait-count{margin-left:auto}.journal{padding:15px 18px;transform:rotate(-.5deg)}.journal-label{margin-bottom:7px}.journal p:last-child{font-size:11px}.share-area{display:flex;flex-direction:column}.share-button{padding:16px;font-size:13px}.share-hint{font-size:10px}.collection-strip{margin-top:27px;padding:20px 0}.collection-preview{grid-template-columns:repeat(6,1fr);gap:7px}.collection-preview .mini:nth-child(n+7){display:none}.mini{border-radius:11px}.mini-number{font-size:7px;left:5px;bottom:3px}.collection-head{margin-bottom:14px}.collection-teaser{font-size:9px}.footer{align-items:flex-start;padding-top:18px}.footer span{max-width:230px;font-size:8px}.toast{bottom:20px;font-size:11px}.all-collection{gap:8px}.collection-item .art{height:90px}.collection-item b{font-size:9px}.modal{padding:20px}.modal h2{font-size:17px}}
+    @media(max-width:360px){.site{padding:0 12px}.title{font-size:30px}.nav{gap:9px}.care-help{font-size:8px}.profile{gap:0 16px}.pet-name{font-size:21px}.collection-preview{gap:5px}.scene{height:326px}.pet-wrap{top:88px}}
+    @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}.floating{display:none}.evolve-flash{display:none}}
+  </style>
+</head>
+<body>
+  <div class="site">
+    <header class="header">
+      <a class="brand" href="./mochi.html" aria-label="もちの観察室 ホーム">
+        <svg class="brand-mark" viewBox="0 0 50 40" aria-hidden="true"><path d="M5 27C5 13 13 6 25 6s20 7 20 21c0 8-40 8-40 0Z" fill="#f7d4bd" stroke="#5e493f" stroke-width="1.6"/><ellipse cx="18" cy="23" rx="1.4" ry="2" fill="#493b36"/><ellipse cx="31" cy="23" rx="1.4" ry="2" fill="#493b36"/><path d="M23 26q2 3 4 0" stroke="#493b36" stroke-width="1.3" fill="none" stroke-linecap="round"/><ellipse cx="12" cy="26" rx="3" ry="1.5" fill="#e99d88"/><ellipse cx="37" cy="26" rx="3" ry="1.5" fill="#e99d88"/></svg>
+        <span>もちの観察室<small>A VERY SMALL LIFE.</small></span>
+      </a>
+      <nav class="nav" aria-label="メニュー">
+        <button class="nav-button" id="collection-button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg>もち図鑑 <span class="num" id="nav-count">0/12</span></button>
+        <button class="sound-button" id="sound-button" aria-label="音をオンにする" aria-pressed="false" title="音をオンにする">♪</button>
+      </nav>
+    </header>
+    <main>
+      <section class="intro" aria-labelledby="page-title">
+        <div><p class="eyebrow">放っておくと、だいたい変になる。</p><h1 class="title" id="page-title">もちの様子が<em>おかしい。</em><span class="intro-stamp">放置 × 育成</span></h1></div>
+        <p class="intro-note">おやつ、ほめる、おひるね。<br>あなたの「つい」が、<b>この子の個性</b>になる。</p>
+      </section>
+      <div class="storage-warning" id="storage-warning" hidden>このブラウザではセーブできないようです。この画面のまま遊べますが、閉じると進行が失われます。</div>
+      <div class="layout">
+        <section class="game-column" aria-label="もちのお世話">
+          <div class="scene" id="scene">
+            <div class="scene-label"><span class="live-dot"></span> のんびり観察中</div><span class="scene-no" id="scene-no">MOCHI № 001</span>
+            <div class="speech" id="speech">え、ここに住んでいいの？</div>
+            <span class="scene-spark spark-a" aria-hidden="true">✧</span><span class="scene-spark spark-b" aria-hidden="true">✳</span><span class="scene-spark spark-c" aria-hidden="true">＋</span>
+            <div class="pet-wrap"><button class="pet-button" id="pet-button" aria-label="もちをなでる"><span id="pet-art"></span></button></div>
+            <div class="scene-caption"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" aria-hidden="true"><path d="M5 9V5a1 1 0 0 1 2 0v3-5a1 1 0 0 1 2 0v5-3a1 1 0 0 1 2 0v4-2a1 1 0 0 1 2 0v3c0 4-7 6-9 2L2 9a1 1 0 0 1 1-1l2 2"/></svg>タップすると、ちょっとよろこぶ</div>
+          </div>
+          <div class="care-head"><h2 class="section-label">きょうは、どう甘やかす？</h2><span class="care-help" id="care-help">お世話で成長 ＋5</span></div>
+          <div class="care-grid">
+            <button class="care" id="care-snack" data-care="snack"><svg class="care-icon" viewBox="0 0 44 38" aria-hidden="true"><path d="m9 13 26 0-3 17H12Z" fill="#f1be77" stroke="#9d7244" stroke-width="1.4"/><path d="M9 13c0-5 6-6 9-5-1-7 11-7 12 0 5 0 8 2 5 5Z" fill="#fff5df" stroke="#9d7244" stroke-width="1.4"/><path d="M16 19v6m6-6v6m6-6v6" stroke="#ce9651" stroke-width="1.5" stroke-linecap="round"/><circle cx="23" cy="5" r="3.2" fill="#e47f6b"/></svg><b>おやつ</b><small>しあわせは、別腹。</small><span class="cooldown"></span></button>
+            <button class="care" id="care-praise" data-care="praise"><svg class="care-icon" viewBox="0 0 44 38" aria-hidden="true"><path d="M22 30S5 20 8 11c2-7 11-7 14 0 4-7 12-7 15 0 3 9-15 19-15 19Z" fill="#efa398" stroke="#bd796a" stroke-width="1.4"/><path d="m3 8-2-2m39 2 2-2M22 3V0" stroke="#d3a85e" stroke-width="1.5" stroke-linecap="round"/></svg><b>ほめる</b><small>存在してて、えらい。</small><span class="cooldown"></span></button>
+            <button class="care" id="care-nap" data-care="nap"><svg class="care-icon" viewBox="0 0 44 38" aria-hidden="true"><rect x="5" y="11" width="34" height="20" rx="7" fill="#dce3bc" stroke="#929c71" stroke-width="1.4" transform="rotate(-7 22 21)"/><path d="m10 19 23-3" stroke="#bdc69c" stroke-width="1.3"/><path d="M29 9h5l-5 6h5m2-13h4l-4 5h4" fill="none" stroke="#929c71" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg><b>おひるね</b><small>がんばらないを、がんばる。</small><span class="cooldown"></span></button>
+          </div>
+          <p class="care-foot">閉じていても、すくすく。放置で約17分、お世話するともっと早く育ちます。</p>
+        </section>
+        <aside class="sidebar" aria-label="もちの記録">
+          <section class="profile">
+            <div class="card-top">うちのもち<button class="pencil" id="rename-button" aria-label="もちの名前を変える"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="m3 14 10-10 3 3L6 17H3Zm8-8 3 3M12 17h5"/></svg></button></div>
+            <div class="profile-identity"><h2 class="pet-name" id="pet-name">もちまる</h2><p class="species" id="species">まだ、ただのもち。</p></div>
+            <div class="profile-divider"></div>
+            <div class="growth-area"><div class="growth-label"><span id="growth-label">おとなになるまで</span><strong id="growth-value">0 <span>/ 100</span></strong></div><div class="growth-track" role="progressbar" aria-label="もちの成長" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="growth-track"><div class="growth-fill" id="growth-fill"></div></div><p class="growth-message" id="growth-message">どんなもちになるのかな。</p><div class="steps"><div class="step on"><i></i>生まれたて</div><div class="step"><i></i>ぷくぷく</div><div class="step"><i></i>むくむく</div><div class="step"><i></i>おとな</div></div></div>
+            <div class="personality" aria-label="お世話の記録"><div class="trait"><span>おやつ</span><span class="trait-track"><i id="trait-snack"></i></span><span class="trait-count" id="count-snack">0</span></div><div class="trait"><span>ほめられ</span><span class="trait-track"><i id="trait-praise"></i></span><span class="trait-count" id="count-praise">0</span></div><div class="trait"><span>おひるね</span><span class="trait-track"><i id="trait-nap"></i></span><span class="trait-count" id="count-nap">0</span></div></div>
+          </section>
+          <section class="journal"><h2 class="journal-label">もち観察日記 / FIELD NOTES</h2><p id="journal-text">小さなもちがやってきた。<br>とりあえず、こっちを見ている。</p><time id="journal-time"></time></section>
+          <div class="share-area"><button class="share-button" id="share-button"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="7" width="14" height="11" rx="2"/><path d="M10 12V2m-4 4 4-4 4 4"/></svg>うちのもち、見て。</button><p class="share-hint">この子だけのカードをつくって、シェア。</p><button class="next-pet" id="next-pet" hidden>＋ 次のもちを迎える</button></div>
+        </aside>
+      </div>
+      <section class="collection-strip" aria-label="もち図鑑のプレビュー"><div class="collection-head"><h2 class="section-label">もちの可能性は、未知数。</h2><button class="text-button" id="collection-more">図鑑をひらく ↗</button></div><div class="collection-preview" id="collection-preview"></div><p class="collection-teaser" id="collection-teaser">全12種。ちがう甘やかし方で、まだ見ぬもちに出会おう。</p></section>
+    </main>
+    <footer class="footer"><span>もちの観察室 © 2026<br>このゲームはブラウザに自動保存されます。</span><button class="how-button" id="help-button">あそびかた・セーブについて</button></footer>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <dialog class="modal" id="share-modal" aria-labelledby="share-title"><div class="modal-head"><h2 id="share-title">うちのもち、見て。</h2><button class="close" data-close aria-label="閉じる">×</button></div><canvas id="share-canvas" class="share-canvas" width="1000" height="1000" aria-label="もちのシェアカード"></canvas><p class="share-copy" id="share-copy"></p><p class="share-instruction">画像を保存して、Xの投稿画面で添付してね。投稿は自分で確認してから送れます。</p><div class="modal-actions"><button class="secondary" id="save-image">画像を保存 ↓</button><a class="primary" id="x-share" href="https://twitter.com/intent/tweet" target="_blank" rel="noopener noreferrer">X にシェア ↗</a></div><button class="text-button" id="copy-link" style="width:100%;margin-top:12px">投稿文とリンクをコピー</button></dialog>
+  <dialog class="modal" id="collection-modal" aria-labelledby="collection-title"><div class="modal-head"><h2 id="collection-title">もち図鑑 <span id="collection-count"></span></h2><button class="close" data-close aria-label="閉じる">×</button></div><p>おとなになったもちを記録。出会ったもちを押すと、その子のカードがつくれます。</p><div class="all-collection" id="all-collection"></div><p>お世話の組み合わせで進化先が決まります。放置だけで出会えるもちも。</p></dialog>
+  <dialog class="modal" id="rename-modal" aria-labelledby="rename-title"><div class="modal-head"><h2 id="rename-title">なんて呼ぼう？</h2><button class="close" data-close aria-label="閉じる">×</button></div><form id="rename-form"><label for="name-input">もちの名前（12文字まで）</label><input id="name-input" type="text" maxlength="12" autocomplete="off" required><p>へんてこな名前でも、きっと気に入る。</p><button class="primary" type="submit">この名前にする</button></form></dialog>
+  <dialog class="modal" id="evolution-modal" aria-labelledby="evolution-title"><div class="modal-head"><h2 id="evolution-title">おや、もちの様子が……！</h2><button class="close" data-close aria-label="閉じる">×</button></div><div class="evolution-art" id="evolution-art"></div><p class="evolution-tag" id="evolution-tag">NEW MOCHI DISCOVERED</p><p class="evolution-name" id="evolution-name"></p><p class="evolution-description" id="evolution-description"></p><button class="primary" id="evolution-share">この子のカードをつくる</button><button class="text-button" data-close style="display:block;margin:12px auto 0">もう少し、ながめる</button></dialog>
+  <dialog class="modal" id="welcome-modal" aria-labelledby="welcome-title"><div class="modal-head"><h2 id="welcome-title">おかえりなさい。</h2><button class="close" data-close aria-label="閉じる">×</button></div><div id="welcome-art" class="evolution-art"></div><p>あなたがいないあいだも、のんびり育っていました。</p><div class="welcome-number" id="welcome-growth"></div><p id="welcome-message"></p><button class="primary" id="welcome-ok">ただいま、もち。</button></dialog>
+  <dialog class="modal" id="help-modal" aria-labelledby="help-title"><div class="modal-head"><h2 id="help-title">もちとの暮らしかた</h2><button class="close" data-close aria-label="閉じる">×</button></div><ol class="help-list"><li>おやつ・ほめる・おひるねで成長＋5。<br>お世話は約2.4秒に1回できます。</li><li>何もしなくても10秒で成長＋1。<br>閉じているあいだも育ちます（最大8時間）。</li><li>成長20・55・100で、姿が変化。<br>お世話の配分で、おとなの姿は全12種！</li><li>おとなになったら図鑑に仲間入り。<br>次のもちを迎えても、図鑑は残ります。</li><li>「うちのもち、見て。」で画像を保存。<br>Xへの投稿は、投稿画面で自分で行います。</li></ol><p>進行はこの端末・このブラウザに自動保存されます。プライベートブラウズや閲覧データの削除にはご注意を。端末間の引き継ぎには対応していません。</p><p>進化のヒント：おやつ多め＋ほめる／おやつ多め＋おひるね、など組み合わせを変えてみて。均等にお世話した子と、そっと見守った子にも、それぞれの未来があります。</p><button class="danger" id="reset-button">セーブデータをすべて消す</button></dialog>
+  <dialog class="modal" id="reset-modal" aria-labelledby="reset-title"><div class="modal-head"><h2 id="reset-title">もちとの記録を消しますか？</h2><button class="close" data-close aria-label="閉じる">×</button></div><p>今のもちと、図鑑の記録がすべて消えます。元には戻せません。</p><div class="modal-actions"><button class="secondary" data-close>やめる</button><button class="primary" id="reset-confirm">すべて消して始める</button></div></dialog>
+  <script>
+  (() => {
+    'use strict';
+    const KEY = 'mochi-observation-v1';
+    const RATE = 0.1, COOLDOWN = 2400, CAP = 8 * 3600000;
+    const $ = id => document.getElementById(id);
+    const TYPES = [
+      {id:'king',name:'おやつの王様',short:'おやつの王様',branch:'snack',color:'#f5d19b',accent:'#ce9d43',accessory:'crown',line:'世界は、おやつを中心に回っている。',speech:'民よ、おやつを。',note:'王冠はどこから持ってきたのだろう。とりあえず、おかわりを要求している。'},
+      {id:'pudding',name:'プリンの擬態',short:'プリンの擬態',branch:'snack',color:'#f5ce85',accent:'#b97d51',accessory:'pudding',line:'食べられる前提で生きていない。',speech:'プリンでは、ないです。',note:'見た目は完全にプリン。本人はもちだと言い張っている。尊重したい。'},
+      {id:'executive',name:'カロリーの重役',short:'カロリーの重役',branch:'snack',color:'#f2c3a4',accent:'#ba8267',accessory:'tie',line:'動かない。それも経営判断。',speech:'おやつの稟議、通します。',note:'何も経営していないが、貫禄だけはすごい。三時のおやつ会議が始まった。'},
+      {id:'angel',name:'ほめ待ち天使',short:'ほめ待ち天使',branch:'praise',color:'#f6d4d4',accent:'#d78b91',accessory:'angel',line:'息をした。それだけで国宝。',speech:'今日も存在してえらい？',note:'天使になった。ほめないと、こちらをじっと見つめてくる。圧はやさしい。'},
+      {id:'idol',name:'もち界のアイドル',short:'もち界のアイドル',branch:'praise',color:'#f3c6d3',accent:'#cb839b',accessory:'star',line:'ファンサは、もちもち。',speech:'最前列、空いてるよ。',note:'ファンは今のところ私ひとり。でも、ステージの広さに不満はないらしい。'},
+      {id:'confidence',name:'自己肯定感のかたまり',short:'自己肯定感のかたまり',branch:'praise',color:'#f6c8b7',accent:'#ce8875',accessory:'glasses',line:'何もしてないのに、すでに優勝。',speech:'わたし、かなりよくない？',note:'自分のことが大好きになった。鏡の前でうなずいている。見習いたい。'},
+      {id:'blanket',name:'おふとんの神',short:'おふとんの神',branch:'nap',color:'#dbe2c3',accent:'#8f9b72',accessory:'blanket',line:'あと5分。それが、永遠。',speech:'ここを聖域とします。',note:'おふとんと一体化した。もはや、どこまでがもちなのか分からない。'},
+      {id:'sage',name:'省エネの仙人',short:'省エネの仙人',branch:'nap',color:'#d9ded1',accent:'#919c86',accessory:'sage',line:'やらないことを、やり遂げた。',speech:'無理は、しないが吉。',note:'動かないことに、哲学を見出したらしい。説得力がすごいので何も言えない。'},
+      {id:'void',name:'虚無の達人',short:'虚無の達人',branch:'nap',color:'#d8d2e5',accent:'#9a8dab',accessory:'void',line:'考えていない。深いところで。',speech:'…………もち。',note:'静かだ。とても静かだ。ただ、ときどきこちらの心を見透かした顔をする。'},
+      {id:'hero',name:'もち界の主人公',short:'もち界の主人公',branch:'balanced',color:'#f6d09c',accent:'#d39b57',accessory:'cape',line:'世界を救う前に、おやつ休憩。',speech:'ちょっと、世界救ってくる。',note:'バランスよく育てたら、使命感が芽生えた。まずは近所の平和から守るそうだ。'},
+      {id:'zen',name:'悟りもち',short:'悟りもち',branch:'balanced',color:'#e6dec2',accent:'#b1a27c',accessory:'zen',line:'足りないものは、もうなかった。',speech:'もちである。それでよい。',note:'ひとりで過ごすうちに、何かを悟った。こちらが世話をされている気がする。'},
+      {id:'bug',name:'やさしいバグ',short:'やさしいバグ',branch:'balanced',color:'#d7dce8',accent:'#9da2c1',accessory:'flower',line:'仕様です。たぶん、愛の。',speech:'きょうも、まるく収まろう。',note:'どこにも分類できないもちになった。変だけど、そばにいるとちょっと安心する。'}
+    ];
+    const stageNames = ['まだ、ただのもち。','すこし、もちもちしてきた。','個性が、はみ出してきた。'];
+    const defaultSpeech = ['え、ここに住んでいいの？','わたし、育ってない？','何かに、なれそうな気がする。'];
+    const careSpeech = {snack:['別腹の、その先へ。','おいしいは、正義。','これが……しあわせ。','あとひとくち、いけます。'],praise:['えへ。','ほめられた分、ふくらみます。','今日も、いてよかった。','いまの、もう一回言って。'],nap:['すや……もち……','がんばるの、おやすみ。','夢でも、もちでした。','何もしないを、している。']};
+    const careNotes = {snack:['おやつをあげた。目が合ったまま、ひとくちで食べた。','おいしいときだけ、返事がちょっと早い。','別腹という概念を、体全体で表現している。'],praise:['「えらいね」と言ったら、ちょっと大きくなった。物理的に。','何もしてないのにほめてみた。満更でもない顔。','ほめ言葉を、たぶん栄養に変えている。'],nap:['いっしょにひと休み。この子、寝るのがとても上手だ。','寝言を聞いた。「もち」と言っていた。','おひるねの予定だけは、絶対に守るらしい。']};
+    const stageOf = growth => growth >= 100 ? 3 : growth >= 55 ? 2 : growth >= 20 ? 1 : 0;
+    const clamp = (n,lo,hi) => Math.min(hi,Math.max(lo,n));
+    const escapeHTML = str => String(str).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const pick = list => list[Math.floor(Math.random()*list.length)];
+    function makePet(number=1) { return {name:pick(['もちまる','もちすけ','ましろ','ぽてち','むに','おもち']),number,growth:0,care:{snack:0,praise:0,nap:0},born:Date.now(),last:Date.now(),lastCare:0,type:null,pets:0}; }
+    function newState() { return {version:1,pet:makePet(),collection:{},sound:false,note:'小さなもちがやってきた。とりあえず、こっちを見ている。',noteAt:Date.now()}; }
+    let storageOK=true;
+    function load() {
+      try {
+        const raw=localStorage.getItem(KEY); if(!raw) return newState();
+        const s=JSON.parse(raw), p=s.pet;
+        if(s.version!==1 || !p || !Number.isFinite(p.growth) || !Number.isFinite(p.last) || !p.care) return newState();
+        p.growth=clamp(p.growth,0,100);p.name=typeof p.name==='string'?p.name.slice(0,12):'もちまる';
+        p.number=Number.isFinite(p.number)?Math.max(1,Math.floor(p.number)):1;
+        for(const k of ['snack','praise','nap']) p.care[k]=Number.isFinite(p.care[k])?clamp(Math.floor(p.care[k]),0,99999):0;
+        p.lastCare=Number.isFinite(p.lastCare)?Math.min(p.lastCare,Date.now()):0;p.pets=Number.isFinite(p.pets)?p.pets:0;
+        p.type=TYPES.some(t=>t.id===p.type)?p.type:null;
+        if(!s.collection || typeof s.collection!=='object' || Array.isArray(s.collection)) s.collection={};
+        for(const k of Object.keys(s.collection)) {const v=s.collection[k];if(!TYPES.some(t=>t.id===k)||!v||typeof v.name!=='string')delete s.collection[k];}
+        s.note=typeof s.note==='string'?s.note:'もちがこちらを見ている。';s.noteAt=Number.isFinite(s.noteAt)?s.noteAt:Date.now();s.sound=!!s.sound;
+        return s;
+      } catch(e) {return newState();}
+    }
+    let S=load(), lastStage=-1, toastTimer, speechTimer, sharePet=null, shareText='', shareBlob=null, shareGeneration=0, audio=null;
+    function save() {try{localStorage.setItem(KEY,JSON.stringify(S));storageOK=true;}catch(e){storageOK=false;}$('storage-warning').hidden=storageOK;}
+    function typeFor(p) {return TYPES.find(t=>t.id===p.type);}
+    function decideType(p) {
+      const {snack:a,praise:b,nap:c}=p.care, sum=a+b+c;
+      if(sum===0) return 'zen';
+      const ordered=[['snack',a],['praise',b],['nap',c]].sort((x,y)=>y[1]-x[1]);
+      if(ordered[0][1]-ordered[2][1]<=Math.max(1,sum*.12)) return sum>=12?'hero':'bug';
+      if(ordered[0][0]==='snack') return b>c?'king':c>b?'pudding':'executive';
+      if(ordered[0][0]==='praise') return a>c?'idol':c>a?'angel':'confidence';
+      return a>b?'blanket':b>a?'sage':'void';
+    }
+    function note(text){S.note=text;S.noteAt=Date.now();}
+    function progress(now=Date.now()) {
+      const p=S.pet, before=stageOf(p.growth), elapsed=clamp(now-p.last,0,CAP);
+      p.growth=Math.min(100,p.growth+elapsed/1000*RATE);p.last=now;
+      if(p.growth>=100&&!p.type){p.type=decideType(p);const t=typeFor(p);S.collection[t.id]={name:p.name,number:p.number,care:{...p.care},type:t.id,growth:100,discovered:now};note(t.note);}
+      return stageOf(p.growth)>before;
+    }
+    function toast(text){clearTimeout(toastTimer);$('toast').textContent=text;$('toast').hidden=false;toastTimer=setTimeout(()=>$('toast').hidden=true,3200);}
+    function say(text,duration=5500){clearTimeout(speechTimer);$('speech').textContent=text;speechTimer=setTimeout(()=>{$('speech').textContent=typeFor(S.pet)?.speech||defaultSpeech[stageOf(S.pet.growth)];},duration);}
+    function sound(freq=500){if(!S.sound)return;try{audio ||= new(window.AudioContext||window.webkitAudioContext)();audio.resume();const o=audio.createOscillator(),g=audio.createGain();o.connect(g);g.connect(audio.destination);o.type='sine';o.frequency.setValueAtTime(freq,audio.currentTime);o.frequency.exponentialRampToValueAtTime(freq*.65,audio.currentTime+.16);g.gain.setValueAtTime(.055,audio.currentTime);g.gain.exponentialRampToValueAtTime(.001,audio.currentTime+.2);o.start();o.stop(audio.currentTime+.21);}catch(e){}}
+    function petSVG(p,animated=true) {
+      const stage=stageOf(p.growth||0),t=typeFor(p), color=t?.color || ['#f5d6c3','#f5cfb9','#f1c2ae'][Math.min(stage,2)];
+      const k=stage===0?.78:stage===1?.9:1, acc=t?.accessory;
+      let back='',front='',face='';
+      if(acc==='angel') back='<path d="M73 151C13 101 18 175 70 183M227 151c60-50 55 24 3 32" fill="#fffaf2" stroke="#b49b93" stroke-width="2.3"/>';
+      if(acc==='cape') back='<path d="m86 142-23 72 63-16 24 17 27-17 61 16-24-73Z" fill="#de8e74" stroke="#9e6857" stroke-width="2.3"/>';
+      if(acc==='void') back='<ellipse cx="150" cy="139" rx="104" ry="70" fill="none" stroke="#ada0bc" stroke-dasharray="3 9" stroke-width="2"/>';
+      if(acc==='crown') front='<path d="m113 83-6-32 24 14 19-25 19 25 24-14-6 32Z" fill="#edc568" stroke="#9f7c3d" stroke-width="2.4" stroke-linejoin="round"/><circle cx="150" cy="69" r="4" fill="#e79e78"/>';
+      if(acc==='pudding') front='<path d="M90 104q18-36 60-35t60 35q-11 16-25 0-13 17-26 0-15 17-28 0-20 16-41 0Z" fill="#b98158" stroke="#99704d" stroke-width="2"/><ellipse cx="150" cy="73" rx="18" ry="7" fill="#fff6df"/><circle cx="152" cy="64" r="8" fill="#d96a5b"/><path d="m153 57 5-8" stroke="#758653" stroke-width="2"/>';
+      if(acc==='tie') front='<path d="m138 171 12 8 12-8-6-9h-12Z" fill="#8e8e9e" stroke="#666479" stroke-width="1.5"/><path d="m147 179-8 25 11 8 11-8-8-25" fill="#8e8e9e" stroke="#666479" stroke-width="1.5"/>';
+      if(acc==='angel') front='<ellipse cx="150" cy="55" rx="33" ry="8" fill="none" stroke="#d1b465" stroke-width="5"/>';
+      if(acc==='star') front='<path d="m207 78 4 10 11 1-8 7 2 11-9-6-10 6 3-11-8-7 11-1Z" fill="#edcf6b" stroke="#b4974d" stroke-width="1.6"/><path d="M96 95q10-30 26-11-6 22-26 11Zm0 0q-31 1-22-17 20-9 22 17Z" fill="#eaa0b2" stroke="#b9778d" stroke-width="2"/><circle cx="97" cy="95" r="5" fill="#f5c4cb"/>';
+      if(acc==='glasses') face='<path d="M104 134h31v17q-16 16-31-1Zm61 0h31v16q-15 17-31 1Z" fill="#62565a" stroke="#4c4043" stroke-width="2"/><path d="M135 138q15-7 30 0m-61-1-11-3m103 3 11-3" stroke="#4c4043" stroke-width="3" fill="none"/><path d="m110 139 13 0m48 0h13" stroke="#93858c" stroke-width="2"/>';
+      if(acc==='blanket') front='<path d="M65 165q85 23 170 0l-9 41q-76 19-152 0Z" fill="#b5c298" stroke="#879568" stroke-width="2"/><path d="M84 174v29m25-24v28m25-26v28m25-28v28m25-30v28m25-32v27" stroke="#d5ddbf" stroke-width="3"/>';
+      if(acc==='sage') front='<path d="M131 158q19 15 38 0l-6 29-13 12-13-12Z" fill="#fff9ee" stroke="#b6b7a5" stroke-width="1.8"/><path d="M140 97q10-8 20 0" fill="none" stroke="#afba97" stroke-width="5" stroke-linecap="round"/>';
+      if(acc==='zen') {back+='<circle cx="150" cy="129" r="88" fill="#ead79744" stroke="#ceb981" stroke-width="1.3"/><path d="m52 91-8-4m203 4 8-4M74 52l-5-6m157 6 5-6" stroke="#c4af77" stroke-width="2"/>';front='<circle cx="150" cy="115" r="4" fill="#bb986b"/>';}
+      if(acc==='flower') front='<g transform="translate(197 94)"><circle cx="0" cy="-10" r="9" fill="#eebcc1"/><circle cx="10" cy="-2" r="9" fill="#f0c7b0"/><circle cx="6" cy="10" r="9" fill="#d9dcb4"/><circle cx="-7" cy="9" r="9" fill="#c7d7d3"/><circle cx="-10" cy="-3" r="9" fill="#d5c8e0"/><circle r="6" fill="#f4db94" stroke="#b89d73" stroke-width="1.5"/></g>';
+      const sleepy=acc==='sage'||acc==='zen'||(stage<3&&p.care?.nap>Math.max(p.care?.snack||0,p.care?.praise||0));
+      const eyes=sleepy?'<path d="M110 143q9-7 17 0m47 0q9-7 17 0" stroke="#634d43" stroke-width="3" fill="none" stroke-linecap="round"/>':acc==='void'?'<circle cx="119" cy="142" r="3" fill="#574652"/><circle cx="181" cy="142" r="3" fill="#574652"/>':'<ellipse cx="119" cy="140" rx="3.5" ry="5" fill="#634d43"/><ellipse cx="181" cy="140" rx="3.5" ry="5" fill="#634d43"/><circle cx="120" cy="139" r=".9" fill="#fff"/><circle cx="182" cy="139" r=".9" fill="#fff"/>';
+      return `<svg class="pet-art" viewBox="0 0 300 245" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><ellipse class="${animated?'pet-shadow':''}" cx="150" cy="218" rx="88" ry="11" fill="#b7a786" opacity=".3"/><g transform="translate(${150*(1-k)} ${205*(1-k)}) scale(${k})"><g class="${animated?'pet-body':''}">${back}<path d="M62 173c-9-9-17-4-15 5 1 8 10 10 20 6m166-11c9-9 17-4 15 5-1 8-10 10-20 6" fill="${color}" stroke="#9a7e6d" stroke-width="2.3"/><path d="M64 174C60 116 85 75 150 75s90 41 86 99c-2 30-36 39-86 39s-84-9-86-39Z" fill="${color}" stroke="#9a7e6d" stroke-width="2.3"/><path d="M86 123q9-26 35-29" stroke="#fff6e8" stroke-width="6" opacity=".65" stroke-linecap="round" fill="none"/><ellipse cx="96" cy="155" rx="12" ry="6" fill="#e79b8c" opacity=".5"/><ellipse cx="204" cy="155" rx="12" ry="6" fill="#e79b8c" opacity=".5"/><g class="${animated?'pet-eyes':''}">${eyes}</g><path d="M143 155q0 7 7 4 7 3 7-4" stroke="#805c4a" stroke-width="2.2" fill="none" stroke-linecap="round"/>${stage===2&&!t?'<path d="M144 77q-9-19 6-21 10 5 4 20" fill="'+color+'" stroke="#9a7e6d" stroke-width="2"/>':''}${face}${front}</g></g></svg>`;
+    }
+    function render(force=false){
+      const p=S.pet,stage=stageOf(p.growth),t=typeFor(p),total=Object.values(p.care).reduce((a,b)=>a+b,0),max=Math.max(...Object.values(p.care),1);
+      $('pet-name').textContent=p.name;$('scene-no').textContent='MOCHI № '+String(p.number).padStart(3,'0');
+      $('species').textContent=t?t.name:stageNames[stage];
+      $('growth-value').innerHTML=Math.floor(p.growth)+' <span>/ 100</span>';
+      $('growth-fill').style.width=p.growth+'%';$('growth-track').setAttribute('aria-valuenow',Math.floor(p.growth));
+      $('growth-label').textContent=stage===3?'りっぱな、おとな':'おとなになるまで';
+      const next=stage===0?20:stage===1?55:100, seconds=Math.ceil((next-p.growth)/RATE);
+      $('growth-message').textContent=stage===3?'あなたの「つい」が、この姿に。':'次の変化まで '+(seconds>=60?'約'+Math.ceil(seconds/60)+'分':seconds+'秒')+'。お世話でもっと早く。';
+      document.querySelectorAll('.step').forEach((el,i)=>el.classList.toggle('on',i<=stage));
+      for(const k of ['snack','praise','nap']){$('trait-'+k).style.width=(p.care[k]/max*100)+'%';$('count-'+k).textContent=p.care[k];}
+      $('journal-text').textContent=S.note;
+      $('journal-time').textContent=new Date(S.noteAt).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})+' の観察記録';
+      $('next-pet').hidden=stage!==3;$('care-help').textContent=stage===3?'おとなになっても、甘やかせる。':'お世話で成長 ＋5';
+      const waiting=Date.now()-p.lastCare<COOLDOWN;
+      document.querySelectorAll('[data-care]').forEach(el=>el.disabled=waiting);
+      $('sound-button').setAttribute('aria-pressed',String(S.sound));$('sound-button').setAttribute('aria-label',S.sound?'音をオフにする':'音をオンにする');$('sound-button').title=S.sound?'音をオフにする':'音をオンにする';$('sound-button').style.color=S.sound?'var(--orange)':'#ad9f8c';
+      if(stage!==lastStage||force){$('pet-art').innerHTML=petSVG(p);if(!speechTimer)$('speech').textContent=t?.speech||defaultSpeech[stage];lastStage=stage;}
+      if(force)renderCollection();
+    }
+    function renderCollection(){
+      const count=Object.keys(S.collection).length;$('nav-count').textContent=count+'/12';$('collection-count').textContent=count+'/12';
+      $('collection-preview').innerHTML=TYPES.slice(0,8).map((t,i)=>`<button class="mini ${S.collection[t.id]?'discovered':'locked'}" data-entry="${t.id}" aria-label="${S.collection[t.id]?t.name:'まだ出会っていないもち '+(i+1)}">${petSVG({growth:100,type:t.id},false)}<span class="mini-number">${String(i+1).padStart(2,'0')}</span></button>`).join('');
+      $('all-collection').innerHTML=TYPES.map((t,i)=>`<button class="collection-item ${S.collection[t.id]?'':'locked'}" data-entry="${t.id}" ${S.collection[t.id]?'':'disabled'}><div class="art">${petSVG({growth:100,type:t.id},false)}</div><b>${S.collection[t.id]?escapeHTML(t.name):'？？？'}</b><small>NO. ${String(i+1).padStart(2,'0')} · ${S.collection[t.id]?'出会った！':'まだ出会っていません'}</small></button>`).join('');
+      $('collection-teaser').textContent=count===12?'全12種、出会えた！あなたはもう、もちの理解者。':'全12種。ちがう甘やかし方で、まだ見ぬもちに出会おう。';
+    }
+    function show(id){const d=$(id);if(!d.open)d.showModal();}
+    function evolution(){
+      const p=S.pet,t=typeFor(p);if(!t)return;
+      $('evolution-art').innerHTML=petSVG(p);$('evolution-name').textContent=t.name;$('evolution-description').textContent=t.line;
+      $('evolution-tag').textContent='MOCHI № '+String(p.number).padStart(3,'0')+' / GROWN WITH LOVE';
+      if(!document.querySelector('dialog[open]'))show('evolution-modal');
+      sound(800);
+    }
+    function onGrowth(before){
+      const after=stageOf(S.pet.growth);if(after<=before)return;
+      const flash=document.createElement('div');flash.className='evolve-flash';$('scene').append(flash);setTimeout(()=>flash.remove(),1300);
+      clearTimeout(speechTimer);speechTimer=null;
+      if(after===3){renderCollection();evolution();}
+      else {note(after===1?'さっきより、少し大きい。もちの可能性を感じる。':'何かが生えた。成長って、こういうことだったっけ。');toast(after===1?'ぷくぷく期になった！ちょっと、もちもち。':'むくむく期になった！個性が、はみ出してきた。');sound(700);}
+    }
+    function boop(symbol='♡'){$('pet-button').classList.remove('boop');void $('pet-button').offsetWidth;$('pet-button').classList.add('boop');const f=document.createElement('span');f.className='floating';f.textContent=symbol;f.style.marginLeft=(Math.random()*70-35)+'px';$('scene').append(f);setTimeout(()=>f.remove(),1200);}
+    function care(kind){
+      const now=Date.now();if(now-S.pet.lastCare<COOLDOWN)return;
+      const before=stageOf(S.pet.growth);progress(now);S.pet.care[kind]++;S.pet.lastCare=now;
+      S.pet.growth=Math.min(100,S.pet.growth+5);progress(now);note(typeFor(S.pet)?.note||pick(careNotes[kind]));
+      document.querySelectorAll('[data-care]').forEach(el=>{el.classList.remove('wait');void el.offsetWidth;el.classList.add('wait');});
+      setTimeout(()=>render(),COOLDOWN+10);
+      boop(kind==='snack'?'✦':kind==='praise'?'♡':'z z');sound(kind==='snack'?540:kind==='praise'?680:370);
+      onGrowth(before);save();render(true);say(pick(careSpeech[kind]));
+    }
+    function wrapText(ctx,text,maxWidth){const lines=[];let line='';for(const c of Array.from(text)){if(ctx.measureText(line+c).width>maxWidth&&line){lines.push(line);line=c;}else line+=c;}if(line)lines.push(line);return lines;}
+    function roundRect(ctx,x,y,w,h,r,fill,stroke){ctx.beginPath();ctx.roundRect(x,y,w,h,r);if(fill){ctx.fillStyle=fill;ctx.fill();}if(stroke){ctx.strokeStyle=stroke;ctx.stroke();}}
+    async function drawShare(p){
+      const generation=++shareGeneration;shareBlob=null;$('save-image').disabled=true;$('save-image').textContent='カードを作成中…';
+      const canvas=$('share-canvas'),c=canvas.getContext('2d'),t=typeFor(p);c.clearRect(0,0,1000,1000);c.fillStyle='#fff9ef';c.fillRect(0,0,1000,1000);
+      c.fillStyle='#e7ddca';for(let x=26;x<1000;x+=28)for(let y=26;y<1000;y+=28){c.beginPath();c.arc(x,y,1,0,Math.PI*2);c.fill();}
+      roundRect(c,40,40,920,920,30,'#fff9ef','#e0d4bf');c.textAlign='center';c.fillStyle='#8a7b6c';c.font='600 21px sans-serif';c.fillText('もちの観察室  /  GROWN WITH LOVE',500,104);
+      c.fillStyle='#e96a4d';c.font='900 48px sans-serif';c.fillText('甘やかしたら、こうなった。',500,187);
+      const blob=new Blob([petSVG(p,false)],{type:'image/svg+xml;charset=utf-8'}),url=URL.createObjectURL(blob),img=new Image();
+      try{await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src=url;});if(generation!==shareGeneration)return;
+        c.drawImage(img,230,202,540,441);
+        c.fillStyle='#8a7b6c';c.font='600 23px sans-serif';c.fillText(p.name+' は',500,667);
+        c.fillStyle='#3b3434';const title=t?t.name:stageNames[stageOf(p.growth)].replace(/。$/,'');c.font='900 '+(title.length>10?'47':'57')+'px sans-serif';c.fillText(title,500,739);
+        c.fillStyle='#847366';c.font='500 25px sans-serif';const lines=wrapText(c,t?t.line:'まだ、何者でもない。可能性だけは、もちもち。',800);lines.forEach((s,i)=>c.fillText(s,500,793+i*37));
+        c.strokeStyle='#e4d8c5';c.beginPath();c.moveTo(100,875);c.lineTo(900,875);c.stroke();c.fillStyle='#e96a4d';c.font='800 24px sans-serif';c.fillText('#もちの様子がおかしい',500,922);
+        const png=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));if(generation===shareGeneration){shareBlob=png;$('save-image').disabled=!png;$('save-image').textContent=png?'画像を保存 ↓':'画像の生成に失敗しました';}
+      }catch(e){if(generation===shareGeneration){$('save-image').textContent='画像を再作成';$('save-image').disabled=false;toast('カード画像を作れませんでした。もう一度お試しください。');}}finally{URL.revokeObjectURL(url);}
+    }
+    function openShare(p=S.pet){
+      sharePet=JSON.parse(JSON.stringify(p));const t=typeFor(p);
+      shareText=t?`うちの「${p.name}」、${t.name}になった。\n「${t.line}」\n\nあなたのもち、どんなもち？\n#もちの様子がおかしい #放置ゲーム`:`うちの「${p.name}」を育てています。\nまだ何者でもないけど、すでにかわいい。\n\n#もちの様子がおかしい #放置ゲーム`;
+      $('share-copy').textContent=shareText;
+      const pageURL=location.protocol==='https:'&&!/^(localhost|127\.)/.test(location.hostname)?location.origin+location.pathname:'https://sakamoto241.github.io/game/mochi.html';
+      $('x-share').href='https://twitter.com/intent/tweet?'+new URLSearchParams({text:shareText,url:pageURL});
+      $('copy-link').dataset.text=shareText+'\n'+pageURL;
+      document.querySelectorAll('dialog[open]').forEach(d=>d.close());show('share-modal');drawShare(sharePet);
+    }
+    document.querySelectorAll('[data-care]').forEach(el=>el.addEventListener('click',()=>care(el.dataset.care)));
+    let lastBoop=0;
+    $('pet-button').addEventListener('click',()=>{if(Date.now()-lastBoop<450)return;lastBoop=Date.now();S.pet.pets++;boop();sound(460);say(pick(['なで代は、無料です。','むに。','そのへん、もちもちです。','もち、よろこんでいます。']));save();});
+    $('sound-button').addEventListener('click',()=>{S.sound=!S.sound;save();render();if(S.sound)sound(620);toast(S.sound?'音をオンにしました。':'音をオフにしました。');});
+    $('rename-button').addEventListener('click',()=>{$('name-input').value=S.pet.name;show('rename-modal');});
+    $('rename-form').addEventListener('submit',e=>{e.preventDefault();const name=$('name-input').value.trim();if(!name){$('name-input').focus();return;}S.pet.name=Array.from(name).slice(0,12).join('');if(S.pet.type&&S.collection[S.pet.type])S.collection[S.pet.type].name=S.pet.name;save();render();$('rename-modal').close();toast(name+'。いい名前だね。');});
+    for(const id of ['collection-button','collection-more'])$(id).addEventListener('click',()=>{renderCollection();show('collection-modal');});
+    for(const id of ['collection-preview','all-collection'])$(id).addEventListener('click',e=>{const el=e.target.closest('[data-entry]');if(!el)return;const p=S.collection[el.dataset.entry];if(p)openShare(p);else{renderCollection();show('collection-modal');}});
+    $('share-button').addEventListener('click',()=>openShare());$('evolution-share').addEventListener('click',()=>openShare());
+    $('save-image').addEventListener('click',async()=>{if(!shareBlob){await drawShare(sharePet);return;}const a=document.createElement('a'),url=URL.createObjectURL(shareBlob);a.href=url;a.download='うちのもち-'+(typeFor(sharePet)?.name||'成長中')+'.png';a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);toast('画像を保存します。Xの投稿画面で添付してね。');});
+    $('copy-link').addEventListener('click',async()=>{const text=$('copy-link').dataset.text;try{if(!navigator.clipboard?.writeText)throw Error();await navigator.clipboard.writeText(text);toast('投稿文とリンクをコピーしました。');}catch(e){const field=document.createElement('textarea');field.value=text;field.style.cssText='position:fixed;top:0;left:0;opacity:0';$('share-modal').append(field);field.select();const ok=document.execCommand('copy');field.remove();toast(ok?'投稿文とリンクをコピーしました。':'コピーできませんでした。表示中の投稿文を選択してください。');}});
+    $('next-pet').addEventListener('click',()=>{if(S.pet.growth<100)return;const number=S.pet.number+1;S.pet=makePet(number);lastStage=-1;clearTimeout(speechTimer);speechTimer=null;note('新しいもちがやってきた。今度はどんな子に育つだろう。');save();render(true);toast('はじめまして、'+S.pet.name+'。');window.scrollTo({top:$('scene').getBoundingClientRect().top+scrollY-20,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});});
+    $('help-button').addEventListener('click',()=>show('help-modal'));
+    $('reset-button').addEventListener('click',()=>{$('help-modal').close();show('reset-modal');});
+    $('reset-confirm').addEventListener('click',()=>{S=newState();lastStage=-1;clearTimeout(speechTimer);speechTimer=null;save();render(true);$('reset-modal').close();toast('新しいもちとの暮らしが、はじまります。');});
+    document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>b.closest('dialog').close()));
+    document.querySelectorAll('dialog').forEach(d=>d.addEventListener('click',e=>{const r=d.getBoundingClientRect();if(e.target===d&&(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom))d.close();}));
+    $('welcome-ok').addEventListener('click',()=>{$('welcome-modal').close();if(S.pet.growth>=100)evolution();});
+    function returnFromAway(){
+      const away=Date.now()-S.pet.last,before=S.pet.growth;progress();save();render(true);
+      if(away>60000&&S.pet.growth>before){$('welcome-art').innerHTML=petSVG(S.pet);$('welcome-growth').textContent='成長 ＋'+Math.round((S.pet.growth-before)*10)/10;$('welcome-message').textContent=S.pet.growth>=100?'なんと、おとなになりました。ちょっと、様子を見てあげて。':'会わないあいだに、ちょっと大きくなったね。';if(!document.querySelector('dialog[open]'))show('welcome-modal');}
+    }
+    document.addEventListener('visibilitychange',()=>{if(document.hidden){progress();save();}else{returnFromAway();}});
+    window.addEventListener('pagehide',()=>{progress();save();});
+    returnFromAway();
+    setInterval(()=>{if(document.hidden)return;const before=stageOf(S.pet.growth);progress();onGrowth(before);render();save();},1000);
+    setInterval(()=>{if(!document.hidden&&!document.querySelector('dialog[open]')&&Math.random()<.4)say(typeFor(S.pet)?.speech||pick(['いま、成長してるとこ。','そばにいるだけでも、いいよ。','もちにも、いろいろある。','きょうの予定：もちもち。']));},18000);
+  })();
+  </script>
+</body>
+</html>
