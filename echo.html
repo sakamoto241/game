@@ -252,7 +252,11 @@ window.addEventListener('keydown',e=>{
 window.addEventListener('keyup',e=>{const k=e.key.length===1?e.key.toLowerCase():e.key;keys[k]=false;});
 function pause(){if(state!=='playing')return;setState('paused');announce('一時停止。');}
 function resume(){if(state!=='paused')return;frameAt=performance.now();setState('playing');cv.focus({preventScroll:true});}
-window.addEventListener('blur',()=>{clearInput();pause();});document.addEventListener('visibilitychange',()=>{if(document.hidden){pause();save();}});window.addEventListener('pagehide',save);
+// Mobile browsers can blur the window while the game remains visible.
+// Release keyboard input, but pause only when the page actually goes into the background.
+window.addEventListener('blur',()=>{keys={};});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){pause();save();}});
+window.addEventListener('pagehide',()=>{pause();save();});
 $('start-button').addEventListener('click',()=>{newGame();if(innerWidth<621)$('game').scrollIntoView({block:'start',behavior:reduced?'instant':'smooth'});});
 $('retry-button').addEventListener('click',()=>newGame());$('continue-button').addEventListener('click',()=>{if(state!=='between')return;run.loop++;startRound();cv.focus({preventScroll:true});});
 $('dash-button').addEventListener('pointerdown',e=>{e.preventDefault();dash();});$('dash-button').addEventListener('click',()=>dash());
