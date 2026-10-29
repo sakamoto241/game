@@ -13,6 +13,7 @@ const TOWN_REQUESTS=[{id:'medicine',town:'wheat',name:'薬屋さんの空っぽ�
 function region(s){return REGIONS.find(d=>s.stage>=d.start&&s.stage<=d.end)||REGIONS[0];}
 function scenery(s){return s.location==='town'?TOWNS[s.townId].bg:region(s).bg;}
 const ENCOUNTERS=7;
+function encounters(s){return region(s).id==='fields'?4:ENCOUNTERS;}
 const SPOTS={meadow:{name:'花の草原',need:0,text:'薬草2・木の実1',items:{herb:2,berry:1}},grove:{name:'木の実の林',need:3,text:'木の実3・木材1',items:{berry:3,wood:1}},cave:{name:'こだまの洞窟',need:6,text:'鉱石2・薬草1',items:{ore:2,herb:1}}};
 const ITEMS={star:'星の歯車',herb:'薬草',berry:'木の実',ore:'鉱石',tea:'薬草茶',pie:'木の実パイ',charm:'お守りスープ'};
 const RECIPES={tea:{name:'薬草茶',cost:{herb:3},text:'生きている仲間全員のHPを45%回復'},pie:{name:'木の実パイ',cost:{berry:4,herb:1},text:'45秒間、全員の攻撃と回復が25%アップ'},charm:{name:'お守りスープ',cost:{berry:2,ore:1},text:'全員に最大HPの40%のバリア'}};
@@ -40,13 +41,14 @@ function load(raw,now=Date.now()){
  s.highest=integer(raw.highest,0,TOTAL_STAGES);s.stage=integer(raw.stage,1,TOTAL_STAGES);s.encounter=integer(raw.encounter,0,ENCOUNTERS-1);s.cycles=integer(raw.cycles,0,999);
  s.unlocked.noa=s.highest>=3;s.unlocked.mina=s.highest>=6;s.wagon=raw.wagon===1&&s.highest>=12?1:0;s.completed=!!s.wagon;s.crafted=!!raw.crafted&&!!s.wagon;s.exploring=!!raw.exploring&&s.completed;
  if(!s.wagon){s.highest=Math.min(12,s.highest);s.stage=Math.min(12,s.stage);}
+ s.encounter=Math.min(s.encounter,encounters(s)-1);
  s.town.visited=Object.keys(TOWNS).filter(id=>s.wagon&&s.highest>=TOWNS[id].need&&Array.isArray(raw.town?.visited)&&raw.town.visited.includes(id));
  s.town.claimed=TOWN_REQUESTS.filter(d=>s.town.visited.includes(d.town)&&Array.isArray(raw.town?.claimed)&&raw.town.claimed.includes(d.id)).map(d=>d.id);s.town.reputation=s.town.claimed.length;
  s.unlocked.koharu=raw.unlocked?.koharu===true&&s.wagon===1&&s.town.visited.includes('wheat');
  s.armory.owned=[...new Set([...s.armory.owned,...(Array.isArray(raw.armory?.owned)?raw.armory.owned.filter(id=>Object.hasOwn(WEAPONS,id)&&s.highest>=WEAPONS[id].need&&(WEAPONS[id].theme==='forest'||s.wagon)):[])])];for(const hero of ['lili','noa','mina']){const theme=raw.armory?.equipped?.[hero];if(Object.hasOwn(WEAPON_THEMES,theme)&&s.armory.owned.includes(hero+'-'+theme))s.armory.equipped[hero]=theme;}
  s.town.rests=integer(raw.town?.rests,0,99999);s.town.workshop=!!raw.town?.workshop&&s.highest>=30&&!!s.wagon;
  s.townId=Object.hasOwn(TOWNS,raw.townId)&&s.wagon&&s.highest>=TOWNS[raw.townId].need?raw.townId:'wheat';s.location=raw.location==='town'&&s.wagon?'town':'road';if(s.location==='town'&&!s.town.visited.includes(s.townId))s.town.visited.push(s.townId);
- if(raw.resume&&s.wagon&&raw.resume.stage>=1&&raw.resume.stage<=Math.min(TOTAL_STAGES,s.highest+1))s.resume={stage:integer(raw.resume.stage,1,TOTAL_STAGES),encounter:integer(raw.resume.encounter,0,ENCOUNTERS-1)};
+ if(raw.resume&&s.wagon&&raw.resume.stage>=1&&raw.resume.stage<=Math.min(TOTAL_STAGES,s.highest+1))s.resume={stage:integer(raw.resume.stage,1,TOTAL_STAGES),encounter:integer(raw.resume.encounter,0,encounters(raw.resume)-1)};
 
  if(!s.unlocked.noa)s.skills.ward=false;if(!s.unlocked.mina)s.skills.bloom=false;
  for(const k of Object.keys(s.bag))s.bag[k]=integer(raw.bag?.[k],0,99999,k==='tea'&&!raw.bag?1:0);
@@ -87,10 +89,10 @@ function enemies(s){
  if(boss)return[{id:'golem',name:'こけむす守り人',art:5,hp:Math.round(baseHp*3.4),maxHp:Math.round(baseHp*3.4),atk:atk*1.35,cooldown:2.6,interval:2.4,actions:0,boss:true}];
  return Array.from({length:multi?2:1},(_,i)=>{const mush=(stage+round+i)%3===0,hp=Math.round(baseHp*(mini?1.8:multi?.72:1));return{id:mush||mini?'mushroom':'slime',name:mini?'きのこのおやぶん':mush?'もりきのこ':'しずくスライム',art:mush||mini?4:3,hp,maxHp:hp,atk:atk*(multi?.67:mini?1.2:1),cooldown:1.5+i*.65,interval:2.2,actions:0,boss:mini};});
 }
-function frontierEnemies(s){const stage=s.stage,round=s.encounter,reg=region(s),boss=stage===reg.end&&round===ENCOUNTERS-1,power=1+s.cycles*.18,base=38*1.18**11*1.08**(stage-12)*power,atk=(24+(stage-12)*1.25)*power;let types=reg.id==='fields'?['mole','straw']:reg.id==='coast'?['slime','crab']:['owl','golem'];
+function frontierEnemies(s){const stage=s.stage,round=s.encounter,reg=region(s),boss=stage===reg.end&&round===encounters(s)-1,power=1+s.cycles*.18,base=38*1.18**11*1.08**(stage-12)*power,atk=(24+(stage-12)*1.25)*power;let types=reg.id==='fields'?['mole','straw']:reg.id==='coast'?['slime','crab']:['owl','golem'];
  const names={mole:'麦わらもぐら',straw:'風のかかし',crab:'潮のヤドカリ',owl:'雪ふくろう',slime:'潮だまりスライム',golem:'雪道の石守り'};
  return Array.from({length:boss?1:2},(_,i)=>{const id=boss?reg.id==='fields'?'straw':reg.id==='coast'?'crab':'owl':types[(round+i)%2],hp=Math.round(base*(boss?3:.68));return{id,name:boss?reg.id==='fields'?'ねぼすけの風守り':reg.id==='coast'?'大潮のヤドカリ':'星見のふくろう':names[id],hp,maxHp:hp,shield:reg.id==='coast'?Math.round(hp*.16):0,atk:atk*(boss?1.25:.65),cooldown:1.8+i*.6,interval:boss?2.5:reg.id==='fields'?1.7:2.3,actions:0,boss,region:reg.id};});}
-function spawn(s,r){sync(s,r);r.enemies=enemies(s);r.mode='fight';r.timer=0;r.heroBuff=0;r.chill=0;r.label='';emit(r,'encounter',s.stage===12&&s.encounter===ENCOUNTERS-1?'森の主が、道をふさいでいる。':PLACES[s.stage-1]+'を進んでいる。');}
+function spawn(s,r){s.encounter=integer(s.encounter,0,encounters(s)-1);sync(s,r);r.enemies=enemies(s);r.mode='fight';r.timer=0;r.heroBuff=0;r.chill=0;r.label='';emit(r,'encounter',s.stage===12&&s.encounter===ENCOUNTERS-1?'森の主が、道をふさいでいる。':PLACES[s.stage-1]+'を進んでいる。');}
 function createRun(s){const r={state:s,heroes:ids(s).map(id=>freshHero(s,id)),enemies:[],mode:'fight',timer:0,events:[],log:[],heroBuff:0,time:0,label:'',bossSeen:false};spawn(s,r);if(s.location==='town'){r.enemies=[];r.mode='town';r.label=TOWNS[s.townId].name+'で旅じたく。';}else if(s.highest>=12&&!s.wagon){r.mode='camp';r.label='木材を使って、はじめての改築を。';}else if(s.completed&&!s.exploring){r.mode='complete';r.label='旅のつづきは、ここから。';}return r;}
 function upgrade(s,r,key){if(!Object.hasOwn(UPGRADES,key))return{ok:false,error:'強化を選んでください。'};if(['noa','mina','koharu'].includes(key)&&!s.unlocked[key])return{ok:false,error:'道中で仲間になるのを待とう。'};const c=cost(s,key);if(!Number.isFinite(c))return{ok:false,error:'最大レベルです。'};if(s.coins<c)return{ok:false,error:'コインが足りません。戦闘で集めよう。'};s.coins-=c;s.upgrades[key]++;sync(s,r);emit(r,'upgrade',UPGRADES[key].name+'が Lv.'+s.upgrades[key]+' に！',{hero:['noa','mina','koharu'].includes(key)?key:'lili'});return{ok:true};}
 function learn(s,r,key){const d=SKILLS[key];if(!d||s.skills[key])return{ok:false,error:'すでに覚えています。'};if((key==='ward'&&!s.unlocked.noa)||(key==='bloom'&&!s.unlocked.mina))return{ok:false,error:'先に仲間と出会おう。'};if(s.crystals<d.cost)return{ok:false,error:'魔石が足りません。新しい道を進もう。'};s.crystals-=d.cost;s.skills[key]=true;emit(r,'upgrade',d.name+'を覚えた！',{hero:key==='ward'?'noa':key==='bloom'?'mina':'lili'});return{ok:true};}
@@ -98,11 +100,12 @@ function hurt(r,unit,amount,side){const absorbed=Math.min(unit.shield||0,amount)
 function heal(r,h,n){const actual=Math.min(h.maxHp-h.hp,n);if(h.hp<=0||actual<=0)return;h.hp+=actual;emit(r,'heal',HEROES[h.id].name+'のHPが '+Math.round(actual)+' 回復。',{id:h.id,amount:Math.round(actual)});}
 function rally(s,r){if(s.rally<100||r.mode!=='fight')return{ok:false,error:'星の力がたまるまで待とう。'};s.rally=0;r.heroBuff=7;for(const h of r.heroes.filter(h=>h.hp>0)){heal(r,h,h.maxHp*.16);h.shield=Math.max(h.shield,h.maxHp*.22);h.cooldown=Math.min(h.cooldown,.2);}emit(r,'rally','連携技「木漏れ日の約束」！ 7秒間、攻撃1.6倍・バリアと回復。');return{ok:true};}
 function clear(s,r){
- const final=s.stage===12&&s.encounter===ENCOUNTERS-1;
- s.wins++;const coins=5+Math.floor(s.stage*1.6)+(s.encounter===ENCOUNTERS-1?8+s.stage*2:0);s.coins+=coins;s.rally=Math.min(100,s.rally+7);
+ const count=encounters(s),last=s.encounter===count-1,final=s.stage===12&&last;
+ // Keep each road's total coin reward when compressing its encounters.
+ s.wins++;const baseCoins=5+Math.floor(s.stage*1.6),coins=Math.floor((s.encounter+1)*baseCoins*ENCOUNTERS/count)-Math.floor(s.encounter*baseCoins*ENCOUNTERS/count)+(last?8+s.stage*2:0);s.coins+=coins;s.rally=Math.min(100,s.rally+7);
  emit(r,'reward','コイン ＋'+coins,{coins});
  for(const h of r.heroes){if(h.hp<=0)h.hp=h.maxHp*.3;else heal(r,h,h.maxHp*(s.wagon?.2:.12));}
- if(s.encounter===ENCOUNTERS-1){const first=s.highest<s.stage;s.highest=Math.max(s.highest,s.stage);
+ if(last){const first=s.highest<s.stage;s.highest=Math.max(s.highest,s.stage);
   if(first){const wood=final?16:s.stage>12?(s.stage%6===0?8:3):s.stage===1?0:2;s.wood+=wood;s.crystals+=final?4:1;emit(r,'material','木材 ＋'+wood+'・魔石 ＋'+(final?4:1),{wood,crystals:final?4:1});}
   if(s.highest>=3&&!s.unlocked.noa){s.unlocked.noa=true;sync(s,r);emit(r,'join','剣士ノアが仲間になった。前に立って、一行を守ってくれる。',{hero:'noa'});}
   if(s.highest>=6&&!s.unlocked.mina){s.unlocked.mina=true;sync(s,r);emit(r,'join','癒やし手ミナが仲間になった。傷ついた仲間を回復してくれる。',{hero:'mina'});}
@@ -131,7 +134,7 @@ function step(s,r,seconds){
   if(big){if(e.region==='snow')r.chill=4;if(e.region==='coast')e.shield=Math.max(e.shield||0,e.maxHp*.1);emit(r,'big',e.region==='snow'?'冷たい羽ばたき！ 薬草茶で冷えを払おう。':e.region==='fields'?'突風が、一行を包む！':e.region==='coast'?'大きな波が、押し寄せる！':'森の力が、押し寄せる！');for(const h of r.heroes.filter(h=>h.hp>0))hurt(r,h,e.atk*.95,'hero');}
   else{const h=['noa','lili','mina','koharu'].map(id=>r.heroes.find(a=>a.id===id&&a.hp>0)).find(Boolean);if(h)hurt(r,h,e.atk,'hero');}
  }
- if(r.heroes.every(h=>h.hp<=0)){s.defeats++;r.mode='rest';r.timer=3;r.nextStage=s.stage<=12?Math.floor((s.stage-1)/3)*3+1:region(s).start;r.nextEncounter=0;r.label='荷馬車でひと休み。素材と強化は、そのまま。';emit(r,'defeat',r.label);}
+ if(r.heroes.every(h=>h.hp<=0)){s.defeats++;r.mode='rest';r.timer=3;r.nextStage=s.stage<=12?Math.floor((s.stage-1)/3)*3+1:region(s).id==='fields'?s.stage:region(s).start;r.nextEncounter=0;r.label=region(s).id==='fields'?'荷馬車でひと休み。この道のはじめから再挑戦。':'荷馬車でひと休み。素材と強化は、そのまま。';emit(r,'defeat',r.label);}
  return r.events;
 }
 function renovate(s,r){if(s.wagon)return{ok:false,error:'すでに改築しています。'};if(s.highest<12)return{ok:false,error:'森の主を倒すと改築できます。'};if(s.wood<30)return{ok:false,error:'木材があと'+(30-s.wood)+'必要です。'};s.wood-=30;s.wagon=1;s.completed=true;s.exploring=false;r.mode='complete';for(const h of r.heroes){h.hp=h.maxHp;h.shield=0;}emit(r,'ending','小さな旅が、帰る場所になった。');return{ok:true};}
@@ -161,5 +164,5 @@ function repairWorkshop(s,r){const cost={wood:20,ore:20,crystals:6,star:1};if(s.
 function recruitKoharu(s,r){if(s.unlocked.koharu)return{ok:false,error:'コハルは、もう一行の仲間です。'};if(!s.wagon||s.location!=='town'||s.townId!=='wheat')return{ok:false,error:'こむぎの町でコハルと出会えます。'};s.unlocked.koharu=true;sync(s,r);emit(r,'join','弓職人コハルが仲間になった！ 3回目の矢は威力1.4倍。',{hero:'koharu'});return{ok:true};}
 function forgeWeapon(s,r,id){const w=WEAPONS[id];if(!Object.hasOwn(WEAPONS,id)||!w)return{ok:false,error:'装備を選んでください。'};if(s.armory.owned.includes(id))return{ok:false,error:'すでに持っています。'};if(w.hero!=='lili'&&!s.unlocked[w.hero])return{ok:false,error:'先に仲間と出会おう。'};if(s.highest<w.need||!s.wagon)return{ok:false,error:'旅を進めると作れるようになります。'};if(!canPay(s,w.cost))return{ok:false,error:'素材やコインが足りません。'};pay(s,w.cost);s.armory.owned.push(id);s.counts.gears++;emit(r,'upgrade',w.name+'ができました！ 装備すると効果がつきます。',{hero:w.hero});return{ok:true};}
 function selectWeapon(s,r,id){if(!Object.hasOwn(WEAPONS,id)||!s.armory.owned.includes(id))return{ok:false,error:'先にこの装備を作ろう。'};const w=WEAPONS[id];if(w.hero!=='lili'&&!s.unlocked[w.hero])return{ok:false,error:'先に仲間と出会おう。'};if(s.armory.equipped[w.hero]===w.theme)return{ok:false,error:'装備中です。'};const ratios=Object.fromEntries(r.heroes.map(h=>[h.id,h.hp/h.maxHp]));s.armory.equipped[w.hero]=w.theme;sync(s,r);for(const h of r.heroes){h.hp=h.maxHp*(ratios[h.id]??1);h.shield=Math.min(h.shield,h.maxHp);}emit(r,'upgrade',w.name+'を装備しました。',{hero:w.hero});return{ok:true};}
-return{WEAPONS,WEAPON_THEMES,recruitKoharu,forgeWeapon,selectWeapon,TOTAL_STAGES,REGIONS,TOWNS,GOODS,TOWN_REQUESTS,region,scenery,visitTown,depart,shop,restAtInn,fulfill,repairWorkshop,sync,SPOTS,ITEMS,RECIPES,GEAR,TACTICS,MISSIONS,progressValue,canPay,gearCost,gather,cook,useItem,equip,setTactic,claim,deliver,HEROES,UPGRADES,SKILLS,PLACES,ENCOUNTERS,newGame,load,cost,stats,createRun,upgrade,learn,rally,step,renovate,replay,craft,offline};
+return{encounters,WEAPONS,WEAPON_THEMES,recruitKoharu,forgeWeapon,selectWeapon,TOTAL_STAGES,REGIONS,TOWNS,GOODS,TOWN_REQUESTS,region,scenery,visitTown,depart,shop,restAtInn,fulfill,repairWorkshop,sync,SPOTS,ITEMS,RECIPES,GEAR,TACTICS,MISSIONS,progressValue,canPay,gearCost,gather,cook,useItem,equip,setTactic,claim,deliver,HEROES,UPGRADES,SKILLS,PLACES,ENCOUNTERS,newGame,load,cost,stats,createRun,upgrade,learn,rally,step,renovate,replay,craft,offline};
 });
