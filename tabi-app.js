@@ -5,6 +5,17 @@ let s=null;try{s=G.load(JSON.parse(localStorage.getItem(KEY)));}catch(_){}
 let running=!!s,tab='magic',townFacility='routes',toastTimer,lastFrame=performance.now(),acc=0,saveClock=0,uiClock=0,lastProgress='',failedSave=false;
 if(!s)s=G.newGame();const away=running?G.offline(s):{coins:0},r=G.createRun(s);
 const conversation=$('#conversation');let talk=null,talkLog=[],talkChars=[],talkVisible=0,talkElapsed=0,talkQueue=s.story.pending,autoTalksAllowed=true,talkCooldown=0,lastStoryHighest=s.highest;
+const VIEW_KEY='lili-scenery-view-v1';let sceneryView='large',viewCooldown=0;
+try{if(localStorage.getItem(VIEW_KEY)==='compact')sceneryView='compact';}catch(_){}
+function setSceneryView(view,persist=false){
+ sceneryView=view;document.documentElement.dataset.scenery=view;const b=$('#scenery-toggle');b.setAttribute('aria-pressed',String(view==='large'));b.setAttribute('aria-label',view==='large'?'冒険画面を小さくして育成する':'冒険の景色を大きく眺める');b.innerHTML=view==='large'?'<span aria-hidden="true">▱</span> 育成しやすく':'<span aria-hidden="true">▣</span> 景色を大きく';
+ if(persist){try{localStorage.setItem(VIEW_KEY,view);}catch(_){}viewCooldown=performance.now()+400;if(view==='large')window.scrollTo({top:0,behavior:'instant'});}
+ syncScenerySize();
+}
+function syncScenerySize(){const rect=$('.world').getBoundingClientRect();if(rect.width>0){const height=Math.max(530,Math.min(1400,Math.round(rect.height/rect.width*960)));if(canvas.height!==height)canvas.height=height;}}
+$('#scenery-toggle').onclick=()=>setSceneryView(sceneryView==='large'?'compact':'large',true);
+window.addEventListener('scroll',()=>{if(sceneryView==='large'&&scrollY>100&&performance.now()>viewCooldown&&!modal.open&&!conversation.open)setSceneryView('compact');},{passive:true});
+setSceneryView(sceneryView);
 const coin=n=>Number.isFinite(n)?Math.floor(n).toLocaleString('ja-JP'):'MAX';
 const art=(id,cls='')=>`<img src="${A.url(id)}" alt="${id==='cart'?'手押し車':id==='wagon'?'屋根付き馬車':G.HEROES[id]?.name||({mole:'麦わらもぐら',straw:'風のかかし',crab:'潮のヤドカリ',owl:'雪ふくろう',slime:'スライム',mushroom:'もりきのこ',golem:'石の守り人'}[id])||id}" class="${cls}" draggable="false">`;
 function toast(text){clearTimeout(toastTimer);$('#toast').textContent=text;$('#toast').classList.add('visible');toastTimer=setTimeout(()=>$('#toast').classList.remove('visible'),3600);}
@@ -200,9 +211,9 @@ async function toggleMusic(){
  catch(_){await sound.disable().catch(()=>{});toast('このブラウザでは音楽を再生できません。');}
  finally{sound.busy=false;button.disabled=false;button.setAttribute('aria-busy','false');button.textContent='BGM '+(sound.on?'ON':'OFF');button.setAttribute('aria-pressed',String(sound.on));button.setAttribute('aria-label','ほのぼのBGMを'+(sound.on?'止める':'再生する'));}
 }
-$('#sound').onclick=toggleMusic;canvas.onclick=e=>{if(s.location==='town'&&e.offsetX/canvas.clientWidth>.6){tab='town';townFacility='shop';renderPanel();$('#panel').scrollIntoView({block:'start'});}};
+$('#sound').onclick=toggleMusic;canvas.onclick=e=>{const scale=canvas.clientWidth/960,y=(e.offsetY+Math.max(0,canvas.height*scale-canvas.clientHeight))/scale,ground=425+(canvas.height-530)*.8;if(s.location==='town'&&e.offsetX/canvas.clientWidth>.6&&y>ground-205&&y<ground+25){tab='town';townFacility='shop';renderPanel();$('#panel').scrollIntoView({block:'start'});}};
 const setBattleHeight=()=>document.documentElement.style.setProperty('--battle-height',$('.sticky-world').getBoundingClientRect().height+'px');
-if(window.ResizeObserver)new ResizeObserver(setBattleHeight).observe($('.sticky-world'));else window.addEventListener('resize',setBattleHeight);setBattleHeight();
+if(window.ResizeObserver){new ResizeObserver(setBattleHeight).observe($('.sticky-world'));new ResizeObserver(syncScenerySize).observe($('.world'));}else window.addEventListener('resize',()=>{setBattleHeight();syncScenerySize();});setBattleHeight();
 document.addEventListener('visibilitychange',()=>{if(document.hidden){save();sound.background(true).catch(()=>{});}else{if(running){const reward=G.offline(s);if(reward.coins)toast('おかえりなさい。留守の間にコイン ＋'+reward.coins);save();updateUI();}lastFrame=performance.now();acc=0;sound.background(false).catch(()=>{});}});
 window.addEventListener('pagehide',()=>{save();sound.background(true).catch(()=>{});});
 window.addEventListener('pageshow',()=>{if(!document.hidden)sound.background(false).catch(()=>{});});
