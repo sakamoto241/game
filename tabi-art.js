@@ -1,11 +1,11 @@
-/* Load the painted sprite atlas and isolate its separate alpha silhouettes. */
+/* Load the storybook sprites and keep their separate alpha silhouettes. */
 (function(){
 'use strict';
 const sprites={},urls={},positions={lili:[340,425,183],noa:[470,425,185],mina:[223,425,167]};
 let forest=null;const effects=[];const reduced=matchMedia('(prefers-reduced-motion: reduce)');
 const image=src=>new Promise((resolve,reject)=>{const i=new Image();i.onload=()=>resolve(i);i.onerror=reject;i.src=src;});
 async function load(){
- const [atlas,bg]=await Promise.all([image('tabi-atlas.png'),image('tabi-forest.png')]);forest=bg;
+ const [atlas,bg]=await Promise.all([image('tabi-simple-atlas.png'),image('tabi-simple-forest.png')]);forest=bg;
  const c=document.createElement('canvas');c.width=atlas.width;c.height=atlas.height;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(atlas,0,0);
  const data=x.getImageData(0,0,c.width,c.height),w=c.width,h=c.height,N=w*h,labels=new Int32Array(N),queue=new Int32Array(N),components=[];let label=0;
  for(let i=0;i<N;i++){if(labels[i]||data.data[i*4+3]<=90)continue;label++;let head=0,tail=1,count=0,minX=w,maxX=0,minY=h,maxY=0;queue[0]=i;labels[i]=label;
@@ -16,7 +16,8 @@ async function load(){
  if(components.length!==8)throw Error('絵の読み込みに失敗しました。再読み込みしてください。');
  let expanded=labels;for(let pass=0;pass<3;pass++){const next=new Int32Array(expanded);for(let y=1;y<h-1;y++)for(let a=1;a<w-1;a++){const i=y*w+a;if(!next[i])next[i]=expanded[i-1]||expanded[i+1]||expanded[i-w]||expanded[i+w];}expanded=next;}
  const expected={lili:[225,310],noa:[621,325],mina:[996,331],slime:[1374,426],mushroom:[141,822],golem:[486,765],cart:[901,790],wagon:[1314,760]},used=new Set();
- for(const [id,center] of Object.entries(expected)){
+ for(const [id,point] of Object.entries(expected)){
+  const center=[point[0]*w/1536,point[1]*h/1024];
   const part=components.filter(p=>!used.has(p.label)).sort((a,b)=>Math.hypot((a.minX+a.maxX)/2-center[0],(a.minY+a.maxY)/2-center[1])-Math.hypot((b.minX+b.maxX)/2-center[0],(b.minY+b.maxY)/2-center[1]))[0];used.add(part.label);
   const left=Math.max(0,part.minX-4),top=Math.max(0,part.minY-4),sw=Math.min(w-left,part.maxX-left+5),sh=Math.min(h-top,part.maxY-top+5),sprite=document.createElement('canvas');sprite.width=sw;sprite.height=sh;const sx=sprite.getContext('2d'),out=sx.createImageData(sw,sh);
   for(let b=0;b<sh;b++)for(let a=0;a<sw;a++){const src=(top+b)*w+left+a;if(expanded[src]===part.label){const dest=(b*sw+a)*4;for(let k=0;k<4;k++)out.data[dest+k]=data.data[src*4+k];}}
@@ -36,7 +37,7 @@ function draw(canvas,s,r,dt=0){
  const x=canvas.getContext('2d'),W=960,H=530;x.clearRect(0,0,W,H);x.imageSmoothingEnabled=true;
  if(forest){const pan=reduced.matches?0:Math.sin(r.time*.05)*15;x.drawImage(forest,-30+pan,-114,1020,680);}else{x.fillStyle='#dce6c2';x.fillRect(0,0,W,H);}
  const move=r.mode==='travel'&&!reduced.matches,rest=['rest','camp','complete'].includes(r.mode);
- paint(x,s.wagon?'wagon':'cart',93,437,s.wagon?210:158,1,move?Math.sin(r.time*5)*.012:0);
+ paint(x,s.wagon?'wagon':'cart',113,437,s.wagon?210:158,1,move?Math.sin(r.time*5)*.012:0);
  for(const h of [...r.heroes].reverse()){
   const p=positions[h.id],hop=reduced.matches?0:move?Math.sin(r.time*9+p[0])*-4:Math.sin(r.time*2+p[0])*-1.5,lunge=h.pose>0&&!reduced.matches?Math.sin(h.pose/.36*Math.PI)*15:0;
   x.fillStyle='#4b503b25';x.beginPath();x.ellipse(p[0],430,p[2]*.25,8,0,0,Math.PI*2);x.fill();
@@ -51,7 +52,7 @@ function draw(canvas,s,r,dt=0){
  });
  for(let i=effects.length-1;i>=0;i--){const e=effects[i];e.life-=dt;if(e.life<=0){effects.splice(i,1);continue;}x.save();
   if(e.type==='number'){x.globalAlpha=Math.min(1,e.life*3);x.font='bold '+(typeof e.text==='string'&&e.text.length>4?22:32)+'px sans-serif';x.textAlign='center';x.strokeStyle='#62513d';x.lineWidth=4;const y=e.y-(reduced.matches?0:(1-e.life)*30);x.strokeText(String(e.text),e.x,y);x.fillStyle=e.color;x.fillText(String(e.text),e.x,y);}
-  else{const t=1-e.life/.48,cx=e.x+(e.tx-e.x)*t,cy=e.y+(e.ty-e.y)*t;if(e.type==='fire'){for(let k=0;k<(e.double?2:1);k++){const yy=cy+k*23;x.shadowColor='#ffbd58';x.shadowBlur=14;x.fillStyle='#ef9d49';x.beginPath();x.ellipse(cx,yy,22,9,-.2,0,Math.PI*2);x.fill();x.fillStyle='#fff2a9';x.beginPath();x.ellipse(cx+3,yy,10,5,-.2,0,Math.PI*2);x.fill();}}else if(e.type==='slash'){x.strokeStyle='#e7f1fa';x.lineWidth=5;x.beginPath();x.arc(e.tx,e.ty,40,-1.2,1.1);x.stroke();}else{x.fillStyle='#d5eda0';x.beginPath();x.ellipse(cx,cy,10,5,-.5,0,Math.PI*2);x.fill();}}
+  else{const t=1-e.life/.48,cx=e.x+(e.tx-e.x)*t,cy=e.y+(e.ty-e.y)*t;if(e.type==='fire'){for(let k=0;k<(e.double?2:1);k++){const yy=cy+k*23;x.shadowBlur=0;x.fillStyle='#ef9d49';x.beginPath();x.ellipse(cx,yy,22,9,-.2,0,Math.PI*2);x.fill();x.fillStyle='#fff2a9';x.beginPath();x.ellipse(cx+3,yy,10,5,-.2,0,Math.PI*2);x.fill();}}else if(e.type==='slash'){x.strokeStyle='#e7f1fa';x.lineWidth=5;x.beginPath();x.arc(e.tx,e.ty,40,-1.2,1.1);x.stroke();}else{x.fillStyle='#d5eda0';x.beginPath();x.ellipse(cx,cy,10,5,-.5,0,Math.PI*2);x.fill();}}
   x.restore();
  }
  if(r.heroBuff>0){x.strokeStyle='#efd99488';x.lineWidth=4;x.strokeRect(5,5,W-10,H-10);}
