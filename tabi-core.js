@@ -19,7 +19,7 @@ function pay(s,cost){for(const[k,n]of Object.entries(cost)){if(Object.hasOwn(s.b
 function grant(s,reward){for(const[k,n]of Object.entries(reward)){if(Object.hasOwn(s.bag,k))s.bag[k]+=n;else s[k]+=n;}}
 
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));const integer=(v,a,b,f=a)=>Number.isFinite(Number(v))?clamp(Math.floor(Number(v)),a,b):f;
-function newGame(now=Date.now()){return{story:{choices:{},read:[],bond:{lili:0,noa:0,mina:0}},bag:supplies(),gear:{lili:0,noa:0,mina:0},tactic:'balanced',gatherJob:null,foodTime:0,counts:{gathers:0,cooks:0,gears:0,meals:0,deliveries:0},claimed:[],bestiary:{slime:0,mushroom:0,golem:0},version:1,coins:40,wood:0,crystals:0,upgrades:{fire:1,staff:1,noa:1,mina:1},skills:{double:false,ward:false,bloom:false},highest:0,stage:1,encounter:0,unlocked:{noa:false,mina:false},wagon:0,completed:false,crafted:false,exploring:false,cycles:0,wins:0,defeats:0,rally:100,playtime:0,savedAt:now};}
+function newGame(now=Date.now()){return{story:{active:null,pending:[],choices:{},read:[],bond:{lili:0,noa:0,mina:0}},bag:supplies(),gear:{lili:0,noa:0,mina:0},tactic:'balanced',gatherJob:null,foodTime:0,counts:{gathers:0,cooks:0,gears:0,meals:0,deliveries:0},claimed:[],bestiary:{slime:0,mushroom:0,golem:0},version:1,coins:40,wood:0,crystals:0,upgrades:{fire:1,staff:1,noa:1,mina:1},skills:{double:false,ward:false,bloom:false},highest:0,stage:1,encounter:0,unlocked:{noa:false,mina:false},wagon:0,completed:false,crafted:false,exploring:false,cycles:0,wins:0,defeats:0,rally:100,playtime:0,savedAt:now};}
 function load(raw,now=Date.now()){
  if(!raw||raw.version!==1||!raw.upgrades)return null;const s=newGame(now);
  for(const k of ['coins','wood','crystals','wins','defeats'])s[k]=integer(raw[k],0,9999999);
@@ -37,6 +37,8 @@ function load(raw,now=Date.now()){
  for(const k of ['lost','market','bridge','lantern','gate']){const v=raw.story?.choices?.[k];if(v===0||v===1)s.story.choices[k]=v;}
  for(const k of Object.keys(HEROES))s.story.bond[k]=integer(raw.story?.bond?.[k],0,6);
  s.story.read=Array.isArray(raw.story?.read)?[...new Set(raw.story.read.filter(v=>typeof v==='string'&&/^(chapter-[0-5]|bond-(lili|noa|mina)-[123])$/.test(v)))]:[];
+ const active=raw.story?.active;if(active&&['scene','event','result'].includes(active.kind)&&typeof active.id==='string'&&/^(chapter-[0-5]|bond-(lili|noa|mina)-[123]|lost|market|bridge|lantern|gate)$/.test(active.id))s.story.active={kind:active.kind,id:active.id,index:integer(active.index,0,20)};
+ s.story.pending=Array.isArray(raw.story?.pending)?raw.story.pending.filter(q=>q&&['scene','event'].includes(q.kind)&&typeof q.id==='string'&&/^(chapter-[0-5]|lost|market|bridge|lantern|gate)$/.test(q.id)).slice(0,12).map(q=>({kind:q.kind,id:q.id,index:0})):[];
  if(raw.gatherJob&&Object.hasOwn(SPOTS,raw.gatherJob.spot)&&s.highest>=SPOTS[raw.gatherJob.spot].need)s.gatherJob={spot:raw.gatherJob.spot,left:integer(raw.gatherJob.left,1,8,8)};
  s.rally=integer(raw.rally,0,100);s.playtime=integer(raw.playtime,0,315360000);s.savedAt=integer(raw.savedAt,0,now,now);return s;
 }
