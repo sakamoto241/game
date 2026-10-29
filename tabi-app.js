@@ -2,7 +2,7 @@
 'use strict';
 const I=window.TabiIcons,G=window.Tabi,S=window.TabiStory,A=window.TabiArt,$=s=>document.querySelector(s),KEY='lili-tabijitaku-v1',canvas=$('#world'),modal=$('#modal');
 let s=null;try{s=G.load(JSON.parse(localStorage.getItem(KEY)));}catch(_){}
-let running=!!s,tab='home',townFacility='routes',toastTimer,lastFrame=performance.now(),acc=0,saveClock=0,uiClock=0,lastProgress='',failedSave=false;
+let running=!!s,tab='home',townFacility='routes',memoryReplay=false,toastTimer,lastFrame=performance.now(),acc=0,saveClock=0,uiClock=0,lastProgress='',failedSave=false;
 if(!s)s=G.newGame();const away=running?G.offline(s):{coins:0},r=G.createRun(s);
 const conversation=$('#conversation');let talk=null,talkLog=[],talkChars=[],talkVisible=0,talkElapsed=0,talkQueue=s.story.pending,autoTalksAllowed=true,talkCooldown=0,lastStoryHighest=s.highest;
 function syncScenerySize(){const rect=$('.world').getBoundingClientRect();if(rect.width>0){const height=Math.max(530,Math.min(1400,Math.round(rect.height/rect.width*960)));if(canvas.height!==height)canvas.height=height;}}
@@ -76,16 +76,22 @@ function renderStory(){
   const joined=S.joined(s,id),hearts=s.story.bond[id],convos=S.conversations(s,id);html+=`<article class="bond-card"><div class="bond-top">${joined?art(id):'<span class="bond-unknown">？</span>'}<div><h3>${joined?G.HEROES[id].name:'まだ見ぬ旅の仲間'}</h3><p>${joined?'好物：'+G.ITEMS[d.favorite]:'森の道を'+(id==='noa'?3:6)+'つ進むと出会えます。'}</p><span class="bond-hearts" aria-label="絆 ${Math.floor(hearts/2)} / 3">${Array.from({length:3},(_,i)=>`<i class="${hearts>=(i+1)*2?'filled':''}">♥</i>`).join('')}</span></div></div>${joined?`<button class="secondary gift-button" data-gift="${id}" ${hearts>=6||s.bag[d.favorite]<1?'disabled':''}>${hearts>=6?'心が通う旅の仲間':G.ITEMS[d.favorite]+'を贈って話す'} <small>所持 <b data-bag="${d.favorite}">${s.bag[d.favorite]}</b></small></button><small class="bond-perk">絆3：${d.perk}${hearts>=6?'（発動中）':''}</small>${convos.filter(c=>!s.story.read.includes(c.id)).map(sceneButton).join('')}`:''}</article>`;
  }
  if(pending.length)html+='<h3 class="subheading">あとで立ち寄れる場所</h3>'+pending.map(e=>`<button class="scene-link" data-story-event="${e.id}"><span>寄り道</span><b>${e.title}</b><i>›</i></button>`).join('');
- html+='<details class="conversation-archive"><summary>これまでの会話を読み返す</summary><div class="scene-list">'+chapters.map(sceneButton).join('')+Object.keys(S.BONDS).flatMap(id=>S.conversations(s,id)).filter(c=>s.story.read.includes(c.id)).map(sceneButton).join('')+S.EVENTS.filter(e=>Object.hasOwn(s.story.choices,e.id)).map(e=>`<button class="scene-link" data-event-memory="${e.id}"><span>寄り道</span><b>${e.title}</b><i>›</i></button>`).join('')+'</div></details>';$('#panel').innerHTML=html;
+ html+=`<div class="conversation-archive"><button class="secondary memories-entry" data-memories>${I.html('book')} ストーリーを振り返る</button><p class="story-hint">ここまでの物語・仲間の会話・選んだ寄り道を、いつでも。</p></div>`;$('#panel').innerHTML=html;
 }
+function showMemories(){
+ const chapters=S.unlockedChapters(s),bonds=Object.keys(S.BONDS).flatMap(id=>S.conversations(s,id)),events=S.EVENTS.filter(e=>Object.hasOwn(s.story.choices,e.id));
+ open(`<div class="memory-list"><span class="eyebrow">旅の思い出</span><h2>ストーリーを振り返る</h2><p>読み返しても、素材や報酬は増減しません。</p><h3>三人の旅の物語</h3>${chapters.map(sceneButton).join('')}<h3>仲間との会話</h3>${bonds.length?bonds.map(sceneButton).join(''):'<p>仲間に好物を贈ると、会話が増えます。</p>'}<h3>寄り道の思い出</h3>${events.length?events.map(e=>`<button class="scene-link" data-event-memory="${e.id}"><span>記録</span><b>${e.title}</b><i>›</i></button>`).join(''):'<p>寄り道で選んだ出来事が、ここに残ります。</p>'}<button class="secondary" data-close>冒険に戻る</button></div>`);
+}
+function introRequired(){return !s.story.read.includes('chapter-0')&&s.wins===0&&s.highest===0;}
 function beginTalk(session){
+ if(introRequired()&&(session.kind!=='scene'||session.id!=='chapter-0'))session={kind:'scene',id:'chapter-0',index:0};
  const lines=S.script(s,session);if(!lines.length)return false;
  close();talk={kind:session.kind,id:session.id,index:Math.min(session.index||0,lines.length-(session.kind==='event'?0:1))};autoTalksAllowed=true;talkQueue=talkQueue.filter(q=>q.kind!==talk.kind||q.id!==talk.id);s.story.pending=talkQueue;talkLog=[];s.story.active={...talk};save();
- $('#talk-log').hidden=true;$('#talk-log-toggle').textContent='ログ';$('#talk-log-toggle').setAttribute('aria-expanded','false');paintTalk();if(!conversation.open)conversation.showModal();$('#talk-next').focus({preventScroll:true});return true;
+ $('#talk-later').hidden=introRequired()&&talk.kind==='scene'&&talk.id==='chapter-0';$('#talk-log').hidden=true;$('#talk-log-toggle').textContent='ログ';$('#talk-log-toggle').setAttribute('aria-expanded','false');paintTalk();if(!conversation.open)conversation.showModal();$('#talk-next').focus({preventScroll:true});return true;
 }
-function showScene(id,index=0){beginTalk({kind:'scene',id,index});}
+function showScene(id,index=0){memoryReplay=modal.open&&!!$('#modal-content .memory-list');beginTalk({kind:'scene',id,index});}
 function showEvent(id){beginTalk({kind:'event',id,index:0});}
-function storyResult(e){beginTalk({kind:'result',id:e.id,index:0});}
+function storyResult(e){memoryReplay=modal.open&&!!$('#modal-content .memory-list');beginTalk({kind:'result',id:e.id,index:0});}
 function paintTalk(){
  const lines=S.script(s,talk),isChoice=talk.kind==='event'&&talk.index===lines.length,[name,line]=lines[Math.min(talk.index,lines.length-1)];
  const scene=talk.kind==='scene'?S.findScene(s,talk.id):S.EVENTS.find(e=>e.id===talk.id);$('#talk-title').textContent=scene.title;$('#talk-speaker').textContent=name;
@@ -106,8 +112,8 @@ function advanceTalk(){
  if(talkVisible<talkChars.length){talkVisible=talkChars.length;$('#talk-next').setAttribute('aria-busy','false');$('#talk-text').textContent=talkChars.join('');$('#talk-hint').textContent='タップでつづく ▾';return;}
  const lines=S.script(s,talk);if(talk.index+1<lines.length||talk.kind==='event'&&talk.index<lines.length){talk.index++;paintTalk();return;}finishTalk();
 }
-function finishTalk(){const finished=talk;if(!finished)return;if(finished.kind==='scene')S.markRead(s,finished.id);s.story.active=null;talk=null;conversation.close();talkCooldown=performance.now()+800;save();renderPanel();if(finished.id==='chapter-5'&&finished.kind==='scene')ending();}
-function deferTalk(){if(!talk)return;s.story.active={...talk};talk=null;autoTalksAllowed=false;conversation.close();save();renderPanel();}
+function finishTalk(){const finished=talk;if(!finished)return;if(finished.kind==='scene')S.markRead(s,finished.id);s.story.active=null;talk=null;conversation.close();talkCooldown=performance.now()+800;save();renderPanel();if(memoryReplay){memoryReplay=false;showMemories();return;}if(finished.id==='chapter-5'&&finished.kind==='scene')ending();}
+function deferTalk(){if(!talk||introRequired()&&talk.kind==='scene'&&talk.id==='chapter-0')return;const replay=memoryReplay;memoryReplay=false;s.story.active=replay?null:{...talk};talk=null;autoTalksAllowed=replay;conversation.close();save();renderPanel();if(replay)showMemories();}
 function queueTalk(session){if(talk?.kind===session.kind&&talk.id===session.id||talkQueue.some(q=>q.kind===session.kind&&q.id===session.id))return;talkQueue.push(session);s.story.pending=talkQueue;save();}
 function drainTalk(now){if(!autoTalksAllowed||talk||modal.open||conversation.open||now<talkCooldown)return;while(talkQueue.length){const next=talkQueue.shift();if(next.kind==='scene'&&s.story.read.includes(next.id))continue;if(beginTalk(next))break;}}
 function promptTalk(){if(s.story.active&&beginTalk(s.story.active))return;const next=S.unlockedChapters(s).find(c=>!s.story.read.includes(c.id));if(next){showScene(next.id);return;}const e=S.available(s)[0];if(e){showEvent(e.id);return;}tab='story';renderPanel();}
@@ -178,7 +184,8 @@ async function share(){
  open(`<span class="eyebrow">一行の、旅の記録</span><h2>この一行で、旅をした。</h2><img class="share-card" src="${url}" alt="リリたちの旅の記録"><div class="actions"><a class="primary" href="https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent('https://sakamoto241.github.io/game/tabi.html')}" target="_blank" rel="noopener noreferrer">Xに投稿する ↗</a><a class="secondary" href="${url}" download="ちいさな魔女の旅じたく.png">画像を保存</a></div><p style="font-size:10px">画像も載せるときは、保存した画像を投稿に添えてください。</p>`);
 }
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.disabled)return;
- if(b.dataset.section){const group=b.dataset.section;if(group==='town'&&s.wagon&&s.location!=='town'){enterTown();return;}tab=group==='town'?'town':SECTIONS[group][0][0];renderPanel();}
+ if(b.hasAttribute('data-memories'))showMemories();
+ else if(b.dataset.section){const group=b.dataset.section;if(group==='town'&&s.wagon&&s.location!=='town'){enterTown();return;}tab=group==='town'?'town':SECTIONS[group][0][0];renderPanel();}
  else if(b.dataset.bagUse){r.events=[];const result=G.useItem(s,r,b.dataset.bagUse);if(result.ok){consume(r.events);save();renderPanel();toast(r.events.at(-1)?.text||'道具を使いました。');}else toast(result.error);}
  else if(b.hasAttribute('data-visit-town')||b.dataset.town)enterTown(b.dataset.town);
  else if(b.dataset.facility){townFacility=b.dataset.facility;renderPanel();}
@@ -201,7 +208,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||
   else result=G.deliver(s,r);
   if(result.ok){consume(r.events);toast(r.events.at(-1)?.text||'旅じたくができました。');save();renderPanel();}else toast(result.error);
  }
- else if(b.hasAttribute('data-start')){running=true;$('#close').hidden=false;close();save();updateUI();queueTalk({kind:'scene',id:'chapter-0',index:0});}
+ else if(b.hasAttribute('data-start')){running=true;$('#close').hidden=false;close();save();updateUI();showScene('chapter-0');}
  else if(b.dataset.tab){if(b.dataset.tab==='town'&&s.wagon&&s.location!=='town'){enterTown();return;}tab=b.dataset.tab;renderPanel();}
  else if(b.dataset.upgrade||b.dataset.learn){const result=b.dataset.upgrade?G.upgrade(s,r,b.dataset.upgrade):G.learn(s,r,b.dataset.learn);if(result.ok){consume(r.events.filter(e=>e.type==='upgrade'));renderPanel();save();}else toast(result.error);}
  else if(b.hasAttribute('data-renovate')){const result=G.renovate(s,r);if(result.ok){renderPanel();save();sound.chime();showScene('chapter-5');}else toast(result.error);}
@@ -227,7 +234,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden){save();sou
 window.addEventListener('pagehide',()=>{save();sound.background(true).catch(()=>{});});
 window.addEventListener('pageshow',()=>{if(!document.hidden)sound.background(false).catch(()=>{});});
 try{await Promise.all([A.load(),I.load()]);for(const el of document.querySelectorAll('[data-menu-icon]'))el.innerHTML=symbol(el.dataset.menuIcon);for(const[id,key]of[['.resources .coin','coins'],['.resources .wood','wood'],['.resources .crystal','crystals']])$(id).innerHTML=I.html(key);$('#story-peek>span:first-child').innerHTML=I.html('chat');$('#loading').remove();}catch(error){$('#loading').innerHTML='<b>絵の読み込みができませんでした。</b><small>通信を確認して、もう一度お試しください。</small><button class="primary" id="retry-assets">再読み込み</button>';$('#retry-assets').onclick=()=>location.reload();return;}
-if(s.location==='town')tab='town';renderPanel();if(!running)welcome();else{save();if(s.story.active&&!beginTalk(s.story.active)){s.story.active=null;save();}if(away.coins)toast('おかえりなさい。留守の間にコイン ＋'+away.coins);}
+if(s.location==='town')tab='town';renderPanel();if(!running)welcome();else{save();if(introRequired())beginTalk(s.story.active?.kind==='scene'&&s.story.active.id==='chapter-0'?s.story.active:{kind:'scene',id:'chapter-0',index:0});else if(s.story.active&&!beginTalk(s.story.active)){s.story.active=null;save();}if(away.coins)toast('おかえりなさい。留守の間にコイン ＋'+away.coins);}
 function frame(now){const dt=Math.max(0,Math.min(.2,(now-lastFrame)/1000));lastFrame=now;
  if(running&&!document.hidden&&!conversation.open){drainTalk(now);if(!conversation.open)acc+=dt;while(acc>=.05&&!conversation.open){consume(G.step(s,r,.05));acc-=.05;}saveClock+=dt;uiClock+=dt;if(saveClock>=10){saveClock=0;save();}if(uiClock>=.15){uiClock=0;updateUI();}}
  if(conversation.open&&!document.hidden)typeTalk(dt);A.draw(canvas,s,r,dt);requestAnimationFrame(frame);
