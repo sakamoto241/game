@@ -60,14 +60,17 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||
  else if(b.hasAttribute('data-ending'))ending();else if(b.hasAttribute('data-close'))close();else if(b.hasAttribute('data-share'))share().catch(()=>toast('画像を作れませんでした。もう一度お試しください。'));
 });
 $('#rally').onclick=()=>{const result=G.rally(s,r);if(result.ok){consume(r.events.filter(e=>e.type==='rally'||e.type==='heal'));save();updateUI();}else toast(result.error);};$('#help').onclick=help;
-const sound={ctx:null,on:false,timer:null,beat:0,next:0,master:null,
- init(){if(this.ctx)return;const C=window.AudioContext||window.webkitAudioContext;if(!C)throw Error('No audio');this.ctx=new C();this.master=this.ctx.createGain();this.master.gain.value=.075;this.master.connect(this.ctx.destination);},
- note(freq,duration=.3,when){if(!this.on||!this.ctx||document.hidden)return;const t=when??this.ctx.currentTime,o=this.ctx.createOscillator(),g=this.ctx.createGain();o.type='triangle';o.frequency.value=freq;g.gain.setValueAtTime(.001,t);g.gain.linearRampToValueAtTime(.32,t+.012);g.gain.exponentialRampToValueAtTime(.001,t+duration);o.connect(g);g.connect(this.master);o.start(t);o.stop(t+duration+.02);},
- chime(){[392,523.25,659.25,783.99].forEach((f,i)=>this.note(f,.6,this.ctx?this.ctx.currentTime+i*.1:undefined));},
- schedule(){if(!this.on||document.hidden)return;const c=this.ctx;if(this.next<c.currentTime)this.next=c.currentTime+.03;const notes=[0,-1,2,4,3,2,1,-1,0,1,2,-1,4,-1,3,1,2,-1,0,1,3,-1,2,0],scale=[392,440,523.25,587.33,659.25];while(this.next<c.currentTime+.2){const b=this.beat%notes.length;if(notes[b]>=0)this.note(scale[notes[b]],.48,this.next);if(b%6===0)this.note(b%12===0?196:174.61,1.6,this.next);this.beat++;this.next+=.32;}},
- async toggle(){try{this.init();this.on=!this.on;if(this.on){await this.ctx.resume();this.next=this.ctx.currentTime+.02;this.timer=setInterval(()=>this.schedule(),80);}else{clearInterval(this.timer);await this.ctx.suspend();}$('#sound').textContent='音 '+(this.on?'ON':'OFF');$('#sound').setAttribute('aria-label','音楽を'+(this.on?'オフ':'オン')+'にする');}catch(_){this.on=false;toast('このブラウザでは音を再生できません。');}}
-};$('#sound').onclick=()=>sound.toggle();
-document.addEventListener('visibilitychange',()=>{if(document.hidden){save();if(sound.on)sound.ctx.suspend().catch(()=>{});}else{if(running){const reward=G.offline(s);if(reward.coins)toast('おかえりなさい。留守の間にコイン ＋'+reward.coins);save();updateUI();}lastFrame=performance.now();acc=0;if(sound.on)sound.ctx.resume().then(()=>sound.next=sound.ctx.currentTime+.03).catch(()=>{});}});window.addEventListener('pagehide',save);
+const sound=new window.TabiMusic.Player({volume:.7});
+async function toggleMusic(){
+ const button=$('#sound');if(sound.busy)return;sound.busy=true;button.disabled=true;
+ try{if(sound.on)await sound.disable();else await sound.enable();}
+ catch(_){await sound.disable().catch(()=>{});toast('このブラウザでは音楽を再生できません。');}
+ finally{sound.busy=false;button.disabled=false;button.textContent='BGM '+(sound.on?'ON':'OFF');button.setAttribute('aria-pressed',String(sound.on));button.setAttribute('aria-label','ほのぼのBGMを'+(sound.on?'止める':'再生する'));}
+}
+$('#sound').onclick=toggleMusic;
+document.addEventListener('visibilitychange',()=>{if(document.hidden){save();sound.background(true).catch(()=>{});}else{if(running){const reward=G.offline(s);if(reward.coins)toast('おかえりなさい。留守の間にコイン ＋'+reward.coins);save();updateUI();}lastFrame=performance.now();acc=0;sound.background(false).catch(()=>{});}});
+window.addEventListener('pagehide',()=>{save();sound.background(true).catch(()=>{});});
+window.addEventListener('pageshow',()=>{if(!document.hidden)sound.background(false).catch(()=>{});});
 try{await A.load();$('#loading').remove();}catch(error){$('#loading').innerHTML='<b>絵の読み込みができませんでした。</b><small>通信を確認して、もう一度お試しください。</small><button class="primary" id="retry-assets">再読み込み</button>';$('#retry-assets').onclick=()=>location.reload();return;}
 renderPanel();if(!running)welcome();else{save();if(away.coins)toast('おかえりなさい。留守の間にコイン ＋'+away.coins);}
 function frame(now){const dt=Math.max(0,Math.min(.2,(now-lastFrame)/1000));lastFrame=now;
