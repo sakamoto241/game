@@ -19,7 +19,7 @@ function pay(s,cost){for(const[k,n]of Object.entries(cost)){if(Object.hasOwn(s.b
 function grant(s,reward){for(const[k,n]of Object.entries(reward)){if(Object.hasOwn(s.bag,k))s.bag[k]+=n;else s[k]+=n;}}
 
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));const integer=(v,a,b,f=a)=>Number.isFinite(Number(v))?clamp(Math.floor(Number(v)),a,b):f;
-function newGame(now=Date.now()){return{bag:supplies(),gear:{lili:0,noa:0,mina:0},tactic:'balanced',gatherJob:null,foodTime:0,counts:{gathers:0,cooks:0,gears:0,meals:0,deliveries:0},claimed:[],bestiary:{slime:0,mushroom:0,golem:0},version:1,coins:40,wood:0,crystals:0,upgrades:{fire:1,staff:1,noa:1,mina:1},skills:{double:false,ward:false,bloom:false},highest:0,stage:1,encounter:0,unlocked:{noa:false,mina:false},wagon:0,completed:false,crafted:false,exploring:false,cycles:0,wins:0,defeats:0,rally:100,playtime:0,savedAt:now};}
+function newGame(now=Date.now()){return{story:{choices:{},read:[],bond:{lili:0,noa:0,mina:0}},bag:supplies(),gear:{lili:0,noa:0,mina:0},tactic:'balanced',gatherJob:null,foodTime:0,counts:{gathers:0,cooks:0,gears:0,meals:0,deliveries:0},claimed:[],bestiary:{slime:0,mushroom:0,golem:0},version:1,coins:40,wood:0,crystals:0,upgrades:{fire:1,staff:1,noa:1,mina:1},skills:{double:false,ward:false,bloom:false},highest:0,stage:1,encounter:0,unlocked:{noa:false,mina:false},wagon:0,completed:false,crafted:false,exploring:false,cycles:0,wins:0,defeats:0,rally:100,playtime:0,savedAt:now};}
 function load(raw,now=Date.now()){
  if(!raw||raw.version!==1||!raw.upgrades)return null;const s=newGame(now);
  for(const k of ['coins','wood','crystals','wins','defeats'])s[k]=integer(raw[k],0,9999999);
@@ -34,6 +34,9 @@ function load(raw,now=Date.now()){
  for(const k of Object.keys(s.bestiary))s.bestiary[k]=integer(raw.bestiary?.[k],0,999999);
  s.tactic=Object.hasOwn(TACTICS,raw.tactic)?raw.tactic:'balanced';s.claimed=MISSIONS.filter(m=>Array.isArray(raw.claimed)&&raw.claimed.includes(m.id)).map(m=>m.id);
  s.foodTime=integer(raw.foodTime,0,45);
+ for(const k of ['lost','market','bridge','lantern','gate']){const v=raw.story?.choices?.[k];if(v===0||v===1)s.story.choices[k]=v;}
+ for(const k of Object.keys(HEROES))s.story.bond[k]=integer(raw.story?.bond?.[k],0,6);
+ s.story.read=Array.isArray(raw.story?.read)?[...new Set(raw.story.read.filter(v=>typeof v==='string'&&/^(chapter-[0-5]|bond-(lili|noa|mina)-[123])$/.test(v)))]:[];
  if(raw.gatherJob&&Object.hasOwn(SPOTS,raw.gatherJob.spot)&&s.highest>=SPOTS[raw.gatherJob.spot].need)s.gatherJob={spot:raw.gatherJob.spot,left:integer(raw.gatherJob.left,1,8,8)};
  s.rally=integer(raw.rally,0,100);s.playtime=integer(raw.playtime,0,315360000);s.savedAt=integer(raw.savedAt,0,now,now);return s;
 }
@@ -44,6 +47,7 @@ function stats(s,id){
  else if(id==='noa')st={maxHp:140+(u.noa-1)*28,atk:12+(u.noa-1)*4,heal:0,interval:1.5};
  else st={maxHp:85+(u.mina-1)*16,atk:7+(u.mina-1)*2,heal:18+(u.mina-1)*5,interval:2.25};
  const lv=s.gear[id];st.maxHp+=lv*(id==='lili'?8:id==='noa'?12:10);st.atk+=lv*(id==='noa'?4:id==='lili'?3:0);st.heal+=lv*(id==='mina'?4:0);
+ if(s.story.bond[id]>=6){if(id==='lili')st.atk+=4;else if(id==='noa')st.maxHp+=25;else st.heal+=6;}
  const tactic=s.tactic;st.maxHp=Math.round(st.maxHp*(tactic==='rush'?.85:tactic==='safe'?1.25:1));st.atk*=tactic==='rush'?1.2:tactic==='safe'?.9:1;return st;
 }
 function ids(s){return['lili',...(s.unlocked.noa?['noa']:[]),...(s.unlocked.mina?['mina']:[])];}
@@ -110,5 +114,5 @@ function equip(s,r,id){if(!Object.hasOwn(GEAR,id)||s.gear[id]>=3)return{ok:false
 function setTactic(s,r,key){if(!Object.hasOwn(TACTICS,key)||s.tactic===key)return{ok:false,error:'現在の作戦です。'};const ratios=r.heroes.map(h=>h.hp/h.maxHp);s.tactic=key;sync(s,r);r.heroes.forEach((h,i)=>{h.hp=h.maxHp*ratios[i];h.shield=0;});emit(r,'notice','作戦を「'+TACTICS[key].name+'」に変更しました。');return{ok:true};}
 function claim(s,r,id){const d=MISSIONS.find(m=>m.id===id);if(!d||s.claimed.includes(id)||progressValue(s,d.key)<d.goal)return{ok:false,error:'依頼の条件を達成しよう。'};s.claimed.push(id);grant(s,d.reward);emit(r,'notice','依頼達成「'+d.name+'」！ 報酬を受け取りました。');return{ok:true};}
 function deliver(s,r){const cost={herb:3,berry:3};if(!canPay(s,cost))return{ok:false,error:'薬草3・木の実3を集めよう。'};pay(s,cost);s.coins+=50;s.counts.deliveries++;if(s.counts.deliveries%3===0)s.crystals++;emit(r,'notice','森の配達完了！ コイン50'+(s.counts.deliveries%3===0?'・魔石1':'')+'を受け取りました。');return{ok:true};}
-return{SPOTS,ITEMS,RECIPES,GEAR,TACTICS,MISSIONS,progressValue,canPay,gearCost,gather,cook,useItem,equip,setTactic,claim,deliver,HEROES,UPGRADES,SKILLS,PLACES,ENCOUNTERS,newGame,load,cost,stats,createRun,upgrade,learn,rally,step,renovate,replay,craft,offline};
+return{sync,SPOTS,ITEMS,RECIPES,GEAR,TACTICS,MISSIONS,progressValue,canPay,gearCost,gather,cook,useItem,equip,setTactic,claim,deliver,HEROES,UPGRADES,SKILLS,PLACES,ENCOUNTERS,newGame,load,cost,stats,createRun,upgrade,learn,rally,step,renovate,replay,craft,offline};
 });
