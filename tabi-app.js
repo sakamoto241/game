@@ -60,12 +60,12 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||
  else if(b.hasAttribute('data-ending'))ending();else if(b.hasAttribute('data-close'))close();else if(b.hasAttribute('data-share'))share().catch(()=>toast('画像を作れませんでした。もう一度お試しください。'));
 });
 $('#rally').onclick=()=>{const result=G.rally(s,r);if(result.ok){consume(r.events.filter(e=>e.type==='rally'||e.type==='heal'));save();updateUI();}else toast(result.error);};$('#help').onclick=help;
-const sound=new window.TabiMusic.Player({volume:.7});
+const sound=new window.TabiMusic.Player({volume:.55});
 async function toggleMusic(){
- const button=$('#sound');if(sound.busy)return;sound.busy=true;button.disabled=true;
+ const button=$('#sound');if(sound.busy)return;sound.busy=true;button.disabled=true;button.textContent=sound.on?'BGM OFF':'BGM …';button.setAttribute('aria-busy','true');
  try{if(sound.on)await sound.disable();else await sound.enable();}
  catch(_){await sound.disable().catch(()=>{});toast('このブラウザでは音楽を再生できません。');}
- finally{sound.busy=false;button.disabled=false;button.textContent='BGM '+(sound.on?'ON':'OFF');button.setAttribute('aria-pressed',String(sound.on));button.setAttribute('aria-label','ほのぼのBGMを'+(sound.on?'止める':'再生する'));}
+ finally{sound.busy=false;button.disabled=false;button.setAttribute('aria-busy','false');button.textContent='BGM '+(sound.on?'ON':'OFF');button.setAttribute('aria-pressed',String(sound.on));button.setAttribute('aria-label','ほのぼのBGMを'+(sound.on?'止める':'再生する'));}
 }
 $('#sound').onclick=toggleMusic;
 document.addEventListener('visibilitychange',()=>{if(document.hidden){save();sound.background(true).catch(()=>{});}else{if(running){const reward=G.offline(s);if(reward.coins)toast('おかえりなさい。留守の間にコイン ＋'+reward.coins);save();updateUI();}lastFrame=performance.now();acc=0;sound.background(false).catch(()=>{});}});
