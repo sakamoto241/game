@@ -28,9 +28,11 @@ const BONDS={
  noa:{favorite:'charm',perk:'ノアの最大HP＋25',talks:[['剣士の好きな味',[['ノア','こういうスープ、兄もよく作ってた。具が大きすぎるんだけど。'],['ノア','……これは食べやすいね。もう少し、もらってもいい？']]],['方位磁針の針',[['ノア','兄の方位磁針、少しだけ針がずれてる。だから迷ったんだって、言うつもりだった。'],['ノア','でも本当は、知らない道を見てみたかった。帰ったら、そう話すよ。']]],['前を歩く理由',[['ノア','前を歩くのは、強いからじゃない。後ろの足音が聞こえると、安心するから。'],['ノア','これからも、聞かせてね。二人の足音。']]]]},
  mina:{favorite:'tea',perk:'ミナの回復力＋6',talks:[['苦くない薬草茶',[['ミナ','この葉っぱ、長く煮ると苦くなるの。少し待って、火を止めるのがこつ。'],['ミナ','休むのも同じ。がんばりすぎる前に、ひと息つこうね。']]],['空っぽでも持っていく',[['ミナ','薬箱が空っぽでも、持っていくんだ。いつか、また満たせるように。'],['ミナ','リリの台車も、きっとそうだね。空いているところは、これからの楽しみ。']]],['帰り道のお茶',[['ミナ','村に着いたら、二人を家に呼んでもいい？ いつものお茶をいれたいな。'],['ミナ','特別なことがなくても、一緒に座れる人が増えた。私、それがうれしい。']]]]}
 };
+CHAPTERS.push({id:'chapter-11',need:12,koharu:true,title:'小さな弓と、旅の仲間',hero:'koharu',lines:[['コハル','その馬車、みんなで直したの？ 私も、木の道具を直すのが好きなんだ。'],['リリ','じゃあ、工房を動かす旅に来ない？ まだ、わからないことだらけだけど。'],['コハル','行きたい！ この弓で、みんなの背中を守るよ。'],['ノア','助かる。まずは、この町のおいしいパンを買っていこう。'],['コハル','賛成！ 私、焼きたてのパイも大好きなんだ。']]});
+BONDS.koharu={favorite:'pie',perk:'コハルの攻撃＋4',talks:[['木の鳥の贈り物',[['コハル','この鳥、木の端切れから作ったんだ。手のひらに乗せると、ちょっとかわいいでしょう？'],['リリ','工房の窓辺に、飾ってもいい？'],['コハル','もちろん！ 帰ってきたとき、みんなを迎えてくれるね。']]],['弓を作る理由',[['コハル','遠くへ飛ばすだけなら、大きな弓がいい。でも私は、手になじむ小さな弓が好き。'],['ノア','使う人のことを考えて作るんだね。'],['コハル','うん。その人が、安心して旅をできるように。']]],['次の町で売るもの',[['コハル','工房が動いたら、小さな木の道具を並べたいな。'],['ミナ','私は、お茶をいれるね。'],['リリ','じゃあ私は、看板を描く！'],['コハル','ふふ。お店の支度だけで、もう楽しいね。']]]]};
 function joined(s,id){return id==='lili'||s.unlocked[id];}
 function available(s){return EVENTS.filter(e=>s.highest>=e.need&&!Object.hasOwn(s.story.choices,e.id));}
-function unlockedChapters(s){return CHAPTERS.filter(c=>s.highest>=c.need&&(!c.wagon||s.wagon)&&(!c.town||s.town.visited.includes(c.town))&&(!c.workshop||s.town.workshop));}
+function unlockedChapters(s){return CHAPTERS.filter(c=>s.highest>=c.need&&(!c.koharu||s.unlocked.koharu)&&(!c.wagon||s.wagon)&&(!c.town||s.town.visited.includes(c.town))&&(!c.workshop||s.town.workshop));}
 function conversations(s,id){return BONDS[id].talks.map(([title,lines],i)=>({id:`bond-${id}-${i+1}`,title,lines,hero:id,need:(i+1)*2})).filter(c=>joined(s,id)&&s.story.bond[id]>=c.need);}
 function findScene(s,id){return [...unlockedChapters(s),...Object.keys(BONDS).flatMap(k=>conversations(s,k))].find(c=>c.id===id);}
 function unread(s){return unlockedChapters(s).filter(c=>!s.story.read.includes(c.id)).length+Object.keys(BONDS).flatMap(k=>conversations(s,k)).filter(c=>!s.story.read.includes(c.id)).length;}

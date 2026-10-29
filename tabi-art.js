@@ -1,13 +1,17 @@
 /* Load the storybook sprites and keep their separate alpha silhouettes. */
 (function(){
 'use strict';
-const sprites={},urls={},positions={lili:[340,425,183],noa:[470,425,185],mina:[223,425,167]};
+const weaponURLs={},sprites={},urls={},positions={lili:[340,425,183],noa:[470,425,185],mina:[223,425,167],koharu:[300,425,174]};
 let forest=null;const backgrounds={},backgroundURLs={};const effects=[];const reduced=matchMedia('(prefers-reduced-motion: reduce)');
 const image=src=>new Promise((resolve,reject)=>{const i=new Image();i.onload=()=>resolve(i);i.onerror=reject;i.src=src;});
+function trimSprite(image,l,t,w,h){const c=document.createElement('canvas');c.width=Math.ceil(w);c.height=Math.ceil(h);const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(image,l,t,w,h,0,0,w,h);const pixels=x.getImageData(0,0,c.width,c.height).data;let x0=c.width,y0=c.height,x1=0,y1=0;for(let y=0;y<c.height;y++)for(let a=0;a<c.width;a++)if(pixels[(y*c.width+a)*4+3]>64){x0=Math.min(x0,a);x1=Math.max(x1,a);y0=Math.min(y0,y);y1=Math.max(y1,y);}if(x1<=x0)throw Error('装備の絵を読み込めませんでした。');const sprite=document.createElement('canvas');sprite.width=x1-x0+1;sprite.height=y1-y0+1;sprite.getContext('2d').drawImage(c,x0,y0,sprite.width,sprite.height,0,0,sprite.width,sprite.height);return sprite;}
 async function load(){
- const [atlas,bg,world,monsters]=await Promise.all([image('tabi-simple-atlas.png'),image('tabi-simple-forest.png'),image('tabi-world-atlas.png'),image('tabi-frontier-enemies.png')]);forest=bg;backgrounds.forest=bg;backgroundURLs.forest='tabi-simple-forest.png';
+ const [atlas,bg,world,monsters,koharu,weapons]=await Promise.all([image('tabi-simple-atlas.png'),image('tabi-simple-forest.png'),image('tabi-world-atlas.png'),image('tabi-frontier-enemies.png'),image('tabi-koharu.png'),image('tabi-weapons.png')]);forest=bg;backgrounds.forest=bg;backgroundURLs.forest='tabi-simple-forest.png';
  for(const[id,i]of Object.entries({village:0,fields:1,coast:2,snow:3})){const part=document.createElement('canvas');part.width=world.width/2;part.height=world.height/2;part.getContext('2d').drawImage(world,(i%2)*part.width,Math.floor(i/2)*part.height,part.width,part.height,0,0,part.width,part.height);backgrounds[id]=part;backgroundURLs[id]=part.toDataURL('image/png');}
  loadMonsters(monsters);
+ const hero=trimSprite(koharu,0,0,koharu.width,koharu.height);sprites.koharu=hero;urls.koharu=hero.toDataURL('image/png');
+ const columns=[0,400,770,1140,1536],rows=[0,360,690,1024];for(const[ri,id]of ['lili','noa','mina'].entries())for(const[ci,theme]of ['forest','moon','sea','snow'].entries()){const l=columns[ci]*weapons.width/1536,r=columns[ci+1]*weapons.width/1536,t=rows[ri]*weapons.height/1024,b=rows[ri+1]*weapons.height/1024;weaponURLs[id+'-'+theme]=trimSprite(weapons,l,t,r-l,b-t).toDataURL('image/png');}
+
  const c=document.createElement('canvas');c.width=atlas.width;c.height=atlas.height;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(atlas,0,0);
  const data=x.getImageData(0,0,c.width,c.height),w=c.width,h=c.height,N=w*h,labels=new Int32Array(N),queue=new Int32Array(N),components=[];let label=0;
  for(let i=0;i<N;i++){if(labels[i]||data.data[i*4+3]<=90)continue;label++;let head=0,tail=1,count=0,minX=w,maxX=0,minY=h,maxY=0;queue[0]=i;labels[i]=label;
@@ -37,11 +41,12 @@ function enemyPoint(r,i){const e=r.enemies[i];return[r.enemies.length>1?725+i*14
 function add(events,r){for(const e of events){
  if(e.type==='damage'){const p=e.side==='hero'?positions[e.id]:enemyPoint(r,e.index);if(p)effects.push({type:'number',x:p[0],y:p[1]-p[2]*.85,text:e.amount,color:e.side==='hero'?'#d35f53':'#fff3bd',life:.95});}
  if(e.type==='heal'){const p=positions[e.id];if(p)effects.push({type:'number',x:p[0],y:245,text:'＋'+e.amount,color:'#b0e5aa',life:1.1});}
- if(e.type==='attack'){const a=positions[e.hero],b=enemyPoint(r,e.target);effects.push({type:e.hero==='lili'?'fire':e.hero==='noa'?'slash':'leaf',x:a[0]+20,y:a[1]-90,tx:b[0],ty:b[1]-70,life:.48,double:e.double});}
+ if(e.type==='attack'){const a=positions[e.hero],b=enemyPoint(r,e.target);effects.push({type:e.hero==='lili'?'fire':e.hero==='noa'?'slash':e.hero==='koharu'?'arrow':'leaf',x:a[0]+20,y:a[1]-90,tx:b[0],ty:b[1]-70,life:.48,double:e.double});}
  if(e.type==='upgrade'){const p=positions[e.hero];if(p)effects.push({type:'number',x:p[0],y:180,text:'LEVEL UP',color:'#ffdf8f',life:1.6});}
  }if(effects.length>65)effects.splice(0,effects.length-65);}
 function bar(x,cx,y,value,max,width=100,shield=0){x.fillStyle='#4a453bcc';x.fillRect(cx-width/2-2,y-2,width+4,12);x.fillStyle='#e3d6bb';x.fillRect(cx-width/2,y,width,8);x.fillStyle=value/max<.25?'#d58b79':'#94b482';x.fillRect(cx-width/2,y,width*Math.max(0,value/max),8);if(shield>0){x.fillStyle='#a7d8e5';x.fillRect(cx-width/2,y+9,width*Math.min(1,shield/max),3);}}
 function draw(canvas,s,r,dt=0){
+ if(s.unlocked.koharu)Object.assign(positions,{mina:[198,425,158],koharu:[300,425,173],lili:[410,425,180],noa:[520,425,180]});else Object.assign(positions,{lili:[340,425,183],noa:[470,425,185],mina:[223,425,167]});
  const x=canvas.getContext('2d'),W=960,H=canvas.height,groundShift=(H-530)*.8;x.clearRect(0,0,W,H);x.imageSmoothingEnabled=true;
  if(forest){const pan=reduced.matches?0:Math.sin(r.time*.05)*15,bg=background(s);if(H<=530)x.drawImage(bg,-30+pan,-114,1020,680);else{const height=H*1.18,width=height*bg.width/bg.height;x.drawImage(bg,(W-width)/2+pan,425+groundShift-height*.82,width,height);}}else{x.fillStyle='#dce6c2';x.fillRect(0,0,W,H);}
  x.save();x.translate(0,groundShift);
@@ -64,11 +69,11 @@ function draw(canvas,s,r,dt=0){
  });
  for(let i=effects.length-1;i>=0;i--){const e=effects[i];e.life-=dt;if(e.life<=0){effects.splice(i,1);continue;}x.save();
   if(e.type==='number'){x.globalAlpha=Math.min(1,e.life*3);x.font='bold '+(typeof e.text==='string'&&e.text.length>4?22:32)+'px sans-serif';x.textAlign='center';x.strokeStyle='#62513d';x.lineWidth=4;const y=e.y-(reduced.matches?0:(1-e.life)*30);x.strokeText(String(e.text),e.x,y);x.fillStyle=e.color;x.fillText(String(e.text),e.x,y);}
-  else{const t=1-e.life/.48,cx=e.x+(e.tx-e.x)*t,cy=e.y+(e.ty-e.y)*t;if(e.type==='fire'){for(let k=0;k<(e.double?2:1);k++){const yy=cy+k*23;x.shadowBlur=0;x.fillStyle='#ef9d49';x.beginPath();x.ellipse(cx,yy,22,9,-.2,0,Math.PI*2);x.fill();x.fillStyle='#fff2a9';x.beginPath();x.ellipse(cx+3,yy,10,5,-.2,0,Math.PI*2);x.fill();}}else if(e.type==='slash'){x.strokeStyle='#e7f1fa';x.lineWidth=5;x.beginPath();x.arc(e.tx,e.ty,40,-1.2,1.1);x.stroke();}else{x.fillStyle='#d5eda0';x.beginPath();x.ellipse(cx,cy,10,5,-.5,0,Math.PI*2);x.fill();}}
+  else{const t=1-e.life/.48,cx=e.x+(e.tx-e.x)*t,cy=e.y+(e.ty-e.y)*t;if(e.type==='fire'){for(let k=0;k<(e.double?2:1);k++){const yy=cy+k*23;x.shadowBlur=0;x.fillStyle='#ef9d49';x.beginPath();x.ellipse(cx,yy,22,9,-.2,0,Math.PI*2);x.fill();x.fillStyle='#fff2a9';x.beginPath();x.ellipse(cx+3,yy,10,5,-.2,0,Math.PI*2);x.fill();}}else if(e.type==='slash'){x.strokeStyle='#e7f1fa';x.lineWidth=5;x.beginPath();x.arc(e.tx,e.ty,40,-1.2,1.1);x.stroke();}else if(e.type==='arrow'){x.strokeStyle='#89633d';x.lineWidth=4;x.beginPath();x.moveTo(cx-20,cy);x.lineTo(cx+18,cy);x.stroke();x.fillStyle='#eadbb7';x.beginPath();x.moveTo(cx+25,cy);x.lineTo(cx+12,cy-7);x.lineTo(cx+12,cy+7);x.closePath();x.fill();}else{x.fillStyle='#d5eda0';x.beginPath();x.ellipse(cx,cy,10,5,-.5,0,Math.PI*2);x.fill();}}
   x.restore();
  }
  x.restore();
  if(r.heroBuff>0){x.strokeStyle='#efd99488';x.lineWidth=4;x.strokeRect(5,5,W-10,H-10);}
 }
-window.TabiArt={background,sceneryURL:id=>backgroundURLs[id]||backgroundURLs.forest,load,paint,draw,add,url:id=>urls[id],sprites,enemyPoint};
+window.TabiArt={weaponURL:id=>weaponURLs[id],weaponURLs,background,sceneryURL:id=>backgroundURLs[id]||backgroundURLs.forest,load,paint,draw,add,url:id=>urls[id],sprites,enemyPoint};
 })();
