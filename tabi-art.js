@@ -36,7 +36,17 @@ function loadMonsters(atlas){const c=document.createElement('canvas');c.width=at
  for(const[id,cx,cy]of[['straw',400,280],['mole',1150,300],['crab',400,780],['owl',1130,800]]){parts.sort((a,b)=>Math.hypot((a.minX+a.maxX)/2-cx,(a.minY+a.maxY)/2-cy)-Math.hypot((b.minX+b.maxX)/2-cx,(b.minY+b.maxY)/2-cy));const p=parts.shift(),sprite=document.createElement('canvas'),left=Math.max(0,p.minX-4),top=Math.max(0,p.minY-4);sprite.width=Math.min(w-left,p.maxX-left+5);sprite.height=Math.min(h-top,p.maxY-top+5);sprite.getContext('2d').drawImage(atlas,left,top,sprite.width,sprite.height,0,0,sprite.width,sprite.height);sprites[id]=sprite;urls[id]=sprite.toDataURL('image/png');}
 }
 function background(s){return backgrounds[window.Tabi.scenery(s)]||forest;}
-function paint(x,id,cx,feet,height,alpha=1,angle=0){const s=sprites[id];if(!s)return;const width=height*s.width/s.height;x.save();x.globalAlpha=alpha;x.translate(cx,feet);x.rotate(angle);x.drawImage(s,-width/2,-height,width,height);x.restore();}
+// Large illustrations need filtered intermediate sizes to keep fine lines from aliasing.
+// Cache each half-size once; portraits keep the original full-resolution sprite.
+const spriteLevels=new WeakMap();
+function scaledSprite(sprite,height){
+ let levels=spriteLevels.get(sprite);if(!levels){levels=[sprite];spriteLevels.set(sprite,levels);}
+ let level=0;while(levels[level].height>Math.max(1,height)*2){
+  if(!levels[level+1]){const source=levels[level],small=document.createElement('canvas');small.width=Math.max(1,Math.round(source.width/2));small.height=Math.max(1,Math.round(source.height/2));const ctx=small.getContext('2d');ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(source,0,0,small.width,small.height);levels.push(small);}
+  level++;
+ }return levels[level];
+}
+function paint(x,id,cx,feet,height,alpha=1,angle=0){const s=sprites[id];if(!s)return;const width=height*s.width/s.height,transform=x.getTransform(),scale=Math.max(Math.hypot(transform.a,transform.b),Math.hypot(transform.c,transform.d)),source=scaledSprite(s,height*scale);x.save();x.imageSmoothingEnabled=true;x.imageSmoothingQuality='high';x.globalAlpha=alpha;x.translate(cx,feet);x.rotate(angle);x.drawImage(source,-width/2,-height,width,height);x.restore();}
 function enemyPoint(r,i){const e=r.enemies[i];return[r.enemies.length>1?725+i*145:e?.boss?765:780,428,e?.boss?(e.id==='golem'?255:225):e?.id==='golem'?155:e?.id==='straw'?145:e?.id==='slime'?115:130];}
 function add(events,r){for(const e of events){
  if(e.type==='damage'){const p=e.side==='hero'?positions[e.id]:enemyPoint(r,e.index);if(p)effects.push({type:'number',x:p[0],y:p[1]-p[2]*.85,text:e.amount,color:e.side==='hero'?'#d35f53':'#fff3bd',life:.95});}
