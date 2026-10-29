@@ -1,16 +1,17 @@
 /* Load the storybook sprites and keep their separate alpha silhouettes. */
 (function(){
 'use strict';
-const weaponURLs={},sprites={},urls={},positions={lili:[340,425,183],noa:[470,425,185],mina:[223,425,167],koharu:[300,425,174]};
+const weaponURLs={},weaponSprites={},battlers={},equippedSprites=new Map(),sprites={},urls={},positions={lili:[340,425,183],noa:[470,425,185],mina:[223,425,167],koharu:[300,425,174]};
 let forest=null;const backgrounds={},backgroundURLs={};const effects=[];const reduced=matchMedia('(prefers-reduced-motion: reduce)');
 const image=src=>new Promise((resolve,reject)=>{const i=new Image();i.onload=()=>resolve(i);i.onerror=reject;i.src=src;});
 function trimSprite(image,l,t,w,h){const c=document.createElement('canvas');c.width=Math.ceil(w);c.height=Math.ceil(h);const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(image,l,t,w,h,0,0,w,h);const pixels=x.getImageData(0,0,c.width,c.height).data;let x0=c.width,y0=c.height,x1=0,y1=0;for(let y=0;y<c.height;y++)for(let a=0;a<c.width;a++)if(pixels[(y*c.width+a)*4+3]>64){x0=Math.min(x0,a);x1=Math.max(x1,a);y0=Math.min(y0,y);y1=Math.max(y1,y);}if(x1<=x0)throw Error('装備の絵を読み込めませんでした。');const sprite=document.createElement('canvas');sprite.width=x1-x0+1;sprite.height=y1-y0+1;sprite.getContext('2d').drawImage(c,x0,y0,sprite.width,sprite.height,0,0,sprite.width,sprite.height);return sprite;}
 async function load(){
- const [atlas,bg,world,monsters,koharu,weapons]=await Promise.all([image('tabi-simple-atlas.png'),image('tabi-simple-forest.png'),image('tabi-world-atlas.png'),image('tabi-frontier-enemies.png'),image('tabi-koharu.png'),image('tabi-weapons.png')]);forest=bg;backgrounds.forest=bg;backgroundURLs.forest='tabi-simple-forest.png';
+ const [atlas,bg,world,monsters,koharu,weapons,bodies]=await Promise.all([image('tabi-simple-atlas.png'),image('tabi-simple-forest.png'),image('tabi-world-atlas.png'),image('tabi-frontier-enemies.png'),image('tabi-koharu.png'),image('tabi-weapons.png'),image('tabi-battle-bodies.png')]);forest=bg;backgrounds.forest=bg;backgroundURLs.forest='tabi-simple-forest.png';
  for(const[id,i]of Object.entries({village:0,fields:1,coast:2,snow:3})){const part=document.createElement('canvas');part.width=world.width/2;part.height=world.height/2;part.getContext('2d').drawImage(world,(i%2)*part.width,Math.floor(i/2)*part.height,part.width,part.height,0,0,part.width,part.height);backgrounds[id]=part;backgroundURLs[id]=part.toDataURL('image/png');}
  loadMonsters(monsters);
  const hero=trimSprite(koharu,0,0,koharu.width,koharu.height);sprites.koharu=hero;urls.koharu=hero.toDataURL('image/png');
- const columns=[0,400,770,1140,1536],rows=[0,360,690,1024];for(const[ri,id]of ['lili','noa','mina'].entries())for(const[ci,theme]of ['forest','moon','sea','snow'].entries()){const l=columns[ci]*weapons.width/1536,r=columns[ci+1]*weapons.width/1536,t=rows[ri]*weapons.height/1024,b=rows[ri+1]*weapons.height/1024;weaponURLs[id+'-'+theme]=trimSprite(weapons,l,t,r-l,b-t).toDataURL('image/png');}
+ const columns=[0,400,770,1140,1536],rows=[0,360,690,1024];for(const[ri,id]of ['lili','noa','mina'].entries())for(const[ci,theme]of ['forest','moon','sea','snow'].entries()){const l=columns[ci]*weapons.width/1536,r=columns[ci+1]*weapons.width/1536,t=rows[ri]*weapons.height/1024,b=rows[ri+1]*weapons.height/1024,key=id+'-'+theme;weaponSprites[key]=trimSprite(weapons,l,t,r-l,b-t);weaponURLs[key]=weaponSprites[key].toDataURL('image/png');}
+ loadBattlers(bodies);
 
  const c=document.createElement('canvas');c.width=atlas.width;c.height=atlas.height;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(atlas,0,0);
  const data=x.getImageData(0,0,c.width,c.height),w=c.width,h=c.height,N=w*h,labels=new Int32Array(N),queue=new Int32Array(N),components=[];let label=0;
@@ -36,6 +37,22 @@ function loadMonsters(atlas){const c=document.createElement('canvas');c.width=at
  for(const[id,cx,cy]of[['straw',400,280],['mole',1150,300],['crab',400,780],['owl',1130,800]]){parts.sort((a,b)=>Math.hypot((a.minX+a.maxX)/2-cx,(a.minY+a.maxY)/2-cy)-Math.hypot((b.minX+b.maxX)/2-cx,(b.minY+b.maxY)/2-cy));const p=parts.shift(),sprite=document.createElement('canvas'),left=Math.max(0,p.minX-4),top=Math.max(0,p.minY-4);sprite.width=Math.min(w-left,p.maxX-left+5);sprite.height=Math.min(h-top,p.maxY-top+5);sprite.getContext('2d').drawImage(atlas,left,top,sprite.width,sprite.height,0,0,sprite.width,sprite.height);sprites[id]=sprite;urls[id]=sprite.toDataURL('image/png');}
 }
 function background(s){return backgrounds[window.Tabi.scenery(s)]||forest;}
+function loadBattlers(atlas){
+ const c=document.createElement('canvas');c.width=atlas.width;c.height=atlas.height;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(atlas,0,0);const w=c.width,h=c.height,data=x.getImageData(0,0,w,h).data,labels=new Int32Array(w*h),queue=new Int32Array(w*h),parts=[];let label=0;
+ for(let start=0;start<w*h;start++){if(labels[start]||data[start*4+3]<=90)continue;label++;let head=0,tail=1,minX=w,minY=h,maxX=0,maxY=0;queue[0]=start;labels[start]=label;while(head<tail){const k=queue[head++],a=k%w,b=Math.floor(k/w);minX=Math.min(minX,a);maxX=Math.max(maxX,a);minY=Math.min(minY,b);maxY=Math.max(maxY,b);for(const j of[a>0?k-1:-1,a<w-1?k+1:-1,b>0?k-w:-1,b<h-1?k+w:-1])if(j>=0&&!labels[j]&&data[j*4+3]>90){labels[j]=label;queue[tail++]=j;}}if(tail>8000)parts.push({label,minX,minY,maxX,maxY});}
+ if(parts.length!==3)throw Error('着せ替え用の仲間の絵を読み込めませんでした。');
+ let expanded=labels;for(let pass=0;pass<3;pass++){const next=new Int32Array(expanded);for(let y=1;y<h-1;y++)for(let a=1;a<w-1;a++){const i=y*w+a;if(!next[i])next[i]=expanded[i-1]||expanded[i+1]||expanded[i-w]||expanded[i+w];}expanded=next;}
+ const grips={lili:[445,502],noa:[976,536],mina:[1480,532]};parts.sort((a,b)=>a.minX-b.minX).forEach((part,i)=>{const id=['lili','noa','mina'][i],left=Math.max(0,part.minX-4),top=Math.max(0,part.minY-4),body=document.createElement('canvas');body.width=Math.min(w-left,part.maxX-left+5);body.height=Math.min(h-top,part.maxY-top+5);const ctx=body.getContext('2d'),out=ctx.createImageData(body.width,body.height);for(let y=0;y<body.height;y++)for(let a=0;a<body.width;a++){const src=(top+y)*w+left+a;if(expanded[src]===part.label)for(let k=0;k<4;k++)out.data[(y*body.width+a)*4+k]=data[src*4+k];}ctx.putImageData(out,0,0);battlers[id]={body,grip:[grips[id][0]*w/1536-left,grips[id][1]*h/1024-top]};});
+}
+const weaponGrips={lili:{forest:[.235,.69],moon:[.26,.68],sea:[.20,.70],snow:[.215,.70]},noa:{forest:[.17,.79],moon:[.18,.79],sea:[.15,.80],snow:[.17,.79]},mina:{forest:[.25,.85],moon:[.25,.85],sea:[.25,.85],snow:[.25,.85]}};
+function equippedSprite(s,id){
+ const part=battlers[id],theme=s.armory?.equipped?.[id]||'forest',key=id+'-'+theme,weapon=weaponSprites[key];if(!part||!weapon)return null;if(equippedSprites.has(key))return equippedSprites.get(key);
+ const {body,grip}=part,ratio=body.height*(id==='mina'?.37:id==='lili'?.72:.65)/weapon.height,ww=weapon.width*ratio,wh=weapon.height*ratio,[gx,gy]=weaponGrips[id][theme],wx=grip[0]-ww*gx,wy=grip[1]-wh*gy,left=Math.floor(Math.min(0,wx)-3),top=Math.floor(Math.min(0,wy)-3),c=document.createElement('canvas');c.width=Math.ceil(Math.max(body.width,wx+ww)-left+3);c.height=Math.ceil(Math.max(body.height,wy+wh)-top+3);const x=c.getContext('2d');x.imageSmoothingEnabled=true;x.imageSmoothingQuality='high';
+ x.drawImage(body,-left,-top);x.drawImage(weapon,wx-left,wy-top,ww,wh);
+ // Put the closed hand back over the handle so the weapon reads as held.
+ if(id!=='mina'){const r=body.height*(id==='lili'?.025:.033);x.save();x.beginPath();x.ellipse(grip[0]-left,grip[1]-top,r,r*1.1,-.2,0,Math.PI*2);x.clip();x.drawImage(body,-left,-top);x.restore();}
+ const result={sprite:c,bodyWidth:body.width,bodyHeight:body.height,left,top};equippedSprites.set(key,result);return result;
+}
 // Large illustrations need filtered intermediate sizes to keep fine lines from aliasing.
 // Cache each half-size once; portraits keep the original full-resolution sprite.
 const spriteLevels=new WeakMap();
@@ -47,6 +64,7 @@ function scaledSprite(sprite,height){
  }return levels[level];
 }
 function paint(x,id,cx,feet,height,alpha=1,angle=0){const s=sprites[id];if(!s)return;const width=height*s.width/s.height,transform=x.getTransform(),scale=Math.max(Math.hypot(transform.a,transform.b),Math.hypot(transform.c,transform.d)),source=scaledSprite(s,height*scale);x.save();x.imageSmoothingEnabled=true;x.imageSmoothingQuality='high';x.globalAlpha=alpha;x.translate(cx,feet);x.rotate(angle);x.drawImage(source,-width/2,-height,width,height);x.restore();}
+function paintHero(x,s,id,cx,feet,height,alpha=1,angle=0){const item=equippedSprite(s,id);if(!item){paint(x,id,cx,feet,height,alpha,angle);return;}const k=height/item.bodyHeight,transform=x.getTransform(),scale=Math.max(Math.hypot(transform.a,transform.b),Math.hypot(transform.c,transform.d)),source=scaledSprite(item.sprite,item.sprite.height*k*scale);x.save();x.imageSmoothingEnabled=true;x.imageSmoothingQuality='high';x.globalAlpha=alpha;x.translate(cx,feet);x.rotate(angle);x.drawImage(source,(item.left-item.bodyWidth/2)*k,(item.top-item.bodyHeight)*k,item.sprite.width*k,item.sprite.height*k);x.restore();}
 function enemyPoint(r,i){const e=r.enemies[i];return[r.enemies.length>1?725+i*145:e?.boss?765:780,428,e?.boss?(e.id==='golem'?255:225):e?.id==='golem'?155:e?.id==='straw'?145:e?.id==='slime'?115:130];}
 function add(events,r){for(const e of events){
  if(e.type==='damage'){const p=e.side==='hero'?positions[e.id]:enemyPoint(r,e.index);if(p)effects.push({type:'number',x:p[0],y:p[1]-p[2]*.85,text:e.amount,color:e.side==='hero'?'#d35f53':'#fff3bd',life:.95});}
@@ -56,7 +74,7 @@ function add(events,r){for(const e of events){
  }if(effects.length>65)effects.splice(0,effects.length-65);}
 function bar(x,cx,y,value,max,width=100,shield=0){x.fillStyle='#4a453bcc';x.fillRect(cx-width/2-2,y-2,width+4,12);x.fillStyle='#e3d6bb';x.fillRect(cx-width/2,y,width,8);x.fillStyle=value/max<.25?'#d58b79':'#94b482';x.fillRect(cx-width/2,y,width*Math.max(0,value/max),8);if(shield>0){x.fillStyle='#a7d8e5';x.fillRect(cx-width/2,y+9,width*Math.min(1,shield/max),3);}}
 function draw(canvas,s,r,dt=0){
- if(s.unlocked.koharu)Object.assign(positions,{mina:[198,425,158],koharu:[300,425,173],lili:[410,425,180],noa:[520,425,180]});else Object.assign(positions,{lili:[340,425,183],noa:[470,425,185],mina:[223,425,167]});
+ if(s.unlocked.koharu)Object.assign(positions,{mina:[185,425,158],koharu:[290,425,173],lili:[400,425,180],noa:[550,425,180]});else Object.assign(positions,{lili:[340,425,183],noa:[500,425,185],mina:[205,425,167]});
  const x=canvas.getContext('2d'),W=960,H=canvas.height,groundShift=(H-530)*.8;x.clearRect(0,0,W,H);x.imageSmoothingEnabled=true;
  if(forest){const pan=reduced.matches?0:Math.sin(r.time*.05)*15,bg=background(s);if(H<=530)x.drawImage(bg,-30+pan,-114,1020,680);else{const height=H*1.18,width=height*bg.width/bg.height;x.drawImage(bg,(W-width)/2+pan,425+groundShift-height*.82,width,height);}}else{x.fillStyle='#dce6c2';x.fillRect(0,0,W,H);}
  x.save();x.translate(0,groundShift);
@@ -67,9 +85,7 @@ function draw(canvas,s,r,dt=0){
   const p=positions[h.id],hop=reduced.matches?0:move?Math.sin(r.time*9+p[0])*-4:Math.sin(r.time*2+p[0])*-1.5,lunge=!rest&&h.pose>0&&!reduced.matches?Math.sin(h.pose/.36*Math.PI)*15:0;
   x.fillStyle='#4b503b25';x.beginPath();x.ellipse(p[0],430,p[2]*.25,8,0,0,Math.PI*2);x.fill();
   if(h.shield>0&&h.hp>0){x.save();x.fillStyle='#c8e9d92a';x.strokeStyle='#d5f2ebaa';x.lineWidth=3;x.beginPath();x.ellipse(p[0],p[1]-p[2]*.46,p[2]*.39,p[2]*.56,0,0,Math.PI*2);x.fill();x.stroke();x.restore();}
-  paint(x,h.id,p[0]+lunge,p[1]+hop,p[2],h.hp<=0?.38:1,rest&&h.hp>0?-.025:0);
-  if(h.id==='lili'&&s.crafted){x.save();x.translate(p[0]+57+lunge,p[1]-118+hop);x.fillStyle='#fff9d9';for(let k=0;k<5;k++){x.rotate(Math.PI*2/5);x.beginPath();x.ellipse(0,-7,3,6,0,0,Math.PI*2);x.fill();}x.fillStyle='#e6bc66';x.beginPath();x.arc(0,0,4,0,Math.PI*2);x.fill();x.restore();}
-  const gear=s.gear[h.id]||0;if(gear>0&&(h.id!=='lili'||!s.crafted)){x.save();x.translate(p[0]+(h.id==='noa'?48:45)+lunge,p[1]-115+hop);if(gear>=3){x.fillStyle='#f5e3a3';x.beginPath();x.arc(0,0,10,.6,Math.PI*1.8);x.arc(4,-3,8,Math.PI*1.8,.6,true);x.closePath();x.fill();}else{for(let i=0;i<5;i++){x.rotate(Math.PI*2/5);x.fillStyle='#fff7e3';x.beginPath();x.ellipse(0,-6,3,5,0,0,Math.PI*2);x.fill();}x.fillStyle='#d6ad63';x.beginPath();x.arc(0,0,3,0,Math.PI*2);x.fill();}x.restore();}
+  paintHero(x,s,h.id,p[0]+lunge,p[1]+hop,p[2],h.hp<=0?.38:1,rest&&h.hp>0?-.025:0);
   if(!rest){bar(x,p[0],p[1]-p[2]-22,h.hp,h.maxHp,92,h.shield);x.font='bold 17px sans-serif';x.textAlign='center';x.fillStyle='#fff8e8';x.strokeStyle='#504a3c';x.lineWidth=3;x.strokeText(window.Tabi.HEROES[h.id].name,p[0],p[1]+24);x.fillText(window.Tabi.HEROES[h.id].name,p[0],p[1]+24);}
  }
  if(r.mode==='town'){const id=s.townId==='port'?'crab':s.townId==='mill'?'straw':'mole';paint(x,id,780,425,145);x.font='bold 17px sans-serif';x.textAlign='center';x.fillStyle='#fff9e8';x.fillRect(673,240,215,33);x.fillStyle='#6b7759';x.fillText('タップで道具屋へ',780,263);}
@@ -85,5 +101,5 @@ function draw(canvas,s,r,dt=0){
  x.restore();
  if(r.heroBuff>0){x.strokeStyle='#efd99488';x.lineWidth=4;x.strokeRect(5,5,W-10,H-10);}
 }
-window.TabiArt={weaponURL:id=>weaponURLs[id],weaponURLs,background,sceneryURL:id=>backgroundURLs[id]||backgroundURLs.forest,load,paint,draw,add,url:id=>urls[id],sprites,enemyPoint};
+window.TabiArt={weaponURL:id=>weaponURLs[id],weaponURLs,background,sceneryURL:id=>backgroundURLs[id]||backgroundURLs.forest,load,paint,paintHero,draw,add,url:id=>urls[id],sprites,enemyPoint};
 })();
