@@ -1,0 +1,24 @@
+ちいさな魔女の旅じたく｜20秒 縦型PV
+
+投稿文案：
+戦うのは、この子たち。育てるのは、あなた。
+小さな魔女と仲間の、帰る場所をつくるブラウザRPG。
+選ぶおまもりで、戦い方が変わります。
+無料・登録不要。スマホで遊べます。
+https://sakamoto241.github.io/game/tabi.html
+#ちいさな魔女の旅じたく #ブラウザゲーム #個人開発
+
+映像について：
+ゲームの2Dイラストを動かす演出と、実際のゲーム画面の録画を組み合わせたPVです。
+声のナレーションはありません。画面内に字幕を入れています。
+
+音楽クレジット：
+BGM「森でひと休み」は、録音されたピアノ・アコースティックギターのサンプルを使った編曲音源です。
+使用音源：tonejs-instruments / N. P. Brosowsky
+https://github.com/nbrosowsky/tonejs-instruments
+ライセンス：Creative Commons Attribution 3.0 Unported（CC BY 3.0）
+https://creativecommons.org/licenses/by/3.0/
+録音素材をトリミングし、音量・定位・演奏タイミングを調整して編曲・ミックスしています。
+PV用に音量調整とフェードを加えています。
+ゲーム内のクレジット：
+https://sakamoto241.github.io/game/tabi-audio-credits.html
