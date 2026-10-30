@@ -1,8 +1,10 @@
 /* Story, branching encounters and companion conversations. No network or random rewards. */
 (function(root,factory){if(typeof module==='object'&&module.exports)module.exports=factory(require('./tabi-core.js'));else root.TabiStory=factory(root.Tabi);})(typeof globalThis!=='undefined'?globalThis:this,function(G){
 'use strict';
+const LETTER={to:'リリへ',from:'おばあちゃんより',paragraphs:['倉庫の手押し車と、古い工房の設計図をあなたに預けます。','まずは森を抜けて、こむぎの町へ。','疲れたら、お茶を淹れてひと休み。','帰る場所は、少しずつ作っていけばいいのです。']};
+LETTER.text=[LETTER.to,...LETTER.paragraphs,LETTER.from].join('\n\n');
 const CHAPTERS=[
- {id:'chapter-0',need:0,title:'おばあちゃんの置き手紙',hero:'lili',lines:[['リリ','「直せたら、好きなところへ行きなさい」……おばあちゃんらしいなあ。'],['リリ','屋根も車輪も、ばらばら。……いま動くのは、この小さな台車だけかあ。'],['リリ','まずは雨をしのげる屋根をつけよう。朝つゆの森なら、丈夫な木が見つかるはず。'],['リリ','「帰る場所は、つくれる」……うん。この設計図、私がつづきを描くね。']]},
+ {id:'chapter-0',need:0,title:'おばあちゃんの置き手紙',hero:'lili',lines:[['おばあちゃん',LETTER.text],['リリ','……よし。まずはこの車に、屋根をつけよう！'],['リリ','朝つゆの森なら、丈夫な木が見つかるはず。雨をしのげる屋根ができたら、こむぎの町へ出発できるね。'],['リリ','「帰る場所は、つくれる」……うん。この設計図、私がつづきを描くね。']]},
  {id:'chapter-1',need:3,title:'剣士が探しているもの',hero:'noa',lines:[['ノア','その設計図……この印、知ってる。昔、私の村に来た工房と同じだ。'],['リリ','おばあちゃんの工房かも！ ノアは、何を探してるの？'],['ノア','兄に借りた方位磁針。森の奥に落としてしまって。……帰るに帰れなくて。'],['リリ','じゃあ、一緒に探そう。屋根ができたら、休む場所も半分こね。'],['ノア','まだ屋根もないのに。……うん、その約束、覚えておく。']]},
  {id:'chapter-2',need:6,title:'空っぽの薬箱',hero:'mina',lines:[['ミナ','守り人が暴れてから、村へ薬を届ける道が閉じてしまったの。'],['リリ','その薬箱、もう空っぽだね。'],['ミナ','道で会う人に渡していたら。でも、待ってる人がいるから、戻りたい。'],['ノア','私たちも森の奥へ行く。三人なら、道を開けられるかもしれない。'],['ミナ','ありがとう。お礼に、おいしい薬草茶をいれるね。苦くないのも、作れるんだよ。']]},
  {id:'chapter-3',need:10,title:'設計図の裏がわ',hero:'lili',lines:[['リリ','工房を直したら、どこへ行こう。まだ、何も決めてないんだ。'],['ノア','最初から行き先がなくても、いいと思う。'],['ミナ','薬を届けに、私の村へ寄らない？ あったかいパン屋さんがあるの。'],['リリ','じゃあ、設計図の裏に書いちゃおう。「帰りに、三人でパンを買う」っと！']]},
@@ -68,5 +70,5 @@ function script(s,session){
 }
 function milestones(s,from){return [...unlockedChapters(s).filter(c=>c.need>from&&!s.story.read.includes(c.id)).map(c=>({kind:'scene',id:c.id,index:0})),...available(s).filter(e=>e.need>from).map(e=>({kind:'event',id:e.id,index:0}))];}
 const NPCS={'薬屋のサナ':{art:'mole'},'水車番のトト':{art:'straw'},'灯台守のルカ':{art:'crab'}};
-return{NPCS,script,milestones,CHAPTERS,EVENTS,BONDS,joined,available,unlockedChapters,conversations,findScene,unread,markRead,choose,gift};
+return{LETTER,NPCS,script,milestones,CHAPTERS,EVENTS,BONDS,joined,available,unlockedChapters,conversations,findScene,unread,markRead,choose,gift};
 });

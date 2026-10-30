@@ -87,7 +87,7 @@ function updateTown(){
 }
 function sceneButton(c){return `<button class="scene-link" data-scene="${c.id}"><span>${s.story.read.includes(c.id)?'読了':'未読'}</span><b>${c.title}</b><i aria-hidden="true">›</i></button>`;}
 function renderStory(){
- const pending=S.available(s),chapters=S.unlockedChapters(s);let html=`<div class="story-intro"><span class="eyebrow">仲間と、ひと休み</span><h2>今日は、何を話そう？</h2><p>会話は冒険の途中で始まります。<br>好物を作って贈ると、二人だけの話も。</p>${s.story.active?'<button class="primary" data-talk-prompt>会話のつづきへ →</button>':''}</div>`;
+ const pending=S.available(s),chapters=S.unlockedChapters(s);let html=`<div class="story-intro"><span class="eyebrow">仲間と、ひと休み</span><h2>今日は、何を話そう？</h2><p>会話は冒険の途中で始まります。<br>好物を作って贈ると、二人だけの話も。</p><button class="secondary letter-memory-button" data-letter-memory>おばあちゃんの手紙を読む</button>${s.story.active?'<button class="primary" data-talk-prompt>会話のつづきへ →</button>':''}</div>`;
  for(const[id,d]of Object.entries(S.BONDS)){
   const joined=S.joined(s,id),hearts=s.story.bond[id],convos=S.conversations(s,id);html+=`<article class="bond-card"><div class="bond-top">${joined?art(id):'<span class="bond-unknown">？</span>'}<div><h3>${joined?G.HEROES[id].name:'まだ見ぬ旅の仲間'}</h3><p>${joined?'好物：'+G.ITEMS[d.favorite]:id==='koharu'?'こむぎの町で出会えます。':'森の道を'+(id==='noa'?3:6)+'つ進むと出会えます。'}</p><span class="bond-hearts" aria-label="絆 ${Math.floor(hearts/2)} / 3">${Array.from({length:3},(_,i)=>`<i class="${hearts>=(i+1)*2?'filled':''}">♥</i>`).join('')}</span></div></div>${joined?`<button class="secondary gift-button" data-gift="${id}" ${hearts>=6||s.bag[d.favorite]<1?'disabled':''}>${hearts>=6?'心が通う旅の仲間':G.ITEMS[d.favorite]+'を贈って話す'} <small>所持 <b data-bag="${d.favorite}">${s.bag[d.favorite]}</b></small></button><small class="bond-perk">絆3：${d.perk}${hearts>=6?'（発動中）':''}</small>${convos.filter(c=>!s.story.read.includes(c.id)).map(sceneButton).join('')}`:''}</article>`;
  }
@@ -110,16 +110,17 @@ function showEvent(id){beginTalk({kind:'event',id,index:0});}
 function storyResult(e){memoryReplay=modal.open&&!!$('#modal-content .memory-list');beginTalk({kind:'result',id:e.id,index:0});}
 function paintTalk(){
  const lines=S.script(s,talk),isChoice=talk.kind==='event'&&talk.index===lines.length,[name,line]=lines[Math.min(talk.index,lines.length-1)];
+ const isLetter=talk.kind==='scene'&&talk.id==='chapter-0'&&talk.index===0;conversation.classList.toggle('is-letter',isLetter);$('#grandma-letter').hidden=!isLetter;if(isLetter){$('#letter-to').textContent=S.LETTER.to;$('#letter-from').textContent=S.LETTER.from;$('#letter-copy').replaceChildren(...S.LETTER.paragraphs.map(text=>{const p=document.createElement('p');p.textContent=text;return p;}));}
  const scene=talk.kind==='scene'?S.findScene(s,talk.id):S.EVENTS.find(e=>e.id===talk.id);$('#talk-title').textContent=scene.title;$('#talk-speaker').textContent=name;
  const portrait=name=>Object.keys(G.HEROES).find(id=>G.HEROES[id].name===name)||S.NPCS[name]?.art,speakerId=portrait(name),speakers=[...new Set(lines.map(([n])=>portrait(n)).filter(Boolean))];
  $('#talk-face').innerHTML=speakerId?art(speakerId):'';
  const sceneBG=scene.town?G.TOWNS[scene.town].bg:talk.kind==='scene'&&scene.need>12?(G.REGIONS.find(d=>scene.need>=d.start&&scene.need<=d.end)?.bg||G.scenery(s)):talk.id.startsWith('bond-')?G.scenery(s):'forest';$('.talk-stage').style.backgroundImage='url("'+A.sceneryURL(sceneBG)+'")';
  $('#talk-cast').innerHTML=speakers.slice(0,3).map((id,i)=>`<div class="cast-member ${id===speakerId?'speaking':''} ${speakers.length===1?'solo':''}" style="--cast-order:${i}">${art(id)}</div>`).join('');
- talkChars=Array.from(line);talkVisible=isChoice?talkChars.length:0;talkElapsed=0;$('#talk-text').textContent=isChoice?line:'';$('#talk-next').disabled=isChoice;$('#talk-next').setAttribute('aria-busy',String(!isChoice));$('#talk-next').setAttribute('aria-label',name+'：'+line+'。タップで次へ');$('#talk-hint').textContent=isChoice?'どうする？':'タップで全文表示';
+ talkChars=Array.from(line);talkVisible=isChoice||isLetter?talkChars.length:0;talkElapsed=0;$('#talk-text').textContent=isChoice||isLetter?line:'';$('#talk-next').disabled=isChoice;$('#talk-next').setAttribute('aria-busy',String(!isChoice&&!isLetter));$('#talk-next').setAttribute('aria-label',isLetter?'手紙をしまって、リリの旅へ':name+'：'+line+'。タップで次へ');$('#talk-hint').textContent=isLetter?'手紙をしまって、旅へ　›':isChoice?'どうする？':'タップで全文表示';
  if(!isChoice)talkLog.push([name,line]);renderTalkLog();
  $('#talk-choices').hidden=!isChoice;$('#talk-choices').innerHTML=isChoice?scene.options.map((d,i)=>`<button data-story-choice="${scene.id}" data-option="${i}" ${d.cost&&!G.canPay(s,d.cost)?'disabled':''}><b>${d.label}</b><small>${d.detail}</small></button>`).join(''):'';
  $('#talk-receipt').hidden=talk.kind!=='result';$('#talk-receipt').textContent=talk.kind==='result'?scene.options[s.story.choices[scene.id]].detail:'';
- s.story.active={...talk};save();$('.talk-window').scrollTop=0;
+ s.story.active={...talk};save();$('.talk-window').scrollTop=0;$('.talk-stage').scrollTop=0;
 }
 function renderTalkLog(){const log=$('#talk-log');log.replaceChildren();for(const[name,line]of talkLog){const p=document.createElement('p'),b=document.createElement('b'),span=document.createElement('span');b.textContent=name;span.textContent=line;p.append(b,span);log.append(p);}log.scrollTop=log.scrollHeight;}
 function typeTalk(dt){if(!talk||talkVisible>=talkChars.length||!$('#talk-log').hidden)return;talkElapsed+=dt;const n=Math.min(talkChars.length,Math.floor(talkElapsed/.025));if(n<=talkVisible)return;talkVisible=n;$('#talk-text').textContent=talkChars.slice(0,n).join('');if(n===talkChars.length){$('#talk-hint').textContent='タップでつづく ▾';$('#talk-next').setAttribute('aria-busy','false');}}
@@ -207,6 +208,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||
  else if(b.hasAttribute('data-reset-charms')){r.events=[];const result=G.resetCharms(s,r);if(result.ok){save();renderPanel();showCharms();}else toast(result.error);}
  else if(b.dataset.weaponHero){equipmentHero=b.dataset.weaponHero;renderPanel();}
  else if(b.dataset.forgeWeapon||b.dataset.selectWeapon||b.hasAttribute('data-recruit-koharu')){r.events=[];const result=b.dataset.forgeWeapon?G.forgeWeapon(s,r,b.dataset.forgeWeapon):b.dataset.selectWeapon?G.selectWeapon(s,r,b.dataset.selectWeapon):G.recruitKoharu(s,r);if(result.ok){consume(r.events);save();renderPanel();if(b.hasAttribute('data-recruit-koharu')){autoTalksAllowed=true;queueTalk({kind:'scene',id:'chapter-11',index:0});}else toast(r.events.at(-1)?.text||'装備を更新しました。');}else toast(result.error);}
+ else if(b.hasAttribute('data-letter-memory')){showMemories();showScene('chapter-0');}
  else if(b.hasAttribute('data-memories'))showMemories();
  else if(b.dataset.section){const group=b.dataset.section;if(group==='town'&&s.wagon&&s.location!=='town'){enterTown();return;}tab=group==='town'?'town':SECTIONS[group][0][0];renderPanel();}
  else if(b.dataset.bagUse){r.events=[];const result=G.useItem(s,r,b.dataset.bagUse);if(result.ok){consume(r.events);save();renderPanel();toast(r.events.at(-1)?.text||'道具を使いました。');}else toast(result.error);}
