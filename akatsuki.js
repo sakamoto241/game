@@ -6,6 +6,7 @@ let returnState=null, growthReturn='fight',activeBranch='刃',storageWarned=fals
 const held=new Set(), taps={}, sprite=new Image(),bg=new Image();let bgReady=false;
 // Props sheet: lamppost, wall lantern, bench, shrine / lighthouse, arch, lit forge, cold forge.
 const props=new Image(),propRects=[[0,0,232,381],[236,0,225,286],[465,0,378,194],[847,0,334,369],[0,385,273,376],[277,385,386,341],[667,385,375,377],[1046,385,336,377]];let propsReady=false;
+const SCENE_END_MARGIN=150;
 const rects=[[0,130,380,340],[385,130,383,340],[770,70,380,400],[1154,200,382,270],[0,700,380,275],[385,570,375,400],[768,500,384,480],[1153,585,380,390]];
 const portraits={少女:0,エマ:0,'ランタンの声':4,パン屋のマルタ:7,'灯守のなれはて':6,黒猫:4,手記:0};
 const m=n=>memories.includes(n), lostNames=()=>memories.map(x=>x==='mother'?'母の顔':'弟の名前');
@@ -62,22 +63,23 @@ function updateTrial(){const target=nextTrial();$('trial-description').textConte
 $('trial-enter').onclick=()=>{if(s.trial){$('journal').close();returnFromTrial(false);return;}const target=nextTrial();if(target===undefined)return;$('journal').close();showLines([L('手記',target?'橋の下に、名を呼ばれなくなった番人がいる。\n通り過ぎることもできる。それでも、黒猫は足を止めた。':'パン屋の裏に、扉を守り続ける影がいる。\n家族を待っているのかもしれない。もう、この家には誰も帰らない。')],()=>{returnState=s;s=C.createTrial(target,memories,progress);s.p.hp=Math.min(s.p.maxHp,returnState.p.hp);s.p.light=returnState.p.light;progress=s.progress;fx=[];camera=0;enterFight();});};
 function returnFromTrial(won){const trial=s;progress=trial.progress;s=returnState;returnState=null;C.syncProgress(s,progress);if(won){s.p.hp=Math.max(1,Math.min(s.p.maxHp,trial.p.hp));s.p.light=trial.p.light;}fx=[];camera=0;persist();enterFight();}
 function finishTrial(){mode='transition';release();showLines([L('手記',s.chapter?'番人は、ようやく橋を渡っていった。\n名前は分からない。けれど、その足音を私は覚えている。':'扉の影が消え、ランタンに小さな火が戻った。\nその力は、記憶を燃やして得たものではなかった。'),L('手記','強敵を鎮め、100 EXPを獲得。\n「育成」で技を習得できます。街道へ戻りましょう。')],()=>returnFromTrial(true));}
-function drawProp(index,x,h){const r=propRects[index],width=h*r[2]/r[3];ctx.drawImage(props,...r,x-width/2,10-h,width,h);return width;}
+function propHeight(h){return Math.min(h,Math.max(40,(ground-20)/scale));}
+function drawProp(index,x,h){h=propHeight(h);const r=propRects[index],width=h*r[2]/r[3];ctx.drawImage(props,...r,x-width/2,10-h,width,h);return width;}
 function drawScenery(){const rest=!s.trial&&chapter<2?330:-1e3,shrine=!s.trial&&chapter===1?1785:-1e3;
 if(propsReady){if(rest>0)drawProp(2,rest,74);if(shrine>0){glow(shrine,-95,90,'#e8ae4330');drawProp(3,shrine,200);}}
-for(let x=280;x<s.exit-220;x+=430){if(Math.abs(x-rest)<180||Math.abs(x-shrine)<170)continue;if(propsReady){ctx.globalAlpha=.82;const width=drawProp(0,x,185);ctx.globalAlpha=1;glow(x+width*.28,-185*.55,60,'#e8ae4330');}else{ctx.fillStyle='#17191c';ctx.fillRect(x,-155,7,155);ctx.fillRect(x-18,-156,43,5);glow(x+7,-120,65,'#e8ae4340');ctx.strokeStyle='#997d50';ctx.strokeRect(x-1,-137,17,28);circle(x+7,-123,4,'#ebc47d');}}}
+for(let x=280;x<s.exit-220;x+=430){if(Math.abs(x-rest)<180||Math.abs(x-shrine)<170)continue;if(propsReady){ctx.globalAlpha=.82;const h=propHeight(185),width=drawProp(0,x,h);ctx.globalAlpha=1;glow(x+width*.28,10-h*.48,Math.min(60,h*.4),'#e8ae4330');}else{ctx.fillStyle='#17191c';ctx.fillRect(x,-155,7,155);ctx.fillRect(x-18,-156,43,5);glow(x+7,-120,65,'#e8ae4340');ctx.strokeStyle='#997d50';ctx.strokeRect(x-1,-137,17,28);circle(x+7,-123,4,'#ebc47d');}}}
 // The destination stands from the start; it lights up once every enemy is calmed.
-function drawExit(){const open=s.kills===s.enemies.length;if(open)glow(s.exit,-110,150,'#e9cd7e55');if(propsReady){const index=s.trial||chapter===1?5:chapter===0?4:open?6:7;drawProp(index,s.exit,index===5?240:270);}
+function drawExit(){const open=C.cleared(s);if(open)glow(s.exit,-110,150,'#e9cd7e55');if(propsReady){const index=s.trial||chapter===1?5:chapter===0?4:open?6:7;drawProp(index,s.exit,index===5?240:270);}
 if(open&&!propsReady){ctx.strokeStyle='#dfbd80';ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(s.exit,-65,32,64,0,0,Math.PI*2);ctx.stroke();}}
 function circle(x,y,r,color){ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();}
 function glow(x,y,r,color){const g=ctx.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,color);g.addColorStop(1,'#eab65b00');ctx.fillStyle=g;ctx.fillRect(x-r,y-r,r*2,r*2);}
-function render(dt){if(!W||!H)return;const p=s.p;const target=Math.max(0,Math.min(s.length-W/scale,p.x-W/scale*.36));camera+=(target-camera)*Math.min(1,dt*5);ctx.clearRect(0,0,W,H);ctx.fillStyle='#18212a';ctx.fillRect(0,0,W,H);
+function render(dt){if(!W||!H)return;const p=s.p;const target=Math.max(0,Math.min(s.length+SCENE_END_MARGIN-W/scale,p.x-W/scale*.36));camera+=(target-camera)*Math.min(1,dt*5);ctx.clearRect(0,0,W,H);ctx.fillStyle='#18212a';ctx.fillRect(0,0,W,H);
 if(bgReady){const ratio=bg.width/bg.height,bh=H*1.14,bw=bh*ratio,offset=(camera*.23)%(bw*.95);for(let x=-offset-bw;x<W;x+=bw)ctx.drawImage(bg,x, H-bh,bw,bh);}
 ctx.fillStyle=chapter===1?'#101c2850':chapter===2?'#20132255':'#18232b15';ctx.fillRect(0,0,W,H);
 ctx.save();ctx.translate(-camera*scale,ground);ctx.scale(scale,scale);
 // Foreground geometry follows the world, never scrolling independently of combat.
-ctx.fillStyle='#161b20';ctx.fillRect(0,4,s.length,300);ctx.strokeStyle='#74695660';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,2);ctx.lineTo(s.length,2);ctx.stroke();
-for(let x=0;x<s.length;x+=90){ctx.strokeStyle='#52605b27';ctx.strokeRect(x,8+(x%3)*7,78,15);}
+ctx.fillStyle='#161b20';ctx.fillRect(0,4,s.length+SCENE_END_MARGIN,300);ctx.strokeStyle='#74695660';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,2);ctx.lineTo(s.length+SCENE_END_MARGIN,2);ctx.stroke();
+for(let x=0;x<s.length+SCENE_END_MARGIN;x+=90){ctx.strokeStyle='#52605b27';ctx.strokeRect(x,8+(x%3)*7,78,15);}
 drawScenery();
 drawExit();
 for(const e of s.enemies){if(e.hp<=0)continue;ctx.save();ctx.translate(e.x,0);if(e.phase==='warn'){const progress=1-e.timer/(e.boss?1:.85);glow(0,e.boss?-130:-60,e.boss?120:65,'#d6973440');ctx.strokeStyle='#e7b45d';ctx.lineWidth=2+progress*2;ctx.beginPath();ctx.arc(0,e.boss?-125:-65,(e.boss?55:35)*(1.3-progress*.3),-Math.PI/2,Math.PI*1.5);ctx.stroke();}drawSprite(ctx,e.boss?6:5,0,4,e.boss?245:130,e.x>p.x?-1:1,e.flash>0?.5:1);if(!e.boss){ctx.fillStyle='#252126';ctx.fillRect(-22,-140,44,3);ctx.fillStyle='#ad7b6b';ctx.fillRect(-22,-140,44*e.hp/e.max,3);}ctx.restore();
@@ -89,7 +91,7 @@ for(const f of fx){const a=f.age/f.life;ctx.save();ctx.globalAlpha=1-a;ctx.trans
 ctx.restore();
 // Always preserve minimum scene visibility; danger markers are never obscured.
 ctx.save();const px=(p.x-camera)*scale,py=ground-(p.y+65)*scale,r=Math.max(180,150+p.light*3);const darkness=ctx.createRadialGradient(px,py,45,px,py,r);darkness.addColorStop(0,'#05090d00');darkness.addColorStop(1,`rgba(4,8,13,${.18+(100-p.light)*.002})`);ctx.fillStyle=darkness;ctx.fillRect(0,0,W,H);ctx.restore();
-updateGrowthHUD();$('hearts').setAttribute('aria-label',`体力 ${p.hp} / ${p.maxHp}`);$('hearts').textContent='●'.repeat(Math.max(0,p.hp))+'○'.repeat(Math.max(0,p.maxHp-p.hp));$('light').value=p.light;$('light-value').textContent=Math.ceil(p.light);$('boss').max=s.enemies[0]?.max||900;$('boss').value=s.enemies[0]?.hp||0;if(C.cleared(s))$('goal').textContent=s.trial?'灯りの門から街道へ戻る →':['マルタが待つ灯台へ →','橋を越え、鐘楼へ →','灯守の先にある炉へ →'][chapter];
+updateGrowthHUD();$('hearts').setAttribute('aria-label',`体力 ${p.hp} / ${p.maxHp}`);$('hearts').textContent='●'.repeat(Math.max(0,p.hp))+'○'.repeat(Math.max(0,p.maxHp-p.hp));$('light').value=p.light;$('light-value').textContent=Math.ceil(p.light);$('boss-hud').hidden=!s.enemies.some(e=>e.boss&&e.hp>0);$('boss').max=s.enemies[0]?.max||900;$('boss').value=s.enemies[0]?.hp||0;if(C.cleared(s))$('goal').textContent=s.trial?'灯りの門から街道へ戻る →':['マルタが待つ灯台へ →','橋を越え、鐘楼へ →','灯守の先にある炉へ →'][chapter];
 }
 function frame(now){let dt=last?Math.min(.06,(now-last)/1000):0;last=now;if(mode==='fight'){acc+=dt;let first=true;while(acc>=1/120&&mode==='fight'){C.step(s,1/120,{axis:(held.has('right')?1:0)-(held.has('left')?1:0),attack:held.has('attack'),magic:held.has('magic'),jump:first&&taps.jump,dodge:first&&taps.dodge});if(first){delete taps.jump;delete taps.dodge;first=false;}emit(s.events);acc-=1/120;}for(const f of fx)f.age+=dt;fx=fx.filter(f=>f.age<f.life);}else acc=0;render(dt);requestAnimationFrame(frame);}
 function load(){sprite.onload=()=>{ready=true;$('start').disabled=false;$('start').textContent='灯りをともす';$('load-note').innerHTML='短編アクション / オートセーブ / 音声なし<br>喪失と死を扱う物語です。';showTitle();};sprite.onerror=()=>{$('load-note').textContent='画像を読み込めませんでした。下のボタンで再試行できます。';$('start').disabled=false;$('start').textContent='読み込みを再試行';$('start').onclick=()=>{sprite.src='akatsuki-sprites.webp?retry='+Date.now();$('start').onclick=confirmNew;};};sprite.src='akatsuki-sprites.webp';bg.onload=()=>{bgReady=true;};bg.src='akatsuki-world.webp';props.onload=()=>{propsReady=true;};props.src='akatsuki-props.webp';}
