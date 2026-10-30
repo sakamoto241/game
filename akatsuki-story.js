@@ -1,12 +1,12 @@
 /* Story facts are revealed in order; summaries never reveal later chapters. */
 (function(root,factory){if(typeof module==='object')module.exports=factory();else root.AkatsukiStory=factory()})(typeof globalThis!=='undefined'?globalThis:this,()=>{
 'use strict';
-const L=(who,text)=>({who,text}),has=(memories,id)=>memories.includes(id);
+const L=(who,text,art=null)=>({who,text,...(art?{art}:{})}),has=(memories,id)=>memories.includes(id);
 function intro(ch,memories=[]){const mother=has(memories,'mother'),brother=has(memories,'brother');
 if(ch===0)return[
- L('手記','私の名はエマ。魔女です。\n七年前から夜が明けないこの国を、死んだ弟のユルと、もう一度会うために旅しています。'),
- L('エマ','「鐘楼には、死んだ人を戻せる火がある。\nその噂を信じて、ここまで来たの」'),
- L('ランタンの声','「姉ちゃん。パンの匂いがする。\n前みたいに、半分こしよう」'),
+ L('手記','私の名はエマ。魔女です。\n七年前から夜が明けないこの国を、死んだ弟のユルと、もう一度会うために旅しています。','lantern'),
+ L('エマ','「鐘楼には、死んだ人を戻せる火がある。\nその噂を信じて、ここまで来たの」','lantern'),
+ L('ランタンの声','「姉ちゃん。パンの匂いがする。\n前みたいに、半分こしよう」','lantern'),
  L('パン屋のマルタ','「そのランタンから聞こえるのは、弟さんの声かい。\n……温かいパンをどうぞ。私はマルタ。この店のパン屋だよ」'),
  L('エマ','「ありがとう。……お店の絵、娘さん？」'),
  L('パン屋のマルタ','「三年前に亡くした娘だよ。私はあの子との思い出を少しずつ魔女に渡し、街の灯りにしてきた。\n今は、顔も思い出せなくなった」'),
