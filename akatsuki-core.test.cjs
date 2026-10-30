@@ -4,7 +4,7 @@ let s=C.create();s.enemies[0].x=s.p.x+70;let hp=s.enemies[0].hp;C.step(s,1/120,{
 s=C.create();s.enemies[0].x=500;C.step(s,1/120,{magic:true});assert(s.p.light<66&&s.p.light>64);tick(s,100);assert(s.enemies[0].hp<90,'projectile deals actual damage');
 s=C.create();s.p.light=12;C.step(s,1/120,{magic:true});assert.equal(s.orbs.length,0);tick(s,600);assert.equal(s.p.light,12,'minimum light prevents softlock');
 s=C.create();C.step(s,1/120,{jump:true});assert(s.p.y>0);let vy=s.p.vy;C.step(s,1/120,{jump:true});assert(s.p.vy<vy,'cannot double jump');tick(s,120);assert.equal(s.p.y,0);
-s=C.create(2);s.enemies[0].phase='warn';s.enemies[0].pattern=2;s.enemies[0].timer=.001;s.p.y=110;C.step(s,1/120);assert.equal(s.p.hp,6,'jump clears boss ground sweep');s.enemies[0].phase='warn';s.enemies[0].timer=.001;s.p.y=0;C.step(s,1/120);assert.equal(s.p.hp,5);
+s=C.create(2);s.enemies[0].phase='warn';s.enemies[0].pattern=2;s.enemies[0].timer=.001;s.p.y=110;C.step(s,1/120);assert.equal(s.p.hp,s.p.maxHp,'jump clears boss ground sweep');s.enemies[0].phase='warn';s.enemies[0].timer=.001;s.p.y=0;C.step(s,1/120);assert.equal(s.p.hp,s.p.maxHp-1);
 s=C.create();s.enemies[0].phase='warn';s.enemies[0].pattern=0;s.enemies[0].aim=s.p.x;s.enemies[0].timer=.001;C.step(s,1/120,{dodge:true});assert.equal(s.p.hp,6,'dodge invulnerability');
 s=C.create();s.enemies.forEach(e=>e.hp=0);s.kills=s.enemies.length;s.p.x=s.exit;C.step(s,1/120);assert.equal(s.status,'clear');const t=s.t;tick(s,50,{attack:true});assert.equal(s.t,t,'clear freezes simulation');
 assert.equal(C.readSave('{'),null);assert.equal(C.readSave('{"version":1,"chapter":8,"memories":[]}'),null);let saved=C.readSave(JSON.stringify(C.makeSave(1,['mother','mother','bad'])));assert.deepEqual(saved.memories,['mother']);
