@@ -112,3 +112,39 @@ details[open]>summary:after{background:var(--gold)}.controls-help summary{displa
 .spell-card.equipped .spell-icon{border-color:#ecd29a;box-shadow:inset 0 0 0 3px #0e0f11,0 0 14px #e5b25d88}
 .spell-card.equipped small{color:#f3d58f}
 .spell-card:not(:disabled):not(.equipped):hover,.spell-card:not(:disabled):not(.equipped):focus-visible{border-color:#d9b876;box-shadow:inset 0 0 0 3px #101215,inset 0 0 0 4px #c9a56540,0 0 18px #c9a56522}
+
+/* Controls layout: one slide-to-steer move pad, and a 2x2 thumb cluster with the largest key (斬る) nearest the corner. */
+#controls{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;padding:12px 0 8px}
+#controls .move{display:flex;width:138px;height:76px;flex:none;border:1px solid #6b5d48;border-radius:16px;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;background:var(--noise),linear-gradient(180deg,#272c32,#15181c);box-shadow:inset 0 1px #ffffff12,inset 0 0 0 3px #101215,inset 0 0 0 4px #c9a56520,0 5px 12px #0008}
+#controls .move button{flex:1;width:auto;height:100%;margin:0;border:0;border-radius:0;background:transparent;box-shadow:none;pointer-events:none;font:34px serif;color:#efe2c6}
+#controls .move button+button{border-left:1px solid #c9a56533}
+#controls .move button.active{transform:none;background:radial-gradient(circle,#c9a56538,transparent 70%);color:var(--gold-hi);filter:none}
+#controls .actions{display:grid;grid-template-columns:62px 80px;grid-template-rows:54px 80px;gap:8px;align-items:end;justify-items:end}
+#controls .actions .dodge{grid-area:1/1;width:62px;height:54px}
+#controls .actions .magic{grid-area:1/2;width:80px;height:54px}
+#controls .actions .jump{grid-area:2/1;width:62px;height:64px;align-self:end}
+#controls .actions .attack{grid-area:2/2;width:80px;height:80px;border-radius:50%;font-size:18px;font-weight:700}
+#controls .actions .secondary{font-size:13px}
+@media(max-width:380px){
+ #controls .move{width:116px;height:66px}
+ #controls .actions{grid-template-columns:54px 68px;grid-template-rows:46px 68px;gap:6px}
+ #controls .actions .dodge{width:54px;height:46px}#controls .actions .magic{width:68px;height:46px}
+ #controls .actions .jump{width:54px;height:56px}#controls .actions .attack{width:68px;height:68px;font-size:16px}
+}
+@media(min-width:760px){
+ #controls{padding-inline:35px}
+ #controls .move{width:160px;height:80px}
+ #controls .actions{grid-template-columns:76px 92px;grid-template-rows:58px 92px}
+ #controls .actions .dodge{width:76px;height:58px}#controls .actions .magic{width:92px;height:58px}
+ #controls .actions .jump{width:76px;height:72px}#controls .actions .attack{width:92px;height:92px}
+}
+/* Phones held sideways: thumbs rest at the screen edges, so the controls flank the stage instead of sitting under it. */
+@media(orientation:landscape) and (max-height:550px){
+ #app{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:auto minmax(0,1fr);column-gap:10px;padding-bottom:max(6px,env(safe-area-inset-bottom))}
+ header{grid-column:1/-1}.stage{grid-column:2;grid-row:2}
+ #controls{display:contents}
+ #controls .move{grid-column:1;grid-row:2;align-self:end;margin-bottom:6px;width:124px;height:72px}
+ #controls .actions{grid-column:3;grid-row:2;align-self:end;margin-bottom:6px;grid-template-columns:56px 70px;grid-template-rows:48px 70px;gap:6px}
+ #controls .actions .dodge{width:56px;height:48px}#controls .actions .magic{width:70px;height:48px}
+ #controls .actions .jump{width:56px;height:56px}#controls .actions .attack{width:70px;height:70px;font-size:16px}
+}
