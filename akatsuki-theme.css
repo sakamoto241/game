@@ -1,0 +1,103 @@
+/* 夜明けに、わたしを燃やして — world-styled UI layer over akatsuki.css.
+   Fonts: Shippori Mincho B1 and Cinzel (SIL OFL 1.1), subset by tools/subset-akatsuki-fonts.py. */
+@font-face{font-family:'Akatsuki Mincho';src:url('akatsuki-fonts/akatsuki-mincho-regular.woff2') format('woff2');font-weight:400 500;font-display:swap}
+@font-face{font-family:'Akatsuki Mincho';src:url('akatsuki-fonts/akatsuki-mincho-bold.woff2') format('woff2');font-weight:600 900;font-display:swap}
+@font-face{font-family:'Akatsuki Cinzel';src:url('akatsuki-fonts/akatsuki-cinzel.woff2') format('woff2');font-weight:400 900;font-display:swap}
+:root{--gold:#c9a565;--gold-hi:#ecd29a;--ember:#c0675e;--ink:#0d0f12;--paper:#eadfc6;--noise:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .85 0 0 0 0 .72 0 0 0 0 .52 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");--divider:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='170' height='14' fill='%23c9a565'%3E%3Cpath d='M0 7h68M102 7h68' stroke='%23c9a565' stroke-width='.7' opacity='.8'/%3E%3Cpath d='M85 1.5l5.5 5.5-5.5 5.5-5.5-5.5z'/%3E%3Cpath d='M85 4.5l2.5 2.5-2.5 2.5-2.5-2.5z' fill='%2314161a'/%3E%3Ccircle cx='73' cy='7' r='1.4'/%3E%3Ccircle cx='97' cy='7' r='1.4'/%3E%3C/svg%3E");--flame:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='14'%3E%3Cpath d='M5 .5C6.5 3.5 9.5 5.5 9.5 9A4.5 4.5 0 0 1 .5 9C.5 6.5 2.5 5.5 3 3.5 4 5 4.5 5.5 5 6 5.6 4.4 5.6 2.4 5 .5Z' fill='%23e9b45c'/%3E%3Cpath d='M5 7.5c1 1 1.8 1.6 1.8 2.6a1.8 1.8 0 0 1-3.6 0c0-.9.9-1.6 1.8-2.6Z' fill='%23fff1c4'/%3E%3C/svg%3E")}
+body,button,select{font-family:'Akatsuki Mincho','Hiragino Mincho ProN','Yu Mincho',serif}
+body{background:radial-gradient(ellipse at 50% -10%,#1c1a1a,#0b0d10 60%) fixed,#0b0d10;color:var(--paper)}
+h1,h2,h3,.brand,#speaker,.skill-node strong,.tree-tabs button{font-feature-settings:'palt';font-weight:700}
+.eyebrow,.brand span,#page-count,#growth-xp,#level-label,.level-card strong{font-family:'Akatsuki Cinzel','Akatsuki Mincho',serif;font-weight:600}
+.eyebrow{letter-spacing:.32em;color:var(--gold)}
+::selection{background:#c9a56555}
+
+/* Panels: dark vellum, double gold rule, ornamental corners. */
+dialog{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='34' height='34' fill='none' stroke='%23c9a565'%3E%3Cg transform=''%3E%3Cpath d='M1.5 32V10Q1.5 1.5 10 1.5H32' stroke-width='1.1'/%3E%3Cpath d='M5.5 32V13Q5.5 5.5 13 5.5H32' stroke-width='.6' opacity='.55'/%3E%3Cpath d='M11 7.5L14.5 11 11 14.5 7.5 11Z' fill='%23c9a565' stroke='none'/%3E%3Ccircle cx='20' cy='1.5' r='1.2' fill='%23c9a565' stroke='none'/%3E%3Ccircle cx='1.5' cy='20' r='1.2' fill='%23c9a565' stroke='none'/%3E%3C/g%3E%3C/svg%3E") top 7px left 7px no-repeat, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='34' height='34' fill='none' stroke='%23c9a565'%3E%3Cg transform='translate(34 0) scale(-1 1)'%3E%3Cpath d='M1.5 32V10Q1.5 1.5 10 1.5H32' stroke-width='1.1'/%3E%3Cpath d='M5.5 32V13Q5.5 5.5 13 5.5H32' stroke-width='.6' opacity='.55'/%3E%3Cpath d='M11 7.5L14.5 11 11 14.5 7.5 11Z' fill='%23c9a565' stroke='none'/%3E%3Ccircle cx='20' cy='1.5' r='1.2' fill='%23c9a565' stroke='none'/%3E%3Ccircle cx='1.5' cy='20' r='1.2' fill='%23c9a565' stroke='none'/%3E%3C/g%3E%3C/svg%3E") top 7px right 7px no-repeat, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='34' height='34' fill='none' stroke='%23c9a565'%3E%3Cg transform='translate(0 34) scale(1 -1)'%3E%3Cpath d='M1.5 32V10Q1.5 1.5 10 1.5H32' stroke-width='1.1'/%3E%3Cpath d='M5.5 32V13Q5.5 5.5 13 5.5H32' stroke-width='.6' opacity='.55'/%3E%3Cpath d='M11 7.5L14.5 11 11 14.5 7.5 11Z' fill='%23c9a565' stroke='none'/%3E%3Ccircle cx='20' cy='1.5' r='1.2' fill='%23c9a565' stroke='none'/%3E%3Ccircle cx='1.5' cy='20' r='1.2' fill='%23c9a565' stroke='none'/%3E%3C/g%3E%3C/svg%3E") bottom 7px left 7px no-repeat, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='34' height='34' fill='none' stroke='%23c9a565'%3E%3Cg transform='translate(34 34) scale(-1 -1)'%3E%3Cpath d='M1.5 32V10Q1.5 1.5 10 1.5H32' stroke-width='1.1'/%3E%3Cpath d='M5.5 32V13Q5.5 5.5 13 5.5H32' stroke-width='.6' opacity='.55'/%3E%3Cpath d='M11 7.5L14.5 11 11 14.5 7.5 11Z' fill='%23c9a565' stroke='none'/%3E%3Ccircle cx='20' cy='1.5' r='1.2' fill='%23c9a565' stroke='none'/%3E%3Ccircle cx='1.5' cy='20' r='1.2' fill='%23c9a565' stroke='none'/%3E%3C/g%3E%3C/svg%3E") bottom 7px right 7px no-repeat, var(--noise), radial-gradient(ellipse at 50% -15%,#3b2b1d66,transparent 62%), linear-gradient(165deg,#1e1d1f,#111317 70%);border:1px solid #6e5b3f;border-radius:2px;box-shadow:0 30px 90px #000d,inset 0 0 0 5px #0d0f12,inset 0 0 0 6px #c9a5652b,inset 0 0 60px #0009;scrollbar-color:#6e5b3f transparent;scrollbar-width:thin}
+dialog::backdrop{background:radial-gradient(ellipse at 50% 40%,#0b0d10b0,#040507ee)}
+dialog.solemn{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='34' height='34' fill='none' stroke='%23c0675e'%3E%3Cg transform=''%3E%3Cpath d='M1.5 32V10Q1.5 1.5 10 1.5H32' stroke-width='1.1'/%3E%3Cpath d='M5.5 32V13Q5.5 5.5 13 5.5H32' stroke-width='.6' opacity='.55'/%3E%3Cpath d='M11 7.5L14.5 11 11 14.5 7.5 11Z' fill='%23c0675e' stroke='none'/%3E%3Ccircle cx='20' cy='1.5' r='1.2' fill='%23c0675e' stroke='none'/%3E%3Ccircle cx='1.5' cy='20' r='1.2' fill='%23c0675e' stroke='none'/%3E%3C/g%3E%3C/svg%3E") top 7px left 7px no-repeat, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='34' height='34' fill='none' stroke='%23c0675e'%3E%3Cg transform='translate(34 0) scale(-1 1)'%3E%3Cpath d='M1.5 32V10Q1.5 1.5 10 1.5H32' stroke-width='1.1'/%3E%3Cpath d='M5.5 32V13Q5.5 5.5 13 5.5H32' stroke-width='.6' opacity='.55'/%3E%3Cpath d='M11 7.5L14.5 11 11 14.5 7.5 11Z' fill='%23c0675e' stroke='none'/%3E%3Ccircle cx='20' cy='1.5' r='1.2' fill='%23c0675e' stroke='none'/%3E%3Ccircle cx='1.5' cy='20' r='1.2' fill='%23c0675e' stroke='none'/%3E%3C/g%3E%3C/svg%3E") top 7px right 7px no-repeat, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='34' height='34' fill='none' stroke='%23c0675e'%3E%3Cg transform='translate(0 34) scale(1 -1)'%3E%3Cpath d='M1.5 32V10Q1.5 1.5 10 1.5H32' stroke-width='1.1'/%3E%3Cpath d='M5.5 32V13Q5.5 5.5 13 5.5H32' stroke-width='.6' opacity='.55'/%3E%3Cpath d='M11 7.5L14.5 11 11 14.5 7.5 11Z' fill='%23c0675e' stroke='none'/%3E%3Ccircle cx='20' cy='1.5' r='1.2' fill='%23c0675e' stroke='none'/%3E%3Ccircle cx='1.5' cy='20' r='1.2' fill='%23c0675e' stroke='none'/%3E%3C/g%3E%3C/svg%3E") bottom 7px left 7px no-repeat, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='34' height='34' fill='none' stroke='%23c0675e'%3E%3Cg transform='translate(34 34) scale(-1 -1)'%3E%3Cpath d='M1.5 32V10Q1.5 1.5 10 1.5H32' stroke-width='1.1'/%3E%3Cpath d='M5.5 32V13Q5.5 5.5 13 5.5H32' stroke-width='.6' opacity='.55'/%3E%3Cpath d='M11 7.5L14.5 11 11 14.5 7.5 11Z' fill='%23c0675e' stroke='none'/%3E%3Ccircle cx='20' cy='1.5' r='1.2' fill='%23c0675e' stroke='none'/%3E%3Ccircle cx='1.5' cy='20' r='1.2' fill='%23c0675e' stroke='none'/%3E%3C/g%3E%3C/svg%3E") bottom 7px right 7px no-repeat, var(--noise), radial-gradient(ellipse at 50% -10%,#5a1f2259,transparent 65%), linear-gradient(165deg,#1c1416,#0b0c0f 70%);border-color:#8b4440;box-shadow:0 30px 110px #000,inset 0 0 0 5px #0b0c0f,inset 0 0 0 6px #c0675e3a,inset 0 0 80px #000b}
+.journal-top h2,.growth-top h2,#result h2{margin-bottom:22px;color:#f2e2bd;letter-spacing:.08em}
+.journal-top h2:after,.growth-top h2:after,#result h2:after{content:'';display:block;width:170px;height:14px;margin-top:8px;background:var(--divider) left center/contain no-repeat;opacity:.85}
+#result{text-align:center}#result h2{font-size:24px}#result h2:after{margin:12px auto 0}#result-text{text-align:left}
+
+/* Buttons: brass plates and iron frames. */
+.primary{position:relative;background:linear-gradient(180deg,#e6ca8c,#bf9a55 52%,#9e7c40);color:#1d150d;border:1px solid #f0d89c;border-radius:2px;box-shadow:inset 0 1px #fff7da66,inset 0 -2px #5b432266,0 0 0 1px #20180e,0 8px 20px #000a;text-shadow:0 1px #f6e3b155;font-weight:700;letter-spacing:.16em;transition:filter .15s,box-shadow .15s}
+.primary:before,.primary:after{content:'';position:absolute;top:50%;width:5px;height:5px;background:#3a2b17;transform:translateY(-50%) rotate(45deg);opacity:.7}.primary:before{left:12px}.primary:after{right:12px}
+.primary:hover:not(:disabled),.primary:focus-visible{filter:brightness(1.07);box-shadow:inset 0 1px #fff7da66,inset 0 -2px #5b432266,0 0 0 1px #20180e,0 0 26px #e5b25d55,0 8px 20px #000a}
+.primary:disabled{filter:grayscale(.6) brightness(.7)}
+.outline{background:linear-gradient(180deg,#1d2127,#13161a);border:1px solid #c9a56558;border-radius:2px;color:#e8dcc2;box-shadow:inset 0 0 0 3px #0e1013,inset 0 0 0 4px #c9a5651d;letter-spacing:.1em;transition:border-color .15s,color .15s,box-shadow .15s}
+.outline:hover:not(:disabled),.outline:focus-visible{border-color:#d9b876;color:#f6e6c2;box-shadow:inset 0 0 0 3px #0e1013,inset 0 0 0 4px #c9a56540,0 0 18px #c9a56522}
+#menu,#growth-open{border-radius:2px;box-shadow:inset 0 0 0 3px #0e1013,inset 0 0 0 4px #c9a5651d;letter-spacing:.12em}
+#growth-open{background:linear-gradient(180deg,#3a3125,#272118);border-color:#c9a56599}#menu{background:linear-gradient(180deg,#1d2127,#13161a)}
+#skill-badge:not(:empty){background:radial-gradient(circle at 40% 35%,#ffe3a3,#c9973f);box-shadow:0 0 10px #e5b25d99;font-family:'Akatsuki Cinzel',serif;font-weight:700}
+.brand{display:flex;align-items:center;gap:9px}.brand:before{content:'';flex:none;width:10px;height:14px;background:var(--flame) center/contain no-repeat;filter:drop-shadow(0 0 4px #e5a64a)}
+.brand{flex-wrap:wrap;row-gap:0}.brand span{flex-basis:100%;padding-left:19px;margin-top:2px}
+header{border-bottom:0;background:linear-gradient(90deg,transparent,#c9a56540 20%,#c9a56540 80%,transparent) bottom/100% 1px no-repeat}
+.stage{border-color:#6e5b3f88;box-shadow:0 0 0 1px #0b0d10,0 0 0 2px #c9a56520,0 18px 40px #0008}
+
+/* Dialogue: arched portrait window and a name plate. */
+#portrait{border-radius:48% 48% 4px 4px/38% 38% 4px 4px;border:1px solid #c9a56580;background:radial-gradient(circle at 50% 72%,#6b4a2a70,#14171c 70%);box-shadow:inset 0 0 0 3px #0d0f12,inset 0 0 0 4px #c9a56530,0 0 20px #e0a24a1c}
+#speaker{color:#f3e2bb;letter-spacing:.14em}
+.dialogue-scene{border-bottom:0;background:var(--divider) left bottom/170px 14px no-repeat;padding-bottom:20px}
+.dialogue-scene .eyebrow{color:#b99a63;letter-spacing:.2em}
+#page-count{color:#9b8c72;letter-spacing:.12em}
+#line{color:#ece1c9;letter-spacing:.03em}
+dialog.solemn .dialogue-scene{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='170' height='14' fill='%23c0675e'%3E%3Cpath d='M0 7h68M102 7h68' stroke='%23c0675e' stroke-width='.7' opacity='.8'/%3E%3Cpath d='M85 1.5l5.5 5.5-5.5 5.5-5.5-5.5z'/%3E%3Cpath d='M85 4.5l2.5 2.5-2.5 2.5-2.5-2.5z' fill='%2314161a'/%3E%3Ccircle cx='73' cy='7' r='1.4'/%3E%3Ccircle cx='97' cy='7' r='1.4'/%3E%3C/svg%3E")}
+dialog.solemn #speaker{color:#f4d3c6}
+#choices button{position:relative;padding:15px 18px 15px 24px;border-left:3px solid #8b4440;background:linear-gradient(90deg,#2a1719,#16181c 45%)}
+#choices button:before{content:'';position:absolute;left:-6px;top:22px;width:9px;height:9px;background:#c0675e;transform:rotate(45deg);box-shadow:0 0 10px #e0786a}
+#choices button:hover,#choices button:focus-visible{border-left-color:var(--ember);background:linear-gradient(90deg,#3e1d1f,#1a1b1f 55%)}
+#choices small{color:#cdbfa6;opacity:1}
+
+/* HUD over the painting. */
+.chapter-label span{color:#f1e1bc;letter-spacing:.14em}.chapter-label span:before{content:'';display:inline-block;width:6px;height:6px;margin:0 9px 2px 1px;background:var(--gold);transform:rotate(45deg);box-shadow:0 0 6px #e5b25d}
+.lightline>span{display:inline-flex;align-items:center;gap:5px;color:#efd7a2}.lightline>span:before{content:'';width:9px;height:13px;background:var(--flame) center/contain no-repeat;filter:drop-shadow(0 0 4px #e5a64a)}
+meter{border-color:#c9a56560;border-radius:1px;background:#0f0d0c}meter::-webkit-meter-bar{background:#0f0d0c}
+meter::-webkit-meter-optimum-value{background:linear-gradient(90deg,#8d4a2c,#d79a4d 55%,#ffe0a0)}meter::-moz-meter-bar{background:linear-gradient(90deg,#8d4a2c,#d79a4d 55%,#ffe0a0)}
+#boss-hud span{display:flex;align-items:center;justify-content:center;gap:12px;color:#efcfc6;text-shadow:0 1px 4px #000}#boss-hud span:before,#boss-hud span:after{content:'';width:46px;height:1px;background:linear-gradient(90deg,transparent,#c0675e)}#boss-hud span:after{transform:scaleX(-1)}
+#boss{border-color:#c0675e88;height:8px}#boss::-webkit-meter-optimum-value{background:linear-gradient(90deg,#5a1d22,#b24c4a 70%,#e0786a)}#boss::-moz-meter-bar{background:linear-gradient(90deg,#5a1d22,#b24c4a 70%,#e0786a)}
+
+/* Combat buttons: carved iron, lacquer and amber glass. Cooldown uses ::after in akatsuki.css. */
+#controls button{background:var(--noise),linear-gradient(180deg,#272c32,#15181c);border:1px solid #6b5d48;border-radius:11px;box-shadow:inset 0 1px #ffffff12,inset 0 0 0 3px #101215,inset 0 0 0 4px #c9a56520,0 5px 12px #0008;color:#efe2c6;letter-spacing:.06em}
+#controls .attack{background:var(--noise),linear-gradient(180deg,#86403f,#4a1f22);border-color:#c27a70;box-shadow:inset 0 1px #ffd2c425,inset 0 0 0 3px #2a1013,inset 0 0 0 4px #e0786a30,0 5px 14px #0008,0 0 16px #c0675e22}
+#controls .magic{background:var(--noise),radial-gradient(circle at 50% 28%,#9a7638,#43331c 75%);border-color:#d6b06a;color:#ffe6ae;box-shadow:inset 0 1px #fff0c430,inset 0 0 0 3px #22190c,inset 0 0 0 4px #e9c37a33,0 5px 14px #0008,0 0 18px #e5a64a2e}
+#controls button.active{transform:translateY(2px);filter:brightness(1.25);border-color:var(--gold-hi)}
+
+/* Title. */
+.title-small{font-weight:500}h1{font-weight:800;letter-spacing:.1em}h1 span{color:#e0786a;text-shadow:0 0 18px #e0786a99}
+.rule{width:170px;height:14px;background:var(--divider) left center/contain no-repeat}
+.title-art:before{content:'';position:absolute;inset:0;z-index:1;pointer-events:none;background:radial-gradient(circle,#ffd18a 0 1.2px,transparent 2px) 12% 80%/180px 220px,radial-gradient(circle,#f0a75e 0 1px,transparent 1.8px) 60% 70%/240px 260px,radial-gradient(circle,#ffe2a8 0 .9px,transparent 1.6px) 30% 40%/150px 190px;opacity:.55;animation:embers 14s linear infinite}
+@keyframes embers{to{background-position:12% -140%,60% -120%,30% -160%}}
+@media(prefers-reduced-motion:reduce){.title-art:before{animation:none}}
+
+/* Journal. */
+.paused-note{font-family:'Akatsuki Cinzel','Akatsuki Mincho',serif;color:#b99a63}
+.recap-section{background:var(--noise),linear-gradient(180deg,#c9a5650f,#c9a56505);border-color:#c9a56540;box-shadow:inset 0 0 0 3px #0f1114,inset 0 0 0 4px #c9a56516}
+.recap-section h3{display:flex;align-items:center;gap:8px}.recap-section h3:before{content:'';width:5px;height:5px;background:var(--gold);transform:rotate(45deg)}
+.recap-section summary,.controls-help summary{list-style:none}.recap-section summary::-webkit-details-marker,.controls-help summary::-webkit-details-marker{display:none}
+.recap-section summary:after,.controls-help summary:after{content:'';margin-left:auto;width:7px;height:7px;border:1px solid var(--gold);transform:rotate(45deg);transition:background .2s}
+details[open]>summary:after{background:var(--gold)}.controls-help summary{display:flex;align-items:center}
+.memory-card{background:var(--noise),radial-gradient(ellipse at 100% 0,#7a2e2a45,transparent 60%),radial-gradient(ellipse at 0 100%,#00000088,transparent 55%),#1a1314;border-color:#8b444066;box-shadow:inset 0 0 26px #000a,inset 0 0 0 3px #120c0d,inset 0 0 0 4px #c0675e22}
+.memory-card h3{display:flex;align-items:center;gap:8px}.memory-card h3:before{content:'';width:9px;height:13px;background:var(--flame) center/contain no-repeat;filter:hue-rotate(-20deg) drop-shadow(0 0 4px #e0786a)}
+#memory-list li{position:relative;padding-left:28px}#memory-list li:before{content:'';position:absolute;left:11px;top:50%;width:6px;height:6px;margin-top:-3px;transform:rotate(45deg);border:1px solid var(--gold)}
+#memory-list .burned:before{background:var(--ember);border-color:var(--ember);box-shadow:0 0 8px #e0786a}
+.detour-card{background:var(--noise),linear-gradient(135deg,#232022,#15171b);border-color:#8c735866;box-shadow:inset 0 0 0 3px #101215,inset 0 0 0 4px #c9a5651a}
+#review-chapter{background:linear-gradient(180deg,#1d2127,#13161a);border-color:#c9a56558;border-radius:2px;color:#e8dcc2}
+
+/* Growth: bookmark tabs and sigil nodes on a chain. */
+.level-card{background:var(--noise),radial-gradient(ellipse at 0 0,#c9a56522,transparent 60%),#16171a;border-color:#c9a56555;box-shadow:inset 0 0 0 3px #101215,inset 0 0 0 4px #c9a5651c}
+.level-card strong{font-size:30px;color:#f0d59b;text-shadow:0 0 14px #e5b25d66}
+.tree-tabs button{border-radius:2px 2px 0 0;background:linear-gradient(180deg,#1c2026,#121519);border-color:#81705466;box-shadow:inset 0 -1px #c9a56522}
+.tree-tabs [aria-selected=true]{background:linear-gradient(180deg,#54432d,#2c241b);border-color:#d6b47a;box-shadow:inset 0 2px #ecd29a,0 6px 16px #0007}
+.skill-node{padding-left:76px;background:var(--noise),linear-gradient(180deg,#24262a,#17191c);border-color:#96846566;box-shadow:inset 0 0 0 3px #101215,inset 0 0 0 4px #c9a56514}
+.skill-node:after{position:absolute;left:16px;top:18px;width:42px;height:42px;display:grid;place-items:center;border-radius:50%;border:1px solid #c9a56588;background:radial-gradient(circle,#2b2a28,#121315);color:var(--gold);font:700 18px 'Akatsuki Mincho',serif;box-shadow:inset 0 0 0 3px #0e0f11,inset 0 0 0 4px #c9a56533}
+.skill-node[data-skill^=blade]:after{content:'刃'}.skill-node[data-skill^=lamp]:after{content:'灯'}.skill-node[data-skill^=shadow]:after{content:'影'}
+.skill-node+.skill-node:before{left:36px;border-left:1px dashed #b39b65}
+.skill-node.learned{background:var(--noise),linear-gradient(180deg,#2b3029,#1b1f1b);border-color:#b7a46d}
+.skill-node.learned:after{background:radial-gradient(circle at 45% 35%,#ffe3a3,#c9973f 70%);color:#1d150d;border-color:#ffe3a3;box-shadow:0 0 16px #e5b25d88}
+.skill-node:not(:disabled):hover,.skill-node:not(:disabled):focus-visible{border-color:#d9b876;box-shadow:inset 0 0 0 3px #101215,inset 0 0 0 4px #c9a56540,0 0 18px #c9a56522}
+@media(max-width:380px){.skill-node{padding-left:66px}.skill-node:after{left:12px;width:38px;height:38px;font-size:16px}.skill-node+.skill-node:before{left:30px}dialog{background-size:26px 26px,26px 26px,26px 26px,26px 26px,auto,auto,auto}}
+#memory-list b{flex:none;white-space:nowrap}#memory-list small{text-align:right}
+#boss-hud span{white-space:nowrap}
+#controls small{white-space:nowrap;letter-spacing:0}
+@media(max-width:480px){#boss-hud{width:72%}#boss-hud span:before,#boss-hud span:after{width:22px}}
+@media(max-width:380px){#memory-list li{padding-right:9px}#memory-list small{font-size:10px;letter-spacing:0}}
