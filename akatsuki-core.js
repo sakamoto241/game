@@ -50,8 +50,8 @@ function cost(s){return spell(s).cost-(has(s,'lamp1')?4:0);}
 function cleared(s){return s.enemies.every(e=>e.hp<=0);}
 function create(chapter=0,memories=[],progress=null){chapter=clamp(Math.floor(chapter)||0,0,2);const def=chapters[chapter],prog=normalizeProgress(progress,chapter);return {progress:prog,trial:false,chapter,memories:[...memories],t:0,status:'fight',p:{x:120,y:0,vy:0,face:1,hp:maxHP(prog),maxHp:maxHP(prog),airJumpUsed:false,counter:0,catCD:1.5,healCount:0,light:85,inv:0,dash:0,dashCD:0,attackCD:0,magicCD:0,attack:0,combo:0,comboAge:0},enemies:def.foes.map((x,i)=>({x,spawn:x,hp:def.boss?900:chapter?120:90,max:def.boss?900:chapter?120:90,boss:def.boss,id:i,kind:enemyKind(chapter,i,def.boss),y:enemyKind(chapter,i,def.boss)==='bat'?95:0,face:-1,guardBroken:0,phase:'idle',timer:1+i*.24,aim:x,hit:false,stagger:0,flash:0,pattern:0})).map(e=>{if(e.kind==='bat')e.hp=e.max=chapter?68:54;if(e.kind==='guard')e.hp=e.max=chapter?170:140;if(e.kind==='caster')e.hp=e.max=chapter?96:76;return e;}),orbs:[],hazards:[],totems:[],events:[],kills:0,stats:{damage:0,dodges:0,spells:0},exit:def.length-90,length:def.length};}
 function createTrial(chapter,memories,progress){const s=create(chapter,memories,progress);s.trial=true;s.length=1200;s.exit=1080;s.enemies=[{x:800,spawn:800,hp:chapter?480:340,max:chapter?480:340,boss:true,kind:'boss',y:0,face:-1,guardBroken:0,id:0,phase:'idle',timer:1,aim:800,stagger:0,flash:0,pattern:0}];return s;}
-function damageEnemy(s,e,n,source='blade',origin=s.p.x,paid=cost(s),breakGuard=false){if(e.hp<=0)return;if(s.p.rage>0&&source!=='flare')n*=3;if(e.kind==='guard'){if(breakGuard||source==='finisher'){e.guardBroken=1.2;e.phase='recover';e.timer=1.2;s.events.push({type:'guardBreak',x:e.x,y:65});}else if(e.guardBroken<=0&&e.phase!=='recover'&&(origin-e.x)*e.face>=0){n=Math.round(n*.4);s.events.push({type:'blocked',x:e.x,y:65});}}const actual=Math.min(e.hp,n);e.hp=Math.max(0,e.hp-n);e.flash=.17;e.stagger=e.boss?.03:.10;s.stats.damage+=actual;s.events.push({type:'hit',x:e.x,y:enemyHeight(e),boss:e.boss,source,amount:n});if(!e.hp){s.kills++;s.p.light=clamp(s.p.light+(e.boss?35:24)+(source==='lamp'&&has(s,'lamp3')?paid:0),0,100);if(has(s,'shadow3')&&++s.p.healCount%3===0)s.p.hp=Math.min(s.p.maxHp,s.p.hp+1);grant(s,s.trial?'trial:'+s.chapter:`${s.chapter}:${e.id}`,s.trial?100:e.boss?180:s.chapter?35:25);s.events.push({type:'soul',x:e.x,y:enemyHeight(e)-10});}}
-function castSpell(s){const p=s.p,k=spell(s),paid=p.rage>0?0:cost(s);if(p.magicCD>0||p.light<paid)return false;p.light-=paid;p.magicCD=k.cooldown;s.stats.spells++;
+function damageEnemy(s,e,n,source='blade',origin=s.p.x,paid=cost(s),breakGuard=false){if(e.hp<=0)return;if(s.p.rage>0&&source!=='flare')n*=3;if(s.p.fearless>0&&source!=='flare')n=Math.round(n*1.5);if(e.kind==='guard'){if(breakGuard||source==='finisher'){e.guardBroken=1.2;e.phase='recover';e.timer=1.2;s.events.push({type:'guardBreak',x:e.x,y:65});}else if(e.guardBroken<=0&&e.phase!=='recover'&&(origin-e.x)*e.face>=0){n=Math.round(n*.4);s.events.push({type:'blocked',x:e.x,y:65});}}const actual=Math.min(e.hp,n);e.hp=Math.max(0,e.hp-n);e.flash=.17;e.stagger=e.boss?.03:.10;s.stats.damage+=actual;s.events.push({type:'hit',x:e.x,y:enemyHeight(e),boss:e.boss,source,amount:n});if(!e.hp){s.kills++;s.p.light=clamp(s.p.light+(e.boss?35:24)+(source==='lamp'&&has(s,'lamp3')?paid:0),0,100);if(has(s,'shadow3')&&++s.p.healCount%3===0)s.p.hp=Math.min(s.p.maxHp,s.p.hp+1);grant(s,s.trial?'trial:'+s.chapter:`${s.chapter}:${e.id}`,s.trial?100:e.boss?180:s.chapter?35:25);s.events.push({type:'soul',x:e.x,y:enemyHeight(e)-10});}}
+function castSpell(s){const p=s.p,k=spell(s),paid=p.rage>0||p.grief>0?0:cost(s);if(p.magicCD>0||p.light<paid)return false;p.light-=paid;p.magicCD=p.grief>0?.12:k.cooldown;s.stats.spells++;
 if(k.id==='reap'){for(const e of s.enemies)if(e.hp>0&&Math.abs(e.x-p.x)<200&&(e.x-p.x)*p.face>-35&&Math.abs(enemyHeight(e)-(p.y+65))<180)damageEnemy(s,e,52,'lamp',p.x,paid,true);s.events.push({type:'reap',x:p.x+p.face*80,y:p.y+75,face:p.face});}
 else if(k.id==='candle'){if(s.totems.length>=2)s.totems.shift();s.totems.push({x:clamp(p.x+p.face*110,45,s.length-40),life:4,tick:0,paid});s.events.push({type:'candle',x:p.x+p.face*110,y:0});}
 else{for(let i=0;i<(has(s,'lamp4')?2:1);i++)s.orbs.push({x:p.x+p.face*(35-i*38),y:p.y+62+i*15,vx:p.face*(k.id==='wisp'?360:660),vy:0,life:k.id==='wisp'?2.6:1.5,ally:true,damage:k.id==='wisp'?34:46,source:'lamp',homing:k.id==='wisp',paid,pierce:has(s,'lamp2'),hits:[]});s.events.push({type:'magic',x:p.x,y:p.y+60});}}
@@ -77,7 +77,10 @@ const combatMemories=[
  {id:'song',name:'母の子守唄',effect:'6秒間、敵の動きがほとんど止まる。',words:['子守唄']},
  {id:'cat',name:'黒猫の名前',effect:'黒猫が影の獣となり、8秒間敵を裂き続ける。そのあと黒猫はいなくなる。',words:['黒猫']},
  {id:'lantern',name:'初めて灯をともした夜',effect:'まわりの敵すべてを灼く。ボスにも深い傷を負わせる。',words:['ランタン']},
- {id:'self',name:'自分の名前',effect:'10秒間、すべての攻撃が三倍になり、灯火が尽きない。',words:['エマ']}];
+ {id:'self',name:'自分の名前',effect:'10秒間、すべての攻撃が三倍になり、灯火が尽きない。',words:['エマ']},
+ {id:'fear',name:'怖いという気持ち',effect:'8秒間、どんな攻撃を受けても倒れない。攻撃も1.5倍になる。',words:['怖']},
+ {id:'grief',name:'悲しみ',effect:'8秒間、呪文を待ち時間も灯火もなしで撃ち続けられる。',words:['悲し']},
+ {id:'wish',name:'弟に会いたいという願い',effect:'見えるすべての敵を焼き尽くす。ボスにも深い傷を負わせる。',words:['会いたい','会う']}];
 const memoryIds=['mother','brother',...combatMemories.map(m=>m.id)];
 function burnable(s){return combatMemories.filter(m=>!s.memories.includes(m.id));}
 function burn(s,id){if(!burnable(s).some(m=>m.id===id)||!['fight','dying'].includes(s.status))return false;const p=s.p;s.memories.push(id);
@@ -87,12 +90,16 @@ function burn(s,id){if(!burnable(s).some(m=>m.id===id)||!['fight','dying'].inclu
  if(id==='song')s.slow=6;
  if(id==='cat'){p.frenzy=8;p.frenzyCD=0;}
  if(id==='self')p.rage=10;
+ if(id==='fear')p.fearless=8;
+ if(id==='grief')p.grief=8;
  s.events.push({type:'burn',id,x:p.x,y:p.y+60});
- if(id==='lantern')for(const e of s.enemies)if(e.hp>0&&Math.abs(e.x-p.x)<720)damageEnemy(s,e,e.boss?Math.round(e.max*.2):120,'flare');
+ if(id==='lantern')for(const e of s.enemies)if(e.hp>0&&Math.abs(e.x-p.x)<720)damageEnemy(s,e,e.boss?Math.round(e.max*.2):120,'flare',p.x,0,true);
+ if(id==='wish')for(const e of s.enemies)if(e.hp>0&&Math.abs(e.x-p.x)<1000)damageEnemy(s,e,e.boss?Math.round(e.max*.35):300,'flare',p.x,0,true);
  return true;}
+function hollow(s){return burnable(s).length===0;}
 function giveUp(s){if(s.status!=='dying')return;s.status='lost';s.events.push({type:'lost'});}
-function hurt(s){let p=s.p;if(p.inv>0)return;p.hp--;p.inv=1.1;p.combo=0;s.events.push({type:'hurt',x:p.x,y:p.y+40});if(p.hp<=0){p.hp=0;if(s.lastStand&&burnable(s).length){s.status='dying';s.events.push({type:'dying'});}else{s.status='lost';s.events.push({type:'lost'});}}}
-function step(s,dt,input={}){s.events=[];if(s.status!=='fight')return s;dt=clamp(dt,0,1/30);s.t+=dt;let p=s.p;for(const k of ['inv','dash','dashCD','attackCD','magicCD','attack','counter','catCD','frenzy','frenzyCD','rage'])p[k]=Math.max(0,(p[k]||0)-dt);s.slow=Math.max(0,(s.slow||0)-dt);
+function hurt(s){let p=s.p;if(p.inv>0)return;p.hp--;if(p.fearless>0&&p.hp<1)p.hp=1;p.inv=1.1;p.combo=0;s.events.push({type:'hurt',x:p.x,y:p.y+40});if(p.hp<=0){p.hp=0;if(s.lastStand&&burnable(s).length){s.status='dying';s.events.push({type:'dying'});}else{s.status='lost';s.events.push({type:'lost'});}}}
+function step(s,dt,input={}){s.events=[];if(s.status!=='fight')return s;dt=clamp(dt,0,1/30);s.t+=dt;let p=s.p;for(const k of ['inv','dash','dashCD','attackCD','magicCD','attack','counter','catCD','frenzy','frenzyCD','rage','fearless','grief'])p[k]=Math.max(0,(p[k]||0)-dt);s.slow=Math.max(0,(s.slow||0)-dt);
 // Presses made slightly early (in the air, during a cooldown) are kept briefly instead of dropped.
 // An attack tap is kept for a whole swing's recovery so mashing at any rhythm keeps the combo going.
 const buf=p.buffer||(p.buffer={jump:0,dodge:0,attack:0,magic:0});for(const k in buf)buf[k]=Math.max(0,buf[k]-dt);if(input.jump)buf.jump=BUFFER;if(input.dodge)buf.dodge=BUFFER;if(input.attackPress)buf.attack=.3;if(input.magicPress)buf.magic=.2;p.comboAge+=dt;if(p.comboAge>1)p.combo=0;
@@ -117,5 +124,5 @@ for(const h of s.hazards){h.life-=dt;if(!h.hit&&Math.abs(p.x-h.x)<h.radius&&p.y<
 for(const t of s.totems){t.life-=dt;t.tick-=dt;if(t.tick<=0&&t.life>1e-6){t.tick+=.5;for(const e of s.enemies)if(e.hp>0&&Math.abs(e.x-t.x)<100&&enemyHeight(e)<200)damageEnemy(s,e,14,'lamp',t.x,t.paid,true);s.events.push({type:'candlePulse',x:t.x,y:35});}}s.totems=s.totems.filter(t=>t.life>0);
 s.orbs=s.orbs.filter(o=>o.life>0&&o.x>0&&o.x<s.length);if(s.status==='fight'&&cleared(s)&&p.x>=s.exit){s.status='clear';s.events.push({type:'clear'});}return s;}
 function makeSave(chapter,memories,ending=null,progress=null){chapter=clamp(chapter,0,2);return{version:2,chapter,memories:[...new Set(memories.filter(x=>memoryIds.includes(x)))],ending,progress:normalizeProgress(progress,chapter)};}
-function readSave(raw){try{const d=JSON.parse(raw);if(![1,2].includes(d.version)||!Number.isInteger(d.chapter)||d.chapter<0||d.chapter>2||!Array.isArray(d.memories))return null;return makeSave(d.chapter,d.memories,['dawn','home'].includes(d.ending)?d.ending:null,d.version===2?d.progress:null);}catch{return null;}}
-return{combatMemories,burnable,burn,giveUp,chapters,create,createTrial,step,makeSave,readSave,skills,XP,level,points,maxHP,normalizeProgress,learn,respec,syncProgress,cost,cleared,spells,spell,equipSpell};});
+function readSave(raw){try{const d=JSON.parse(raw);if(![1,2].includes(d.version)||!Number.isInteger(d.chapter)||d.chapter<0||d.chapter>2||!Array.isArray(d.memories))return null;return makeSave(d.chapter,d.memories,['dawn','home','ash'].includes(d.ending)?d.ending:null,d.version===2?d.progress:null);}catch{return null;}}
+return{combatMemories,burnable,burn,giveUp,hollow,chapters,create,createTrial,step,makeSave,readSave,skills,XP,level,points,maxHP,normalizeProgress,learn,respec,syncProgress,cost,cleared,spells,spell,equipSpell};});

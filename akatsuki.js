@@ -58,7 +58,7 @@ function finale(){showLines(Story.finale(),()=>choose('エマ','弟は生き返�
 {label:'弟との記憶をすべて渡し、朝を戻す',note:'炉が開き、太陽が再び灯る。弟がいたという記憶も、ランタンの声も失う。',run:()=>ending('dawn')},
 {label:'弟との記憶を守り、炉を閉じる',note:'弟は生き返らず、朝も来ない。残った記憶を抱いて、この夜を生きていく。',run:()=>ending('home')}
 ],true),false,true);}
-function ending(kind){endingMusic=true;const dawn=kind==='dawn';showLines(Story.ending(kind,memories),()=>{persist(kind);mode='ending';$('result-label').textContent=dawn?'ENDING I · THE DAWN':'ENDING II · THE EMBER';$('result-title').textContent=dawn?'朝の名前を、知らない。':'小さな火を、絶やさずに。';const lost=dawn?[...(m('mother')?['母の顔']:[]),'弟とのすべての記憶']:lostNames();$('result-text').textContent=`${dawn?'世界を救った。弟がいたことを、もう覚えていない。':'弟は帰らなかった。朝も来なかった。それでも、その思い出と生きていく。'}\n\n手放した記憶：${lost.join('、')||'なし'}\n\n第一編・完\n遊んでくれて、ありがとう。`;$('retry').textContent='別の選択で、もう一度';$('retry').onclick=()=>{$('result').close();confirmNew();};$('result').showModal();},false,true);}
+function ending(kind){endingMusic=kind;const dawn=kind==='dawn';showLines(Story.ending(kind,memories),()=>{persist(kind);mode='ending';const ash=kind==='ash';$('result-label').textContent=ash?'ENDING III · THE ASH':dawn?'ENDING I · THE DAWN':'ENDING II · THE EMBER';$('result-title').textContent=ash?'灰になった魔女。':dawn?'朝の名前を、知らない。':'小さな火を、絶やさずに。';const lost=ash?lostNames():dawn?[...lostNames().filter(n=>n!=='弟の名前'),'弟とのすべての記憶']:lostNames();$('result-text').textContent=`${ash?'すべての記憶を燃やした。戦う理由も、帰る場所も、自分の名前も、もう残っていない。':dawn?'世界を救った。弟がいたことを、もう覚えていない。':'弟は帰らなかった。朝も来なかった。それでも、その思い出と生きていく。'}\n\n手放した記憶：${lost.join('、')||'なし'}\n\n第一編・完\n遊んでくれて、ありがとう。`;$('retry').textContent='別の選択で、もう一度';$('retry').onclick=()=>{$('result').close();confirmNew();};$('result').showModal();},false,true);}
 function confirmNew(){if(save)choose('手記','新しい旅を始めると、この作品のオートセーブを上書きします。ほかのゲームの記録には影響しません。',[
 {label:'新しい旅を始める',note:'この作品の章・選択の記録を最初からにします。',run:()=>{memories=[];progress=C.normalizeProgress({});begin(0,'cold');}},
 {label:'育成を引き継いで、最初から',note:'物語と記憶の選択だけを最初から。経験値・スキル・装備呪文を引き継いで、新しい敵に挑めます。',run:()=>{memories=[];progress=C.normalizeProgress(save.progress);begin(0,'cold');}},
@@ -112,37 +112,40 @@ function flames(){fadeWorld();const row=$('flame-row');row.replaceChildren(...C.
 function openBurn(dying=false){if(!dying&&mode!=='fight')return;const left=C.burnable(s);if(!left.length)return;release();mode='burning';
  $('burn-title').textContent=dying?'まだ、燃やせるものがある。':'何を、燃やす？';$('burn-note').textContent=dying?'このままでは倒れる。記憶をひとつ火にすれば、立ち上がれる。':'燃やした記憶は、二度と戻らない。物語の中の言葉も、消えていく。';
  $('burn').classList.toggle('dying',dying);const list=$('burn-list');list.replaceChildren();
- for(const k of left){const b=document.createElement('button');b.className='burn-card';const t=document.createElement('strong');t.textContent=k.name;const e=document.createElement('span');e.textContent=k.effect;const w=document.createElement('small');w.textContent='二度と思い出せない';b.append(t,e,w);b.onclick=()=>doBurn(k);list.append(b);}
+ for(const k of left){const b=document.createElement('button');b.className='burn-card'+(left.length===1?' last':'');const t=document.createElement('strong');t.textContent=k.name;const e=document.createElement('span');e.textContent=k.effect;const w=document.createElement('small');w.textContent=left.length===1?'最後の記憶。燃やせば、あなたには何も残らない。':'二度と思い出せない';b.append(t,e,w);b.onclick=()=>doBurn(k);list.append(b);}
  $('burn-cancel').textContent=dying?'燃やさずに倒れる（章の始めから）':'燃やさない';$('burn-cancel').onclick=()=>{$('burn').close();if(dying){s.events=[];C.giveUp(s);mode='fight';emit(s.events);}else{mode='fight';last=0;}};
  $('burn').showModal();list.firstElementChild?.focus();}
-function doBurn(k){$('burn').close();s.events=[];C.burn(s,k.id);memories=[...s.memories];persist();flames();mode='fight';last=0;
+function doBurn(k){$('burn').close();s.events=[];C.burn(s,k.id);memories=[...s.memories];persist();flames();if(C.hollow(s)){fallToAsh(k);return;}mode='fight';last=0;
  const f=$('flare');f.className='';void f.offsetWidth;f.className='on '+k.id;whisper(`──${k.name}を、燃やした。`);emit(s.events);}
+// Burning the very last memory: the world loses its colour and Emma stops; ENDING III follows.
+function fallToAsh(k){mode='transition';release();hideHint();introPending=false;$('world').style.filter='grayscale(1) brightness(.55)';$('hud').hidden=true;$('controls').hidden=true;whisper(`──${k.name}を、燃やした。`,2600);setTimeout(()=>whisper('もう、何も残っていない。',3200),2700);setTimeout(()=>ending('ash'),6000);}
 function whisper(text,ms=2600){const w=$('whisper');w.textContent=text;w.classList.remove('show');void w.offsetWidth;w.classList.add('show');clearTimeout(whisper.t);whisper.t=setTimeout(()=>w.classList.remove('show'),ms);}
 $('burn-open').onclick=()=>openBurn(false);
 $('burn').addEventListener('cancel',e=>{e.preventDefault();$('burn-cancel').click();});
 addEventListener('keydown',e=>{if((e.key==='b'||e.key==='B')&&mode==='fight'&&!e.repeat){e.preventDefault();openBurn(false);}});
 // The memory record card: what Emma burned, what she kept, and one line worth sharing on X.
 const GAME_URL='https://sakamoto241.github.io/game/akatsuki.html',TAG='#ワスレビ',recordOrder=['mother','brother',...C.combatMemories.map(k=>k.id)];
-function lostFor(kind){return id=>memories.includes(id)||kind==='dawn'&&id==='brother';}
+function lostFor(kind){return id=>kind==='ash'||memories.includes(id)||kind==='dawn'&&id==='brother';}
 function headline(kind){const gone=lostFor(kind);
+ if(kind==='ash')return'私は、すべてを燃やした。';
  if(kind==='dawn')return gone('self')?'名前を失った魔女が、朝を取り戻した。':'弟とのすべての記憶を燃やして、朝を取り戻した。';
  if(kind==='home')return gone('self')?'自分の名前を燃やしてまで、弟の記憶だけは守った。':'弟の記憶を守り、明けない夜を生きることにした。';
  const pick=['self','brother','mother','lantern','cat','song','bread'].find(gone);return pick?`私は、${memoryNames[pick]}を燃やした。`:'まだ、何も燃やしていない。';}
 function wrapText(c,text,max){const out=[];let cur='';for(const ch of text){if(cur&&c.measureText(cur+ch).width>max){out.push(cur);cur=ch;}else cur+=ch;}if(cur)out.push(cur);return out;}
 async function makeCard(kind){const W=1200,H=675,cv=document.createElement('canvas');cv.width=W;cv.height=H;const c=cv.getContext('2d'),gone=lostFor(kind),left=recordOrder.filter(id=>!gone(id)).length;
- const serif="'Akatsuki Mincho','Hiragino Mincho ProN','Yu Mincho',serif",latin="'Akatsuki Cinzel',Georgia,serif",line=headline(kind),place=kind==='dawn'?'ENDING I · THE DAWN':kind==='home'?'ENDING II · THE EMBER':`第${['一','二','三'][chapter]}章 · ${C.chapters[chapter].name}`;
+ const serif="'Akatsuki Mincho','Hiragino Mincho ProN','Yu Mincho',serif",latin="'Akatsuki Cinzel',Georgia,serif",line=headline(kind),place=kind==='ash'?'ENDING III · THE ASH':kind==='dawn'?'ENDING I · THE DAWN':kind==='home'?'ENDING II · THE EMBER':`第${['一','二','三'][chapter]}章 · ${C.chapters[chapter].name}`;
  const words='ワスレビ記憶を燃やす魔女残った記憶燃やした守った'+line+place+recordOrder.map(id=>memoryNames[id]).join('')+TAG;
  try{await Promise.all([document.fonts.load(`700 40px 'Akatsuki Mincho'`,words),document.fonts.load(`400 20px 'Akatsuki Mincho'`,words),document.fonts.load(`600 20px 'Akatsuki Cinzel'`,'WASUREBI THE WITCH WHO BURNS HER MEMORIES 0123456789/·')]);}catch{}
  c.fillStyle='#0b0d10';c.fillRect(0,0,W,H);if(bgReady){const h=H*1.1,w=h*bg.width/bg.height;c.globalAlpha=.5;c.drawImage(bg,W-w+120,-30,w,h);c.globalAlpha=1;}
  let g=c.createLinearGradient(0,0,W,0);g.addColorStop(0,'#0b0d10f5');g.addColorStop(.55,'#0b0d10d0');g.addColorStop(1,'#0b0d1033');c.fillStyle=g;c.fillRect(0,0,W,H);
  g=c.createRadialGradient(930,470,10,930,470,330);g.addColorStop(0,'#e9b45c55');g.addColorStop(1,'#e9b45c00');c.fillStyle=g;c.fillRect(0,0,W,H);
- drawSprite(c,0,950,640,500,-1,gone('self')?.55:1);
+ drawSprite(c,0,950,640,500,-1,kind==='ash'?.35:gone('self')?.55:1);
  c.strokeStyle='#c9a56599';c.lineWidth=1.5;c.strokeRect(18,18,W-36,H-36);c.strokeStyle='#c9a56533';c.strokeRect(26,26,W-52,H-52);
  c.textBaseline='alphabetic';c.fillStyle='#c9a565';c.font=`600 18px ${latin}`;c.fillText('WASUREBI · THE WITCH WHO BURNS HER MEMORIES',70,86);
  c.fillStyle='#f2e2bd';c.font=`700 52px ${serif}`;c.fillText('ワスレビ',70,146);c.fillStyle='#c9b996';c.font=`400 20px ${serif}`;c.fillText('―記憶を燃やす魔女―',300,144);c.fillStyle='#c9a56588';c.fillRect(70,162,190,1.5);
  c.fillStyle='#fff0dc';c.font=`700 38px ${serif}`;wrapText(c,line,620).slice(0,2).forEach((t,i)=>c.fillText(t,70,228+i*52));
  c.fillStyle='#c9b996';c.font=`400 20px ${serif}`;c.fillText('残った記憶',70,346);c.fillStyle='#ecd29a';c.font=`600 58px ${latin}`;c.fillText(`${left} / ${recordOrder.length}`,190,354);
- recordOrder.forEach((id,i)=>{const x=70+(i%2)*320,y=410+Math.floor(i/2)*44,burnt=gone(id),name=id==='brother'&&kind==='dawn'?'弟とのすべての記憶':memoryNames[id];
+ recordOrder.forEach((id,i)=>{const x=70+(i%2)*320,y=400+Math.floor(i/2)*38,burnt=gone(id),name=id==='brother'&&kind==='dawn'?'弟とのすべての記憶':memoryNames[id];
   c.save();c.translate(x+6,y-7);c.rotate(Math.PI/4);if(burnt){c.fillStyle='#e0786a';c.fillRect(-5,-5,10,10);}else{c.strokeStyle='#c9a565';c.lineWidth=1.5;c.strokeRect(-5,-5,10,10);}c.restore();
   c.font=`400 21px ${serif}`;c.fillStyle=burnt?'#8f7d72':'#eadfc6';c.fillText(name,x+24,y);if(burnt){const w=c.measureText(name).width;c.fillStyle='#c0675ecc';c.fillRect(x+22,y-8,w+4,2);c.fillStyle='#e0958a';c.font=`400 14px ${serif}`;c.fillText('燃やした',x+30+w,y);}});
  c.fillStyle='#a99f8e';c.font=`400 17px ${serif}`;c.fillText(place,70,H-58);c.fillStyle='#c9a565';c.fillText(TAG,70,H-34);
@@ -188,7 +191,7 @@ function drawExit(){const open=C.cleared(s);if(propsReady){const index=s.trial||
 if(open&&!propsReady){glow(s.exit,-65,70,'#cda46328');ctx.strokeStyle='#ad9567';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(s.exit,-65,30,62,0,0,Math.PI*2);ctx.stroke();}}
 function circle(x,y,r,color){ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();}
 function glow(x,y,r,color){const g=ctx.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,color);g.addColorStop(1,'#eab65b00');ctx.fillStyle=g;ctx.fillRect(x-r,y-r,r*2,r*2);}
-function musicScene(){if(!$('screen').hidden)return'title';if(endingMusic)return'ending';if(mode==='story'||mode==='lost')return'town';return s.trial?'trial':['town','pilgrim','belfry'][chapter];}
+function musicScene(){if(!$('screen').hidden)return'title';if(endingMusic)return endingMusic==='ash'?null:'ending';if(mode==='story'||mode==='lost')return'town';return s.trial?'trial':['town','pilgrim','belfry'][chapter];}
 function render(dt){syncPlayback();music.setScene(musicScene());music.duck(mode==='pause'||mode==='growth');document.body.classList.toggle('immersive',controlStyle==='gesture'&&$('screen').hidden&&!$('result').open);if(!W||!H)return;
 // During a conversation on a tall screen, lift the scene so the subtitles never cover Emma.
 const lifted=mode==='story'&&H>W*1.15&&!$('dialogue').classList.contains('event-scene')?Math.min(baseGround,H*.46):baseGround;ground+=(lifted-ground)*Math.min(1,dt*5);const p=s.p;lead+=((p.face>0?.36:.6)-lead)*Math.min(1,dt*2.5);const target=Math.max(0,Math.min(s.length+SCENE_END_MARGIN-W/scale,p.x-W/scale*lead));camera+=(target-camera)*Math.min(1,dt*5);ctx.clearRect(0,0,W,H);ctx.fillStyle='#18212a';ctx.fillRect(0,0,W,H);
