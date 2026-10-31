@@ -133,7 +133,7 @@ localStorageの `akatsuki-lantern-v1` のみ。version/chapter/memories/ending/p
 `akatsuki-theme.css` を `akatsuki.css` の後に重ね、ゲームロジック・セーブ・当たり判定・DOMの操作は変えずに見た目だけを整えた。
 
 - フォント：本文と見出しは「しっぽり明朝 B1」（Regular/Bold）、英字の小見出し・レベル・頁数は「Cinzel」。どちらもSIL Open Font License 1.1で商用利用・同梱が可能。ライセンス本文は `akatsuki-fonts/OFL-*.txt`。ゲームが表示し得る文字（4つのソースファイルの全文字＋かな・英数・約物）だけに `tools/subset-akatsuki-fonts.py` でサブセット化し、WOFF2で約135KB／142KB／16KB。外部CDNへの通信はなし。`font-display:swap` で、読み込み前・失敗時は従来の端末の明朝で表示。
-- **会話や手記の文字を追加・変更したら** `python3 -I tools/subset-akatsuki-fonts.py --check` を実行する。足りない字があれば元のフォント（google/fontsの ofl/shipporiminchob1・ofl/cinzel）を取得して、引数にそのフォルダを渡して再生成する。
+- 文字の追加・変更後の確認と作り直しの手順は v13 を参照（`--check` は廃止し、`node akatsuki-fonts.test.cjs` に置き換えた）。
 - 装飾は画像を増やさず、CSS内のSVGで描画：四隅の飾り枠、菱形の区切り線、紙の質感（ノイズ）、炎のアイコン。
 - 会話・手記・育成・結果のパネルは、暗い羊皮紙＋二重の金線＋四隅の飾り。重要場面（solemn）は同じ枠を赤で描く。
 - ボタン：主要ボタンは真鍮の札、それ以外は鉄枠。戦闘ボタンは彫った鉄、斬るは赤い漆、灯術は琥珀色のガラス。クールダウン表示は従来どおり。
@@ -208,3 +208,14 @@ progressに任意フィールド `spell` を追加。保存schemaは従来のver
 - v11で増えた文字（呪・鎌・盾・燭・詠・煤など34字）がフォントのサブセットに入っておらず端末の明朝で表示されていたため、`tools/subset-akatsuki-fonts.py` で再生成した（`--check` で不足なし）。フォントURLに `?v=2` を付け、古いフォントのキャッシュを使わないようにした。
 - 育成の「スキル／呪文」切り替えを栞風タブに、呪文カードを羊皮紙＋金線のカードに、アイコンを丸い印章の枠に統一。装備中のカードは真鍮色に灯る。
 - 320px幅で灯術ボタンの呪文名（例：灯火弾）が2行に折り返していたため、1行に収めた。
+
+
+## v13：フォントの字抜けを再発させない仕組み
+
+文章を増やすたびにサブセットから漢字が抜ける問題（v12で34字）を、仕組みで防ぐ。
+
+- `akatsuki-fonts/akatsuki-fonts.css` に @font-face をまとめ、`tools/subset-akatsuki-fonts.py` が自動生成する。各フォントのURLには内容のハッシュを付け、HTMLのリンクとpreloadのハッシュも同時に書き換えるので、手でバージョン番号を上げる必要はない。
+- 常に読むフォント：ゲーム内の全文字＋かな・英数・約物（明朝 約140KB／147KB、Cinzel 16KB）。
+- 追加フォント：JIS第1水準の漢字のうち上に入っていない2670字（約693KB／743KB）。`unicode-range` 付きなので、**その字が実際に画面に出たときだけ**ブラウザがダウンロードする。普段のプレイでは読み込まれない（ブラウザで確認済み）。文章に第1水準の漢字を足しても、作り直さずに同じ書体で表示される。
+- `node akatsuki-fonts.test.cjs`：4つのソースの日本語の文字がすべて `akatsuki-fonts/glyphs.txt`（常用＋追加の収録字）にあるかを検査する。第1水準にもない字（例：蘂）が増えると失敗し、作り直しのコマンドを表示する。**文章を変えたら他のテストと一緒に実行すること。**
+- 作り直し：google/fonts の `ofl/shipporiminchob1/ShipporiMinchoB1-{Regular,Bold}.ttf` と `ofl/cinzel/Cinzel[wght].ttf` を1つのフォルダに置き、`python3 -I tools/subset-akatsuki-fonts.py そのフォルダ`。追加分は常に読むフォントから外れた字だけになるので、作り直すと普段の読み込みも最小に戻る。
