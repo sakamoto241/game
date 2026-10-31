@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict'),C=require('./akatsuki-core.js');
 const tick=(s,n,input={})=>{for(let i=0;i<n;i++)C.step(s,1/120,input);};
-function arena(ids=[]){const s=C.create(0,[],{xp:810,skills:ids,earned:[]});s.enemies.forEach((e,i)=>{e.x=i?2500:190;e.hp=e.max=1000;e.phase='recover';e.timer=100;});return s;}
+function arena(ids=[]){const s=C.create(0,[],{xp:810,skills:ids,earned:[]});s.enemies.forEach((e,i)=>{e.x=i?2500:190;e.kind='wraith';e.y=0;e.hp=e.max=1000;e.phase='recover';e.timer=100;});return s;}
 const branches={blade:['blade1','blade2','blade3','blade4'],lamp:['lamp1','lamp2','lamp3','lamp4'],shadow:['shadow1','shadow2','shadow3','shadow4']};
 let s=C.create();assert.equal(C.learn(s,'blade1'),false);s.progress.xp=30;assert.equal(C.points(s.progress),1);assert.equal(C.learn(s,'blade2'),false);assert(C.learn(s,'blade1'));assert.equal(C.learn(s,'lamp1'),false);assert.equal(C.learn(s,'blade1'),false);C.respec(s);assert.equal(C.points(s.progress),1);assert.equal(C.learn(s,'lamp1'),true);
 s=arena(['blade1']);tick(s,80,{attack:true});assert.equal(1000-s.enemies[0].hp,76,'finisher 18+18+40');
