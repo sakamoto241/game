@@ -122,7 +122,7 @@ $('burn-open').onclick=()=>openBurn(false);
 $('burn').addEventListener('cancel',e=>{e.preventDefault();$('burn-cancel').click();});
 addEventListener('keydown',e=>{if((e.key==='b'||e.key==='B')&&mode==='fight'&&!e.repeat){e.preventDefault();openBurn(false);}});
 // The memory record card: what Emma burned, what she kept, and one line worth sharing on X.
-const GAME_URL='https://sakamoto241.github.io/game/akatsuki.html',TAG='#夜明けにわたしを燃やして',recordOrder=['mother','brother',...C.combatMemories.map(k=>k.id)];
+const GAME_URL='https://sakamoto241.github.io/game/akatsuki.html',TAG='#ワスレビ',recordOrder=['mother','brother',...C.combatMemories.map(k=>k.id)];
 function lostFor(kind){return id=>memories.includes(id)||kind==='dawn'&&id==='brother';}
 function headline(kind){const gone=lostFor(kind);
  if(kind==='dawn')return gone('self')?'名前を失った魔女が、朝を取り戻した。':'弟とのすべての記憶を燃やして、朝を取り戻した。';
@@ -131,15 +131,15 @@ function headline(kind){const gone=lostFor(kind);
 function wrapText(c,text,max){const out=[];let cur='';for(const ch of text){if(cur&&c.measureText(cur+ch).width>max){out.push(cur);cur=ch;}else cur+=ch;}if(cur)out.push(cur);return out;}
 async function makeCard(kind){const W=1200,H=675,cv=document.createElement('canvas');cv.width=W;cv.height=H;const c=cv.getContext('2d'),gone=lostFor(kind),left=recordOrder.filter(id=>!gone(id)).length;
  const serif="'Akatsuki Mincho','Hiragino Mincho ProN','Yu Mincho',serif",latin="'Akatsuki Cinzel',Georgia,serif",line=headline(kind),place=kind==='dawn'?'ENDING I · THE DAWN':kind==='home'?'ENDING II · THE EMBER':`第${['一','二','三'][chapter]}章 · ${C.chapters[chapter].name}`;
- const words='夜明けに、わたしを燃やして残った記憶燃やした守った'+line+place+recordOrder.map(id=>memoryNames[id]).join('')+TAG;
- try{await Promise.all([document.fonts.load(`700 40px 'Akatsuki Mincho'`,words),document.fonts.load(`400 20px 'Akatsuki Mincho'`,words),document.fonts.load(`600 20px 'Akatsuki Cinzel'`,'A TALE BEFORE DAWN 0123456789/·')]);}catch{}
+ const words='ワスレビ記憶を燃やす魔女残った記憶燃やした守った'+line+place+recordOrder.map(id=>memoryNames[id]).join('')+TAG;
+ try{await Promise.all([document.fonts.load(`700 40px 'Akatsuki Mincho'`,words),document.fonts.load(`400 20px 'Akatsuki Mincho'`,words),document.fonts.load(`600 20px 'Akatsuki Cinzel'`,'WASUREBI THE WITCH WHO BURNS HER MEMORIES 0123456789/·')]);}catch{}
  c.fillStyle='#0b0d10';c.fillRect(0,0,W,H);if(bgReady){const h=H*1.1,w=h*bg.width/bg.height;c.globalAlpha=.5;c.drawImage(bg,W-w+120,-30,w,h);c.globalAlpha=1;}
  let g=c.createLinearGradient(0,0,W,0);g.addColorStop(0,'#0b0d10f5');g.addColorStop(.55,'#0b0d10d0');g.addColorStop(1,'#0b0d1033');c.fillStyle=g;c.fillRect(0,0,W,H);
  g=c.createRadialGradient(930,470,10,930,470,330);g.addColorStop(0,'#e9b45c55');g.addColorStop(1,'#e9b45c00');c.fillStyle=g;c.fillRect(0,0,W,H);
  drawSprite(c,0,950,640,500,-1,gone('self')?.55:1);
  c.strokeStyle='#c9a56599';c.lineWidth=1.5;c.strokeRect(18,18,W-36,H-36);c.strokeStyle='#c9a56533';c.strokeRect(26,26,W-52,H-52);
- c.textBaseline='alphabetic';c.fillStyle='#c9a565';c.font=`600 18px ${latin}`;c.fillText('A TALE BEFORE DAWN',70,86);
- c.fillStyle='#f2e2bd';c.font=`700 40px ${serif}`;c.fillText('夜明けに、わたしを燃やして',70,140);c.fillStyle='#c9a56588';c.fillRect(70,162,190,1.5);
+ c.textBaseline='alphabetic';c.fillStyle='#c9a565';c.font=`600 18px ${latin}`;c.fillText('WASUREBI · THE WITCH WHO BURNS HER MEMORIES',70,86);
+ c.fillStyle='#f2e2bd';c.font=`700 52px ${serif}`;c.fillText('ワスレビ',70,146);c.fillStyle='#c9b996';c.font=`400 20px ${serif}`;c.fillText('―記憶を燃やす魔女―',300,144);c.fillStyle='#c9a56588';c.fillRect(70,162,190,1.5);
  c.fillStyle='#fff0dc';c.font=`700 38px ${serif}`;wrapText(c,line,620).slice(0,2).forEach((t,i)=>c.fillText(t,70,228+i*52));
  c.fillStyle='#c9b996';c.font=`400 20px ${serif}`;c.fillText('残った記憶',70,346);c.fillStyle='#ecd29a';c.font=`600 58px ${latin}`;c.fillText(`${left} / ${recordOrder.length}`,190,354);
  recordOrder.forEach((id,i)=>{const x=70+(i%2)*320,y=410+Math.floor(i/2)*44,burnt=gone(id),name=id==='brother'&&kind==='dawn'?'弟とのすべての記憶':memoryNames[id];

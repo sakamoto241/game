@@ -1,4 +1,4 @@
-/* 夜明けに、わたしを燃やして — background music.
+/* ワスレビ — background music.
    The approved recorded cue is shared across title, travel and ending scenes. Boss/trial
    scenes use the existing Web Audio score. Shared files keep their playback position. Scenes cross-fade; nothing plays before a user gesture. */
 (function(root){'use strict';
