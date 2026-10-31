@@ -16,9 +16,9 @@ const SCENES={
  ending: {root:50,beat:1.25,chords:[[0,4,7,14],[-3,0,4,11],[5,9,12,16],[-5,-1,2,9]],scale:[0,2,4,6,7,9,11],arp:.45,bell:.3,drone:true}
 };
 function create(){
- let ctx=null,master=null,fxBus=null,noiseBuf=null,verb=null,enabled=true,want=null,current=null,timer=null,ducked=false,isHidden=document.hidden,blocked=false;const buses=new Map();
+ let ctx=null,master=null,verb=null,enabled=true,want=null,current=null,timer=null,ducked=false,isHidden=document.hidden,blocked=false;const buses=new Map();
  function impulse(){const len=ctx.sampleRate*3.4,buf=ctx.createBuffer(2,len,ctx.sampleRate);for(let c=0;c<2;c++){const d=buf.getChannelData(c);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,2.6);}return buf;}
- function setup(){const AC=root.AudioContext||root.webkitAudioContext;if(!AC)return false;ctx=new AC();const comp=ctx.createDynamicsCompressor();comp.threshold.value=-18;comp.ratio.value=3;master=ctx.createGain();master.gain.value=0;master.connect(comp).connect(ctx.destination);verb=ctx.createConvolver();verb.buffer=impulse();const wet=ctx.createGain();wet.gain.value=.55;verb.connect(wet).connect(master);fxBus=ctx.createGain();fxBus.gain.value=enabled?.8:0;fxBus.connect(comp);const len=ctx.sampleRate;noiseBuf=ctx.createBuffer(1,len,ctx.sampleRate);const nd=noiseBuf.getChannelData(0);for(let i=0;i<len;i++)nd[i]=Math.random()*2-1;timer=setInterval(tick,90);return true;}
+ function setup(){const AC=root.AudioContext||root.webkitAudioContext;if(!AC)return false;ctx=new AC();const comp=ctx.createDynamicsCompressor();comp.threshold.value=-18;comp.ratio.value=3;master=ctx.createGain();master.gain.value=0;master.connect(comp).connect(ctx.destination);verb=ctx.createConvolver();verb.buffer=impulse();const wet=ctx.createGain();wet.gain.value=.55;verb.connect(wet).connect(master);timer=setInterval(tick,90);return true;}
  function trackKey(name){return FILES[name]?'file:'+FILES[name]:'generated:'+name;}
  function activeBus(){return buses.get(trackKey(current));}
  function level(){return !enabled||isHidden?0:ducked?.26:activeBus()?.audio?.88:.55;}
@@ -57,39 +57,7 @@ function create(){
   if(Math.random()<sc.arp*(i%2?.55:1)){const n=chord[(i*3+bus.bar)%chord.length]+(i>3?12:0);pluck(bus,midi(sc.root+n),t,.6+Math.random()*.4,sc.box);}
   if(i%4===2&&Math.random()<sc.bell){const n=sc.scale[Math.floor(Math.random()*sc.scale.length)]+24;bell(bus,midi(sc.root+n),t,.5);}
   bus.next+=step;if(++bus.step===8){bus.step=0;bus.bar++;}}}
- // Sound effects: short synthesized voices on their own bus (muted with music, never ducked).
- function fxEnv(t,vol,dur,attack=.004){const g=ctx.createGain();g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol,t+attack);g.gain.exponentialRampToValueAtTime(.0001,t+dur);g.connect(fxBus);return g;}
- function noise(t,dur,vol,type,f0,f1=f0,q=1){const src=ctx.createBufferSource(),f=ctx.createBiquadFilter();src.buffer=noiseBuf;f.type=type;f.Q.value=q;f.frequency.setValueAtTime(f0,t);f.frequency.exponentialRampToValueAtTime(f1,t+dur);src.connect(f).connect(fxEnv(t,vol,dur,.008));src.start(t,Math.random()*.5);src.stop(t+dur+.05);}
- function tone(t,f0,f1,dur,vol,type='sine'){const o=ctx.createOscillator();o.type=type;o.frequency.setValueAtTime(f0,t);o.frequency.exponentialRampToValueAtTime(f1,t+dur);o.connect(fxEnv(t,vol,dur));o.start(t);o.stop(t+dur+.05);}
- function ring(t,freqs,dur,vol){for(const f of freqs)tone(t,f,f*.995,dur,vol/freqs.length);}
- function chime(t,notes,gap,vol,dur=1){notes.forEach((n,i)=>{const f=midi(n),at=t+i*gap;tone(at,f,f,dur,vol);tone(at,f*2.76,f*2.76,dur*.5,vol*.25);});}
- const FX={
-  slash:(t,e)=>{const big=e.combo===3;noise(t,big?.2:.13,big?.3:.22,'bandpass',big?2600:3400,big?450:900,1.4);if(big)ring(t+.02,[2300,3450],.18,.05);if(e.counter)tone(t,900,1800,.1,.06,'triangle');},
-  hit:(t,e)=>{tone(t,e.boss?110:160,e.boss?45:70,e.boss?.2:.13,.38);noise(t,.04,.14,'highpass',2500);if(e.source==='blade')ring(t,[1850,2780],.13,.07);else if(e.source==='lamp')noise(t,.16,.1,'bandpass',1300,600,2);},
-  soul:t=>chime(t,[81,88,93,100],.05,.06,.6),
-  dodge:t=>noise(t,.2,.18,'lowpass',600,2600,.7),
-  jump:t=>tone(t,260,430,.09,.1),
-  magic:t=>{noise(t,.26,.16,'bandpass',900,380,1.2);tone(t,880,880,.4,.04);},
-  reap:t=>{noise(t,.32,.3,'bandpass',2600,480,1.1);ring(t+.03,[1200,1800],.3,.04);},
-  candle:t=>{chime(t,[76],0,.05,.8);noise(t,.2,.06,'bandpass',1800,900,2);},
-  candlePulse:t=>noise(t,.08,.035,'bandpass',2000,1200,3),
-  cat:t=>{for(let i=0;i<3;i++)noise(t+i*.035,.03,.08,'highpass',3500);},
-  hurt:t=>{tone(t,130,38,.28,.5);noise(t,.16,.28,'lowpass',900,200,.8);tone(t,320,160,.22,.06,'square');},
-  warn:t=>{tone(t,330,330,.45,.07);tone(t,495,495,.35,.04);},
-  slam:t=>{tone(t,90,34,.36,.45);noise(t,.42,.2,'lowpass',380,90,.7);},
-  sweep:t=>{noise(t,.5,.24,'lowpass',260,1400,.8);tone(t,80,40,.45,.35);},
-  dive:t=>tone(t,1500,480,.3,.08,'triangle'),
-  enemySpell:t=>{noise(t,.32,.14,'lowpass',700,240,.8);tone(t,110,82,.35,.12,'triangle');},
-  pillar:t=>{tone(t,70,40,.32,.3);noise(t,.18,.16,'highpass',1800,900);},
-  guardSlash:t=>{noise(t,.16,.2,'bandpass',2200,700,1.3);ring(t+.05,[880,1320],.2,.08);},
-  blocked:t=>ring(t,[940,1410,2120],.22,.14),
-  guardBreak:t=>{noise(t,.28,.3,'highpass',2600,900);tone(t,720,180,.35,.08,'square');},
-  level:t=>chime(t,[84,88,91,96],.07,.07,1.2),
-  spellLearned:t=>chime(t,[79,83,86],.08,.05,1),
-  lost:t=>tone(t,220,92,1.3,.12,'triangle'),
-  ui:t=>tone(t,1250,1250,.035,.03),
-  choice:t=>chime(t,[74,81],.06,.05,.9)
- };
+ // Gameplay and UI remain silent; only scene BGM is played.
  function tick(){fileVolumes();if(!ctx||ctx.state!=='running')return;for(const bus of buses.values())if(!bus.ending&&!bus.audio)schedule(bus);}
  function apply(){if(!ctx)return;if(!enabled||isHidden){pauseFiles();ramp(master.gain,0,.3);return;}const key=trackKey(want);for(const bus of buses.values())if(!bus.ending&&bus.key!==key)stop(bus);if(want&&SCENES[want])start(want);current=want;resumeFiles();ramp(master.gain,level(),.6);}
  return{
@@ -97,8 +65,7 @@ function create(){
   // Must be called from a user gesture (iOS will not start audio otherwise).
   unlock(){if(!enabled)return;if(!ctx&&!setup())return;resumeContext();apply();},
   setScene(name){if(name===want)return;want=name;apply();},
-  sfx(type,e={}){if(!ctx||ctx.state!=='running'||!enabled||!FX[type])return;FX[type](ctx.currentTime+.005,e);},
-  setEnabled(on){enabled=on;if(fxBus)ramp(fxBus.gain,on?.8:0,.2);if(on&&!isHidden)resumeContext();apply();fileVolumes();},
+  setEnabled(on){enabled=on;if(on&&!isHidden)resumeContext();apply();fileVolumes();},
   duck(on){if(on===ducked)return;ducked=on;if(ctx)ramp(master.gain,level(),.4);fileVolumes();},
   pause(hidden){isHidden=hidden;if(!ctx)return;if(hidden){pauseFiles();ctx.suspend().catch(()=>{});}else if(enabled){resumeContext();apply();}},
   get state(){const bus=activeBus(),playing=enabled&&!isHidden&&(bus?.audio?!bus.audio.paused&&bus.audio.readyState>=2:!!bus&&ctx?.state==='running');return{playing,blocked,ctx:ctx?.state||'none',scene:current,enabled,buses:[...buses.values()].map(b=>b.name),source:activeBus()?.audio?.src||null};}
