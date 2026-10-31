@@ -49,3 +49,12 @@ python3 tools/render-akatsuki-lantern-bgm.py --samples /path/to/sample-cache --o
 タイトル・会話・通常ヘッダーに同期した音ボタンを用意。音の好みは従来の `akatsuki-lantern-sound` のみ。タイトルで初めて消音を選んだタップは、解除用ジェスチャーとして扱わず、不要な曲の取得を始めない。タイトルと手記からクレジットにアクセスできる。
 
 検証：`test_bgm_integration.py`（実際のMP3再生、操作前の非取得、同一曲の継続、生成曲への切り替え、短時間での復帰、重複バスなし、消音、非表示、失敗時の代替）、`test_bgm_game.py`（実ゲーム内での継続、設定保存、音量低下、セーブ不変、後半章の会話/ボス戦/回想）、`test_bgm_title_controls.py`（320pxでのタイトルと会話の音ボタン）、`test_event_art.py`（7サイズの会話と一枚絵の配置）を確認。スクリプトは `/workspace/artifacts/akatsuki/`。
+
+
+## v23：再生できない場合の修正
+
+ユーザーからゲーム内でBGMが流れない報告を受けて、MP3を `createMediaElementSource` へ接続せず、ブラウザ標準のHTMLAudio出力で直接再生する方式へ変更。Web Audioの中断や出力経路の影響を、録音BGMから切り離した。合成の戦闘曲・効果音は引き続きWeb Audioを使う。録音BGMの音量とフェードはHTMLAudio側で管理し、非表示とミュートでは実際にpauseする。iOSなどメディア音量のプログラム変更を制限する環境では、フェードや音量低下よりOSの音量が優先される。
+
+以前のplay()の例外は握りつぶされ、音ON表示だけが残っていた。実際の再生状態と拒否状態を公開し、タイトル・会話に「音楽を再生」のボタンを用意。保存済みのoff設定も勝手に変更せず、このボタンで明示的にonへ戻せる。操作のpointerdownに加えtouchend/click/keydownでも再試行。AudioContextはsuspendedに限らずinterruptedからもresumeを試みる。曲の再生位置と同一ファイル共有、ボス曲切り替え、既存のセーブは維持。
+
+Chromium実ブラウザで実MP3のデコード信号を解析し出力を確認。ジェスチャー拒否を注入し、再試行ボタンからの復帰、保存済みoffからの復帰、初期の非再生、二重再生防止、曲の継続、音量低下、ミュート、非表示、読み込み失敗時の生成曲を検証。実ゲームと会話のレイアウトも確認。iPhone実機での確認は行えていない。WebKitのダウンロードは環境のネットワーク制限で拒否された。

@@ -16,13 +16,20 @@ const SCENES={
  ending: {root:50,beat:1.25,chords:[[0,4,7,14],[-3,0,4,11],[5,9,12,16],[-5,-1,2,9]],scale:[0,2,4,6,7,9,11],arp:.45,bell:.3,drone:true}
 };
 function create(){
- let ctx=null,master=null,fxBus=null,noiseBuf=null,verb=null,enabled=true,want=null,current=null,timer=null,ducked=false,isHidden=document.hidden;const buses=new Map();
+ let ctx=null,master=null,fxBus=null,noiseBuf=null,verb=null,enabled=true,want=null,current=null,timer=null,ducked=false,isHidden=document.hidden,blocked=false;const buses=new Map();
  function impulse(){const len=ctx.sampleRate*3.4,buf=ctx.createBuffer(2,len,ctx.sampleRate);for(let c=0;c<2;c++){const d=buf.getChannelData(c);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,2.6);}return buf;}
  function setup(){const AC=root.AudioContext||root.webkitAudioContext;if(!AC)return false;ctx=new AC();const comp=ctx.createDynamicsCompressor();comp.threshold.value=-18;comp.ratio.value=3;master=ctx.createGain();master.gain.value=0;master.connect(comp).connect(ctx.destination);verb=ctx.createConvolver();verb.buffer=impulse();const wet=ctx.createGain();wet.gain.value=.55;verb.connect(wet).connect(master);fxBus=ctx.createGain();fxBus.gain.value=enabled?.8:0;fxBus.connect(comp);const len=ctx.sampleRate;noiseBuf=ctx.createBuffer(1,len,ctx.sampleRate);const nd=noiseBuf.getChannelData(0);for(let i=0;i<len;i++)nd[i]=Math.random()*2-1;timer=setInterval(tick,90);return true;}
  function trackKey(name){return FILES[name]?'file:'+FILES[name]:'generated:'+name;}
  function activeBus(){return buses.get(trackKey(current));}
  function level(){return !enabled||isHidden?0:ducked?.26:activeBus()?.audio?.88:.55;}
- function resumeFiles(){if(!enabled||isHidden)return;for(const bus of buses.values())if(!bus.ending&&bus.audio?.paused)bus.audio.play().catch(()=>{});}
+ // Recorded music uses the browser's native media output. Routing it through a
+ // suspended/interrupted Web Audio graph can leave iPhone media silently playing.
+ function playFile(bus){const a=bus.audio;if(!a||bus.playPending||!enabled||isHidden||bus.ending)return;bus.playPending=true;
+  try{Promise.resolve(a.play()).then(()=>{blocked=false;},e=>{if(enabled&&!isHidden&&!bus.ending&&e.name!=='AbortError')blocked=true;}).finally(()=>{bus.playPending=false;});}catch{bus.playPending=false;blocked=true;}}
+ function resumeFiles(){if(!enabled||isHidden)return;for(const bus of buses.values())if(!bus.ending&&bus.audio?.paused)playFile(bus);}
+ function fileFade(bus,to,sec){const now=performance.now(),f=bus.fade;bus.fade={from:f?f.from+(f.to-f.from)*Math.min(1,(now-f.at)/f.ms):0,to,at:now,ms:sec*1000};}
+ function fileVolumes(){const now=performance.now();for(const bus of buses.values())if(bus.audio){const f=bus.fade,mix=f?f.from+(f.to-f.from)*Math.min(1,(now-f.at)/f.ms):1;bus.audio.volume=(!enabled||isHidden?0:ducked?.26:.88)*mix;}}
+ function resumeContext(){if(ctx&&ctx.state!=='running'&&ctx.state!=='closed')ctx.resume().catch(()=>{});}
  function pauseFiles(){for(const bus of buses.values())bus.audio?.pause();}
  function ramp(param,value,sec){const t=ctx.currentTime;param.cancelScheduledValues(t);param.setValueAtTime(param.value,t);param.linearRampToValueAtTime(value,t+sec);}
  function env(g,t,peak,attack,hold,release){g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(peak,t+attack);g.gain.setValueAtTime(peak,t+attack+hold);g.gain.exponentialRampToValueAtTime(.0001,t+attack+hold+release);}
@@ -34,13 +41,14 @@ function create(){
  function sustained(bus,sc){const nodes=[];if(sc.drone){for(const n of [sc.root-24,sc.root-12+7]){const o=ctx.createOscillator(),g=out(bus,.3),lfo=ctx.createOscillator(),depth=ctx.createGain();o.type='triangle';o.frequency.value=midi(n);g.gain.value=.035;lfo.frequency.value=.07;depth.gain.value=.015;lfo.connect(depth).connect(g.gain);o.connect(g);o.start();lfo.start();nodes.push(o,lfo);}}
   if(sc.wind){const len=ctx.sampleRate*4,buf=ctx.createBuffer(1,len,ctx.sampleRate),d=buf.getChannelData(0);for(let i=0;i<len;i++)d[i]=Math.random()*2-1;const src=ctx.createBufferSource(),bp=ctx.createBiquadFilter(),g=out(bus,.2),lfo=ctx.createOscillator(),depth=ctx.createGain();src.buffer=buf;src.loop=true;bp.type='bandpass';bp.frequency.value=520;bp.Q.value=.9;lfo.frequency.value=.09;depth.gain.value=260;lfo.connect(depth).connect(bp.frequency);g.gain.value=.05;src.connect(bp).connect(g);src.start();lfo.start();nodes.push(src,lfo);}
   return nodes;}
- function fileBus(bus,url){const a=new Audio();a.preload='none';a.loop=true;a.crossOrigin='anonymous';a.src=url;const src=ctx.createMediaElementSource(a);src.connect(bus.dry);bus.mediaSource=src;
-  a.addEventListener('error',()=>{if(bus.ending||bus.fileFailed||buses.get(bus.key)!==bus)return;bus.fileFailed=true;a.pause();src.disconnect();bus.audio=null;bus.nodes=sustained(bus,bus.sc);bus.next=ctx.currentTime+.1;bus.bar=0;bus.step=0;ramp(master.gain,level(),.6);});
-  a.play().catch(()=>{});return a;}
- function start(name){const key=trackKey(name),existing=buses.get(key);if(existing){existing.name=name;existing.sc=SCENES[name];if(existing.ending){clearTimeout(existing.cleanup);existing.ending=false;existing.next=Math.max(existing.next,ctx.currentTime+.08);ramp(existing.dry.gain,1,1.2);ramp(existing.send.gain,1,1.2);}return existing;}
+ function fileBus(bus,url){const a=new Audio();a.preload='none';a.loop=true;a.setAttribute('playsinline','');a.src=url;bus.audio=a;
+  a.addEventListener('playing',()=>{blocked=false;if(!enabled||isHidden||bus.ending)a.pause();});
+  a.addEventListener('error',()=>{if(bus.ending||bus.fileFailed||buses.get(bus.key)!==bus)return;bus.fileFailed=true;a.pause();bus.audio=null;bus.nodes=sustained(bus,bus.sc);bus.next=ctx.currentTime+.1;bus.bar=0;bus.step=0;ramp(master.gain,level(),.6);});
+  fileFade(bus,1,2.5);fileVolumes();playFile(bus);return a;}
+ function start(name){const key=trackKey(name),existing=buses.get(key);if(existing){existing.name=name;existing.sc=SCENES[name];if(existing.ending){clearTimeout(existing.cleanup);existing.ending=false;if(existing.audio)fileFade(existing,1,1.2);existing.next=Math.max(existing.next,ctx.currentTime+.08);ramp(existing.dry.gain,1,1.2);ramp(existing.send.gain,1,1.2);}return existing;}
   const sc=SCENES[name],bus={key,name,sc,dry:ctx.createGain(),send:ctx.createGain(),bar:0,step:0,next:ctx.currentTime+.15,nodes:[]};bus.dry.gain.value=0;bus.dry.connect(master);bus.send.gain.value=0;bus.send.connect(verb);
-  if(FILES[name])bus.audio=fileBus(bus,FILES[name]);else bus.nodes=sustained(bus,sc);ramp(bus.dry.gain,1,2.5);ramp(bus.send.gain,1,2.5);buses.set(key,bus);return bus;}
- function stop(bus){if(bus.ending)return;ramp(bus.dry.gain,0,2.5);ramp(bus.send.gain,0,2.5);bus.ending=true;bus.cleanup=setTimeout(()=>{if(!bus.ending||buses.get(bus.key)!==bus)return;for(const n of bus.nodes)try{n.stop();}catch{}bus.audio?.pause();bus.mediaSource?.disconnect();bus.dry.disconnect();bus.send.disconnect();buses.delete(bus.key);},2700);}
+  buses.set(key,bus);if(FILES[name])bus.audio=fileBus(bus,FILES[name]);else bus.nodes=sustained(bus,sc);ramp(bus.dry.gain,1,2.5);ramp(bus.send.gain,1,2.5);return bus;}
+ function stop(bus){if(bus.ending)return;if(bus.audio)fileFade(bus,0,2.5);ramp(bus.dry.gain,0,2.5);ramp(bus.send.gain,0,2.5);bus.ending=true;bus.cleanup=setTimeout(()=>{if(!bus.ending||buses.get(bus.key)!==bus)return;for(const n of bus.nodes)try{n.stop();}catch{}bus.audio?.pause();bus.mediaSource?.disconnect();bus.dry.disconnect();bus.send.disconnect();buses.delete(bus.key);},2700);}
  // Four steps per beat-pair; chords change every bar of eight steps.
  function schedule(bus){const sc=bus.sc,step=sc.beat/2;while(bus.next<ctx.currentTime+.5){const t=bus.next,chord=sc.chords[bus.bar%sc.chords.length],i=bus.step;
   if(i===0)pad(bus,chord.map(n=>midi(sc.root+n-12)),t,step*8);
@@ -82,17 +90,17 @@ function create(){
   ui:t=>tone(t,1250,1250,.035,.03),
   choice:t=>chime(t,[74,81],.06,.05,.9)
  };
- function tick(){if(!ctx||ctx.state!=='running')return;for(const bus of buses.values())if(!bus.ending&&!bus.audio)schedule(bus);}
+ function tick(){fileVolumes();if(!ctx||ctx.state!=='running')return;for(const bus of buses.values())if(!bus.ending&&!bus.audio)schedule(bus);}
  function apply(){if(!ctx)return;if(!enabled||isHidden){pauseFiles();ramp(master.gain,0,.3);return;}const key=trackKey(want);for(const bus of buses.values())if(!bus.ending&&bus.key!==key)stop(bus);if(want&&SCENES[want])start(want);current=want;resumeFiles();ramp(master.gain,level(),.6);}
  return{
   scenes:Object.keys(SCENES),
   // Must be called from a user gesture (iOS will not start audio otherwise).
-  unlock(){if(!enabled)return;if(!ctx&&!setup())return;if(ctx.state==='suspended')ctx.resume().catch(()=>{});apply();},
+  unlock(){if(!enabled)return;if(!ctx&&!setup())return;resumeContext();apply();},
   setScene(name){if(name===want)return;want=name;apply();},
   sfx(type,e={}){if(!ctx||ctx.state!=='running'||!enabled||!FX[type])return;FX[type](ctx.currentTime+.005,e);},
-  setEnabled(on){enabled=on;if(fxBus)ramp(fxBus.gain,on?.8:0,.2);if(on&&!isHidden&&ctx?.state==='suspended')ctx.resume().catch(()=>{});apply();},
-  duck(on){if(on===ducked)return;ducked=on;if(ctx)ramp(master.gain,level(),.4);},
-  pause(hidden){isHidden=hidden;if(!ctx)return;if(hidden){pauseFiles();ctx.suspend().catch(()=>{});}else if(enabled){ctx.resume().catch(()=>{});apply();}},
-  get state(){return{ctx:ctx?.state||'none',scene:current,enabled,buses:[...buses.values()].map(b=>b.name),source:activeBus()?.audio?.src||null};}
+  setEnabled(on){enabled=on;if(fxBus)ramp(fxBus.gain,on?.8:0,.2);if(on&&!isHidden)resumeContext();apply();fileVolumes();},
+  duck(on){if(on===ducked)return;ducked=on;if(ctx)ramp(master.gain,level(),.4);fileVolumes();},
+  pause(hidden){isHidden=hidden;if(!ctx)return;if(hidden){pauseFiles();ctx.suspend().catch(()=>{});}else if(enabled){resumeContext();apply();}},
+  get state(){const bus=activeBus(),playing=enabled&&!isHidden&&(bus?.audio?!bus.audio.paused&&bus.audio.readyState>=2:!!bus&&ctx?.state==='running');return{playing,blocked,ctx:ctx?.state||'none',scene:current,enabled,buses:[...buses.values()].map(b=>b.name),source:activeBus()?.audio?.src||null};}
  };}
 root.AkatsukiMusic={create};})(typeof globalThis!=='undefined'?globalThis:this);
