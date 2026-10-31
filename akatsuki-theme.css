@@ -148,3 +148,45 @@ details[open]>summary:after{background:var(--gold)}.controls-help summary{displa
  #controls .actions .dodge{width:56px;height:48px}#controls .actions .magic{width:70px;height:48px}
  #controls .actions .jump{width:56px;height:56px}#controls .actions .attack{width:70px;height:70px;font-size:16px}
 }
+
+/* Immersive touch play (gesture style): the painting fills the screen, controls float over it. */
+#gesture-layer{display:none}
+body.immersive #app{display:block;max-width:none;height:100dvh;padding:0}
+body.immersive header{position:fixed;z-index:6;top:max(10px,env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right));height:auto;min-height:0;padding:0;border:0;background:none}
+body.immersive .brand,body.immersive footer{display:none}
+body.immersive #menu,body.immersive #growth-open{min-height:44px;background:#0b0e12c4;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+body.immersive .stage{position:fixed;inset:0;margin:0;border:0;box-shadow:none;min-height:0}
+body.immersive #hud{inset:max(14px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) auto max(16px,env(safe-area-inset-left))}
+body.immersive #boss-hud{margin-top:22px}
+body.immersive #gesture-layer{display:block;position:absolute;inset:0;z-index:2;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+body.immersive #controls{display:block;position:fixed;z-index:4;right:max(16px,env(safe-area-inset-right));bottom:max(18px,env(safe-area-inset-bottom));padding:0;margin:0}
+body.immersive #controls .move,body.immersive #controls .attack,body.immersive #controls .dodge{display:none}
+body.immersive #controls .actions{display:grid;grid-template-columns:62px 72px;grid-template-rows:62px 72px;gap:4px;margin:0}
+body.immersive #controls .actions .magic{grid-area:1/1;width:62px;height:62px;border-radius:50%;padding:0;opacity:.92}
+body.immersive #controls .actions .jump{grid-area:2/2;width:72px;height:72px;border-radius:50%;opacity:.92;font-size:15px}
+body.immersive #controls .magic small{font-size:9px}
+.stick-ring,.stick-knob{position:absolute;left:0;top:0;opacity:0;pointer-events:none;border-radius:50%;transform:translate(-50%,-50%);transition:opacity .12s}
+.stick-ring{width:108px;height:108px;border:1px solid #c9a56577;background:radial-gradient(circle,#0b0e1240,#0b0e1288);box-shadow:inset 0 0 0 4px #0b0e1255,0 0 24px #0008}
+.stick-ring:before,.stick-ring:after{content:'‹';position:absolute;top:50%;transform:translateY(-52%);left:10px;color:#c9a565aa;font:22px serif}.stick-ring:after{content:'›';left:auto;right:10px}
+.stick-knob{width:48px;height:48px;background:radial-gradient(circle at 45% 38%,#f3dca5,#b98d4b 60%,#6e5228);box-shadow:0 0 16px #e5b25d88;transition:none}
+.steering .stick-ring{opacity:1}.steering .stick-knob{opacity:.95}
+.tap-mark,.swipe-mark{position:absolute;pointer-events:none}
+.tap-mark{width:18px;height:18px;margin:-9px 0 0 -9px;border:2px solid #f3d38f;border-radius:50%;animation:tapmark .4s ease-out forwards}
+@keyframes tapmark{to{transform:scale(3.4);opacity:0}}
+.swipe-mark{width:90px;height:4px;margin-top:-2px;transform-origin:0 50%;transform:rotate(var(--angle));background:linear-gradient(90deg,#f3d38f00,#f3d38f);border-radius:2px;animation:swipemark .4s ease-out forwards}
+@keyframes swipemark{to{opacity:0;width:130px}}
+@media(prefers-reduced-motion:reduce){.tap-mark{animation:none;opacity:.6}}
+#gesture-hint{position:absolute;inset:0;z-index:3;display:grid;grid-template-columns:1fr 1fr;align-content:center;gap:0;padding:90px 16px 40px;pointer-events:none;background:linear-gradient(90deg,#05070ab8 0 45%,#05070a8c 45%)}
+#gesture-hint[hidden]{display:none}
+.hint-side{display:flex;flex-direction:column;gap:9px;align-items:center;text-align:center;padding:0 6px;color:#eadfc6;font-size:13px;text-shadow:0 1px 4px #000}
+.hint-side+.hint-side{border-left:1px dashed #c9a56566}
+.hint-side b{font-family:'Akatsuki Mincho',serif;font-size:16px;color:var(--gold-hi);letter-spacing:.2em;margin-bottom:4px}
+#gesture-hint small{grid-column:1/-1;text-align:center;margin-top:22px;color:#c9b996;font-size:11px;letter-spacing:.15em}
+.control-style{margin:18px 0 6px;padding:12px 14px 14px;border:1px solid #c9a56540;background:var(--noise),#c9a56508}
+.control-style legend{padding:0 6px;color:#e1bd81;font-size:12px;letter-spacing:.1em}
+.control-style label{display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px;min-height:44px;padding:6px 4px;font-size:13px;cursor:pointer}
+.control-style input{width:18px;height:18px;accent-color:#c9a565;margin:0}
+.control-style small{flex-basis:100%;padding-left:28px;font-size:10px;color:#a99f8e}
+body.immersive .chapter-label{max-width:calc(100% - 200px)}
+body.immersive .chapter-label span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.immersive #boss-hud{width:min(78%,520px)}
