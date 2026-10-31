@@ -190,3 +190,21 @@ body.immersive #controls .magic small{font-size:9px}
 body.immersive .chapter-label{max-width:calc(100% - 200px)}
 body.immersive .chapter-label span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 body.immersive #boss-hud{width:min(78%,520px)}
+
+/* Seamless flow: conversations sit over the scene like subtitles, places change through a short fade. */
+#fade{position:fixed;inset:0;z-index:50;background:#050608;opacity:0;pointer-events:none;transition:opacity .32s ease}
+#fade.on{opacity:1;pointer-events:auto}
+#dialogue:not(.event-scene)[open]{margin:auto auto max(14px,env(safe-area-inset-bottom));width:min(680px,calc(100vw - 20px));max-height:58dvh;cursor:pointer;animation:dlgIn .28s ease-out}
+#dialogue:not(.event-scene)::backdrop{background:linear-gradient(0deg,#05070ad9 0%,#05070a66 45%,#05070a14 100%);backdrop-filter:none;-webkit-backdrop-filter:none}
+#dialogue.solemn:not(.event-scene)::backdrop{background:linear-gradient(0deg,#040507f2 0%,#040507b3 50%,#04050766 100%)}
+#dialogue #choices button,#dialogue button{cursor:pointer}
+@keyframes dlgIn{from{opacity:0;transform:translateY(14px)}}
+#line.appear{animation:lineIn .32s ease-out}
+@keyframes lineIn{from{opacity:0;transform:translateY(4px)}}
+#next:after{content:'';display:inline-block;width:6px;height:6px;margin-left:10px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg) translateY(-3px);animation:nudge 1.4s ease-in-out infinite}
+#next span{display:none}
+@keyframes nudge{50%{transform:rotate(45deg) translate(2px,-1px)}}
+#hud:not([hidden]),body.immersive #controls:not([hidden]){animation:uiIn .45s ease-out}
+@keyframes uiIn{from{opacity:0}}
+@media(prefers-reduced-motion:reduce){#dialogue[open],#line.appear,#hud,#controls,#next:after{animation:none!important}#fade{transition:none}}
+@media(max-width:480px){#dialogue:not(.event-scene)[open]{padding:18px 18px 16px}#dialogue:not(.event-scene) #portrait{width:62px;height:62px}#dialogue:not(.event-scene) #line{min-height:80px;margin:14px 0 12px}#dialogue:not(.event-scene) .dialogue-scene{padding-bottom:16px}#dialogue:not(.event-scene) #next{min-height:46px}}
