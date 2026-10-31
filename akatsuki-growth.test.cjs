@@ -9,7 +9,7 @@ s=arena(branches.blade.slice(0,3));s.enemies[0].x=45;C.step(s,1/120,{dodge:true}
 s=arena(branches.blade);s.enemies[0].x=500;s.p.combo=2;const light=s.p.light;C.step(s,1/120,{attack:true});assert(s.orbs.some(o=>o.damage===26&&o.source==='blade'));assert(light-s.p.light<.01,'wave costs no light');
 s=arena(['lamp1']);C.step(s,1/120,{magic:true});assert(Math.abs(s.p.light-(85-16-1/120*.65))<.001);
 s=arena(branches.lamp.slice(0,2));s.enemies[0].x=260;s.enemies[1].x=370;C.step(s,1/120,{magic:true});tick(s,75);assert.equal(s.enemies[0].hp,954);assert.equal(s.enemies[1].hp,954,'piercing hits next target once');
-s=arena(branches.lamp.slice(0,3));s.enemies[0].x=200;s.enemies[0].hp=40;s.p.light=25;C.step(s,1/120,{magic:true});tick(s,12);assert(s.p.light>48,'spell kill restores 24 and 16');
+s=arena(branches.lamp.slice(0,3));s.enemies[0].x=200;s.enemies[0].hp=40;s.p.light=25;C.step(s,1/120,{magic:true});tick(s,12);assert(s.p.light>42,'spell kill restores 18 and 16');
 s=arena(branches.lamp);C.step(s,1/120,{magic:true});assert.equal(s.orbs.length,2);assert(s.p.light>68&&s.p.light<70,'two spells cost one cast');
 s=arena(['shadow1']);C.step(s,1/120,{dodge:true});assert.equal(s.p.dashCD,.65);assert.equal(s.p.inv,.35);
 s=arena(branches.shadow.slice(0,2));s.p.catCD=0;C.step(s,1/120);assert.equal(s.enemies[0].hp,986,'cat actually attacks');tick(s,60);assert.equal(s.enemies[0].hp,986,'cat respects interval');
