@@ -1,8 +1,8 @@
 /* 夜明けに、わたしを燃やして — world-styled UI layer over akatsuki.css.
    Fonts: Shippori Mincho B1 and Cinzel (SIL OFL 1.1), subset by tools/subset-akatsuki-fonts.py. */
-@font-face{font-family:'Akatsuki Mincho';src:url('akatsuki-fonts/akatsuki-mincho-regular.woff2') format('woff2');font-weight:400 500;font-display:swap}
-@font-face{font-family:'Akatsuki Mincho';src:url('akatsuki-fonts/akatsuki-mincho-bold.woff2') format('woff2');font-weight:600 900;font-display:swap}
-@font-face{font-family:'Akatsuki Cinzel';src:url('akatsuki-fonts/akatsuki-cinzel.woff2') format('woff2');font-weight:400 900;font-display:swap}
+@font-face{font-family:'Akatsuki Mincho';src:url('akatsuki-fonts/akatsuki-mincho-regular.woff2?v=2') format('woff2');font-weight:400 500;font-display:swap}
+@font-face{font-family:'Akatsuki Mincho';src:url('akatsuki-fonts/akatsuki-mincho-bold.woff2?v=2') format('woff2');font-weight:600 900;font-display:swap}
+@font-face{font-family:'Akatsuki Cinzel';src:url('akatsuki-fonts/akatsuki-cinzel.woff2?v=2') format('woff2');font-weight:400 900;font-display:swap}
 :root{--gold:#c9a565;--gold-hi:#ecd29a;--ember:#c0675e;--ink:#0d0f12;--paper:#eadfc6;--noise:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .85 0 0 0 0 .72 0 0 0 0 .52 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");--divider:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='170' height='14' fill='%23c9a565'%3E%3Cpath d='M0 7h68M102 7h68' stroke='%23c9a565' stroke-width='.7' opacity='.8'/%3E%3Cpath d='M85 1.5l5.5 5.5-5.5 5.5-5.5-5.5z'/%3E%3Cpath d='M85 4.5l2.5 2.5-2.5 2.5-2.5-2.5z' fill='%2314161a'/%3E%3Ccircle cx='73' cy='7' r='1.4'/%3E%3Ccircle cx='97' cy='7' r='1.4'/%3E%3C/svg%3E");--flame:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='14'%3E%3Cpath d='M5 .5C6.5 3.5 9.5 5.5 9.5 9A4.5 4.5 0 0 1 .5 9C.5 6.5 2.5 5.5 3 3.5 4 5 4.5 5.5 5 6 5.6 4.4 5.6 2.4 5 .5Z' fill='%23e9b45c'/%3E%3Cpath d='M5 7.5c1 1 1.8 1.6 1.8 2.6a1.8 1.8 0 0 1-3.6 0c0-.9.9-1.6 1.8-2.6Z' fill='%23fff1c4'/%3E%3C/svg%3E")}
 body,button,select{font-family:'Akatsuki Mincho','Hiragino Mincho ProN','Yu Mincho',serif}
 body{background:radial-gradient(ellipse at 50% -10%,#1c1a1a,#0b0d10 60%) fixed,#0b0d10;color:var(--paper)}
@@ -101,3 +101,17 @@ details[open]>summary:after{background:var(--gold)}.controls-help summary{displa
 #controls small{white-space:nowrap;letter-spacing:0}
 @media(max-width:480px){#boss-hud{width:72%}#boss-hud span:before,#boss-hud span:after{width:22px}}
 @media(max-width:380px){#memory-list li{padding-right:9px}#memory-list small{font-size:10px;letter-spacing:0}}
+
+/* Spells (added in v11): same vellum and brass language as the skill tree. */
+#magic-name{white-space:nowrap;font-weight:700}
+@media(max-width:380px){#magic-name{font-size:10px}}
+.growth-switch button{border-radius:2px;background:linear-gradient(180deg,#1c2026,#121519);border-color:#81705466;box-shadow:inset 0 0 0 3px #0e1013,inset 0 0 0 4px #c9a56516;letter-spacing:.2em;font-weight:700}
+.growth-switch [aria-selected=true]{background:linear-gradient(180deg,#54432d,#2c241b);border-color:#d6b47a;color:#f5d99d;box-shadow:inset 0 2px #ecd29a,0 6px 16px #0007}
+.spell-help{display:flex;gap:9px;align-items:flex-start}.spell-help:before{content:'';flex:none;width:9px;height:13px;margin-top:6px;background:var(--flame) center/contain no-repeat;filter:drop-shadow(0 0 4px #e5a64a)}
+.spell-card{position:relative;border-radius:2px;background:var(--noise),linear-gradient(180deg,#24262a,#17191c);border-color:#96846566;box-shadow:inset 0 0 0 3px #101215,inset 0 0 0 4px #c9a56514}
+.spell-card strong{font-weight:700;letter-spacing:.08em;color:#f0e0bb}
+.spell-card .spell-icon{width:52px;height:52px;border-radius:50%;border:1px solid #c9a56566;background:radial-gradient(circle,#2b2a28,#0f1012);box-shadow:inset 0 0 0 3px #0e0f11,inset 0 0 0 4px #c9a56530;object-fit:contain;padding:4px}
+.spell-card.equipped{background:var(--noise),radial-gradient(ellipse at 100% 0,#e5b25d22,transparent 60%),linear-gradient(180deg,#3a3125,#221d17);border-color:#d6b47a;box-shadow:inset 0 0 0 3px #15110c,inset 0 0 0 4px #ecd29a40,0 0 18px #e5b25d22}
+.spell-card.equipped .spell-icon{border-color:#ecd29a;box-shadow:inset 0 0 0 3px #0e0f11,0 0 14px #e5b25d88}
+.spell-card.equipped small{color:#f3d58f}
+.spell-card:not(:disabled):not(.equipped):hover,.spell-card:not(:disabled):not(.equipped):focus-visible{border-color:#d9b876;box-shadow:inset 0 0 0 3px #101215,inset 0 0 0 4px #c9a56540,0 0 18px #c9a56522}
