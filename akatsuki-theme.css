@@ -223,3 +223,44 @@ body.immersive #sound{background:#0b0e12c4;backdrop-filter:blur(4px);-webkit-bac
 /* A clear retry path when the browser refuses a gesture or a stored preference is muted. */
 .music-retry{min-height:44px;padding:8px 12px;color:#d9c69e;background:#141a20;border:1px solid #9d835b66;border-radius:2px;font-size:11px}.title-panel #music-start{width:auto;min-width:140px}.scene-actions:has(#dialogue-music-start:not([hidden])){flex-wrap:wrap}.event-scene .scene-actions #dialogue-music-start{padding:8px;min-width:0;flex:1 1 100px}
 @media(orientation:landscape) and (max-height:550px){.title-panel #music-start{position:static;min-height:44px;margin-top:8px;width:auto}}
+
+/* Burning memories: HUD flames, the choice, the flare and the whispered line. */
+#hud .memory-flames{pointer-events:auto;display:inline-flex;align-items:center;gap:8px;margin-top:10px;min-height:44px;padding:6px 12px 6px 10px;border:1px solid #c0675e66;border-radius:22px;background:#140c0dcc;color:#f0c8b8;font:600 12px 'Akatsuki Mincho',serif;letter-spacing:.14em;box-shadow:0 0 14px #c0675e33}
+#hud .memory-flames:active{transform:scale(.97)}
+#hud .memory-flames.spent{opacity:.45;box-shadow:none}
+#flame-row{display:inline-flex;gap:4px}
+#flame-row i{width:8px;height:12px;background:var(--flame) center/contain no-repeat;filter:drop-shadow(0 0 3px #e5a64a)}
+#flame-row i.ash{background:radial-gradient(circle at 50% 70%,#5a5250 0 2.5px,transparent 3px);filter:none;opacity:.8}
+#world{transition:filter 1.2s ease}
+#burn{width:min(520px,calc(100vw - 24px));text-align:left}
+#burn h2{font-size:22px;letter-spacing:.1em;color:#f3d6c8}
+#burn.dying{border-color:#8b2b2b}#burn.dying::backdrop{background:radial-gradient(ellipse at center,#3a0606aa,#050000f2)}
+#burn-note{font-size:12px;line-height:1.9;color:#c9b7a6;margin:0 0 12px}
+.burn-card{display:block;width:100%;margin:10px 0;padding:14px 16px 12px 46px;position:relative;text-align:left;border:1px solid #a0544f66;border-radius:2px;background:var(--noise),linear-gradient(90deg,#2a1314,#17181c 70%);color:#f0e0c8;box-shadow:inset 0 0 0 3px #120a0b,inset 0 0 0 4px #c0675e22;cursor:pointer}
+.burn-card:before{content:'';position:absolute;left:16px;top:16px;width:14px;height:20px;background:var(--flame) center/contain no-repeat;filter:hue-rotate(-18deg) drop-shadow(0 0 6px #e0786a)}
+.burn-card strong{display:block;font-size:16px;letter-spacing:.08em}
+.burn-card span{display:block;margin:6px 0 4px;font-size:12px;line-height:1.8;color:#cdbfaa}
+.burn-card small{font-size:10px;letter-spacing:.2em;color:#e0958a}
+.burn-card:hover,.burn-card:focus-visible{border-color:#e0786a;background:var(--noise),linear-gradient(90deg,#4a1a1b,#1c1b1f 70%);box-shadow:inset 0 0 0 3px #120a0b,0 0 22px #c0675e44}
+#burn-cancel{display:block;width:100%;margin-top:14px}
+#flare{position:absolute;inset:0;z-index:3;pointer-events:none;opacity:0}
+#flare.on{animation:flare 1.1s ease-out forwards}
+#flare.on{background:radial-gradient(circle at 36% 70%,#fff4d8 0%,#f0b45ccc 25%,#c0675e55 55%,transparent 80%)}
+#flare.on.song{background:radial-gradient(circle at 36% 70%,#eef4ff 0%,#8fb0e0cc 28%,#2a3a6a55 60%,transparent 80%)}
+#flare.on.cat{background:radial-gradient(circle at 36% 70%,#e8d8ff 0%,#6a3a8acc 28%,#20102a77 60%,transparent 80%)}
+#flare.on.self{background:radial-gradient(circle at 36% 70%,#fff0f0 0%,#d0302acc 28%,#4a0808aa 60%,transparent 85%)}
+@keyframes flare{0%{opacity:0}12%{opacity:1}100%{opacity:0}}
+#whisper{position:absolute;left:50%;top:22%;z-index:3;transform:translateX(-50%);width:max-content;max-width:90%;pointer-events:none;opacity:0;font:600 clamp(15px,4vw,22px)/1.6 'Akatsuki Mincho',serif;letter-spacing:.16em;color:#f6e6cf;text-align:center;text-shadow:0 0 18px #000,0 0 6px #000}
+#whisper.show{animation:whisper 2.6s ease forwards}
+@keyframes whisper{0%{opacity:0;transform:translate(-50%,6px)}15%,70%{opacity:1;transform:translate(-50%,0)}100%{opacity:0}}
+@media(prefers-reduced-motion:reduce){#flare.on{animation:none;opacity:0}#whisper.show{animation:none;opacity:1}}
+body.immersive #hud{z-index:3}
+
+/* Sharing the memory record. */
+.share-button{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:48px;margin-top:12px;border:1px solid #c0675e88;border-radius:2px;background:var(--noise),linear-gradient(90deg,#3a1618,#1c1517);color:#f6dccf;font:700 14px 'Akatsuki Mincho',serif;letter-spacing:.12em;box-shadow:inset 0 0 0 3px #140b0c,inset 0 0 0 4px #e0786a33,0 0 18px #c0675e22;cursor:pointer}
+.share-button:before{content:'';width:12px;height:17px;background:var(--flame) center/contain no-repeat;filter:hue-rotate(-18deg) drop-shadow(0 0 5px #e0786a)}
+#share{width:min(640px,calc(100vw - 20px));text-align:center}
+#share-card{display:block;width:100%;height:auto;margin:6px 0 12px;border:1px solid #c9a56566;box-shadow:0 10px 30px #000a}
+#share-text{white-space:pre-line;font-size:12px;line-height:1.8;color:#cdbfaa;margin:0 0 6px}
+#share .primary,#share .outline{display:flex;align-items:center;justify-content:center;width:100%;margin-top:10px;text-decoration:none;box-sizing:border-box}
+#share-native[hidden],#share-tip[hidden]{display:none}
