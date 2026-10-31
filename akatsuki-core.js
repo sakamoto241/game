@@ -114,8 +114,8 @@ if(has(s,'shadow2')&&!s.memories.includes('cat')&&p.catCD<=0){const enemy=s.enem
 const edt=s.slow>0?dt*.3:dt;
 if(p.frenzy>0&&p.frenzyCD<=0){const prey=s.enemies.filter(e=>e.hp>0&&Math.abs(e.x-p.x)<420).sort((a,b)=>Math.abs(a.x-p.x)-Math.abs(b.x-p.x))[0];if(prey){damageEnemy(s,prey,22,'cat');p.frenzyCD=.3;s.events.push({type:'cat',x:prey.x,y:65,frenzy:true});}}
 for(const e of s.enemies){if(e.hp<=0)continue;e.flash=Math.max(0,e.flash-edt);e.stagger=Math.max(0,e.stagger-edt);e.guardBroken=Math.max(0,(e.guardBroken||0)-edt);if(e.stagger>0)continue;if(specialEnemy(s,e,edt))continue;e.face=s.p.x<e.x?-1:1;const dx=p.x-e.x;
-if(e.phase==='idle'){if(Math.abs(dx)> (e.boss?270:88)&&Math.abs(dx)<650)e.x+=Math.sign(dx)*(e.boss?48:65+12*s.chapter)*edt;e.timer-=edt;if(e.timer<=0&&Math.abs(dx)<(e.boss?650:210)){e.phase='warn';e.timer=e.warnTotal=e.boss?(e.hp<e.max*.5?.62:.88):.72;e.aim=p.x;e.hit=false;e.pattern=(e.pattern+1)%(e.boss?3:2);s.events.push({type:'warn',x:e.aim,y:0});}}
-else if(e.phase==='warn'){e.timer-=edt;if(e.timer<=0){e.phase='recover';e.timer=e.boss?1.05:.8;
+if(e.phase==='idle'){if(Math.abs(dx)> (e.boss?270:88)&&Math.abs(dx)<650)e.x+=Math.sign(dx)*(e.boss?48:65+12*s.chapter)*edt;e.timer-=edt;if(e.timer<=0&&Math.abs(dx)<(e.boss?650:210)){e.phase='warn';e.timer=e.warnTotal=e.boss?(e.hp<e.max*.5?.76:.98):(s.chapter===0&&e.id===0?.95:.82);e.aim=p.x;e.hit=false;e.pattern=(e.pattern+1)%(e.boss?3:2);s.events.push({type:'warn',x:e.aim,y:0});}}
+else if(e.phase==='warn'){e.timer-=edt;if(e.timer<=0){e.phase='recover';e.timer=e.boss?1.25:.95;
 if(e.pattern===1){const speed=e.boss?320:245;e.orb=true;s.orbs.push({x:e.x,y:e.boss?100:65,vx:Math.sign(dx)*speed,vy:0,life:5,ally:false});s.events.push({type:'enemySpell',x:e.x,y:80});}
 else{const sweep=e.boss&&e.pattern===2;const range=sweep?900:e.boss?135:83;if((sweep||Math.abs(p.x-e.aim)<range)&&(sweep?p.y<85:p.y<185))hurt(s,e.boss?2:1);s.events.push({type:sweep?'sweep':'slam',x:e.aim,y:0,range});}}
 }else{e.timer-=edt;if(e.timer<=0){e.phase='idle';e.timer=e.boss?.5:.55;}}}
