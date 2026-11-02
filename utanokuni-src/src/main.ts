@@ -41,7 +41,7 @@ function render():void{
  renderTitle();const s=controller.state;$('area-name').textContent=AREAS[s.area].name;$('objective').textContent=controller.objective;
  $('item-count').hidden=!s.inventory.length;$('item-count').textContent=String(s.inventory.length);$('inventory-button').classList.toggle('active',!!controller.selectedItem);$('selection-note').hidden=!controller.selectedItem;
  const setting=controller.settings;$<HTMLInputElement>('setting-music').checked=setting.music;$<HTMLInputElement>('setting-volume').value=String(Math.round(setting.volume*100));$<HTMLSelectElement>('setting-speed').value=setting.textSpeed;$<HTMLInputElement>('setting-motion').checked=setting.reduceMotion;
- $('title-music').setAttribute('aria-pressed',String(setting.music&&!audio.blocked));$('title-music').setAttribute('aria-label',setting.music?(audio.blocked?'音楽を再試行':'音楽を消す'):'音楽を再生');audio.apply();
+ $('title-music').setAttribute('aria-pressed',String(setting.music&&audio.playing));$('title-music').setAttribute('aria-label',setting.music?(audio.playing?'音楽を消す':'音楽を再試行'):'音楽を再生');audio.apply();
  if(playing&&ready)renderDialogue();if($<HTMLDialogElement>('storybook').open)renderBook();if($<HTMLDialogElement>('inventory').open)renderInventory();pauseUI();
 }
 controller.subscribe(render);
@@ -104,7 +104,7 @@ $<HTMLInputElement>('setting-music').onchange=()=>{controller.updateSettings({mu
 $<HTMLInputElement>('setting-volume').oninput=()=>controller.updateSettings({volume:Number($<HTMLInputElement>('setting-volume').value)/100});
 $<HTMLSelectElement>('setting-speed').onchange=()=>controller.updateSettings({textSpeed:$<HTMLSelectElement>('setting-speed').value as Settings['textSpeed']});
 $<HTMLInputElement>('setting-motion').onchange=()=>controller.updateSettings({reduceMotion:$<HTMLInputElement>('setting-motion').checked});
-$('title-music').onclick=()=>{if(controller.settings.music&&audio.blocked)audio.unlock();else{controller.updateSettings({music:!controller.settings.music});audio.unlock();}};
+$('title-music').onclick=()=>{if(controller.settings.music&&!audio.playing)audio.unlock();else{controller.updateSettings({music:!controller.settings.music});audio.unlock();}};
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&playing)controller.persist();engine?.pause(document.hidden);audio.hidden(document.hidden);});
 document.addEventListener('contextmenu',e=>{if((e.target as Element).closest('#canvas-holder,.item-tile'))e.preventDefault();});
 render();pauseUI();

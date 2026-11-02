@@ -2,6 +2,7 @@ import type {Controller} from '../core/controller.ts';
 export class AudioManager {
  controller:Controller;audio:HTMLAudioElement|null=null;blocked=false;
  constructor(controller:Controller){this.controller=controller;}
+ get playing():boolean{return !!this.audio&&!this.audio.paused&&!this.audio.ended;}
  apply():void{if(this.audio)this.audio.volume=this.controller.settings.volume;if(!this.controller.settings.music)this.audio?.pause();}
  unlock():void{
   if(!this.controller.settings.music||document.hidden)return;
