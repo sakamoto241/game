@@ -1,0 +1,26 @@
+{
+  "forest": {
+    "file": "forest.webp",
+    "kind": "final",
+    "source": "exec-6876a84e-b71d-4d5b-8b8b-e2482942fe1d.png",
+    "sha256": "eeb6d3ff0fa193fb354be4a42790450d4d6ae098d526190acb5f92e22dfb68f6"
+  },
+  "clearing": {
+    "file": "clearing.webp",
+    "kind": "final",
+    "source": "exec-edfc3f05-6231-4d67-84d8-312d36afd67a.png",
+    "sha256": "e63b90b8f9787a359852fe0dbe93de17d9400f6cc360e44ee45aaa5b10c1d79e"
+  },
+  "title": {
+    "file": "title.webp",
+    "kind": "final",
+    "source": "exec-1eefa895-a2c9-4ffb-9289-e1dd3bd9e3ab.png",
+    "sha256": "b259b380eb7663a571817030406d8fd9f63b6a37386f92f85d3af23c47081851"
+  },
+  "characters": {
+    "file": "characters.webp",
+    "kind": "final",
+    "source": "exec-1602d20c-a136-4351-a2c7-b5033b5572ba.png",
+    "sha256": "20ecafa8c21d4987442aed8c0b56f78cd7163e84e142cefa6699c1d5d94062d1"
+  }
+}
