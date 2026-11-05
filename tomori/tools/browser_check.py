@@ -70,7 +70,9 @@ def layouts(b):
     assert r['x']>=bounds['x']-1 and r['x']+r['width']<=bounds['x']+bounds['width']+1,(w,h,v,'off-screen target',r)
     assert r['y']>=-1 and r['y']+r['height']<=h+1,(w,h,v,'off-screen target',r)
    expected_art='-body.webp' if v in ['battle','boss'] else '-normal-'
-   if v in ['story','fork','negotiation']:assert '-normal-portrait.webp' in p.locator('#story-character').get_attribute('src')
+   if v in ['story','fork','negotiation']:
+    assert '-portrait.webp' in p.locator('#story-character').get_attribute('src')
+    assert p.locator('#story > img').count()==1 and p.locator('#story-face-layer').count()==0
    if v=='title':assert '-normal-body.webp' in p.locator('.title-character').get_attribute('src')
    if v=='camp':assert all('-normal-face.webp' in src for src in p.locator('#hub-party img').evaluate_all('(els)=>els.map(el=>el.getAttribute("src"))'))
    if v in ['battle','boss']:assert all('-normal-' not in src for src in p.locator('#hero-actors img').evaluate_all('(els)=>els.map(el=>el.getAttribute("src"))'))

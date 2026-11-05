@@ -1,0 +1,149 @@
+{
+  "revision": "portraits-v8",
+  "method": "Each cell is a complete generated character portrait. Technical bounding crop, proportional resize, transparent padding and high-quality WebP encoding only. No original head, face, hand or collar is layered beneath it.",
+  "sources": [
+    {
+      "file": "exec-5fa13c6a-953c-466d-ae97-79642841b3f6.png",
+      "sha256": "453cc540991c2fad81afa7946f3dfc5513f19296db5d052a60aaf405a9f27c9a",
+      "character": "rine",
+      "cells": {
+        "0": "smile",
+        "1": "serious"
+      }
+    },
+    {
+      "file": "exec-f58cbfe6-ee49-4e37-8655-6120629442c9.png",
+      "sha256": "536155210d6a60f26d971983d989f66f2d9383087947c3802620088302166036",
+      "character": "rine",
+      "cells": {
+        "0": "surprised",
+        "1": "troubled"
+      }
+    },
+    {
+      "file": "exec-a3eac222-f972-4400-a160-0ee0cfe0cd9a.png",
+      "sha256": "edd4191cb11cd90e65fe95cfcf4058a7d8aea2782f35c719feb8f22b57e6c791",
+      "character": "ash",
+      "cells": {
+        "0": "smile",
+        "1": "troubled"
+      }
+    },
+    {
+      "file": "exec-b9c15cfc-2752-4636-80c7-3a09693d0840.png",
+      "sha256": "48a9ca0b379028f714884ce56ef4b41b4e9cca372827cc88039628f1d2b6986d",
+      "character": "ash",
+      "cells": {
+        "1": "serious"
+      }
+    },
+    {
+      "file": "exec-7045c9ed-36d4-469b-bb08-b8978842eb6f.png",
+      "sha256": "f6e7a18242b945569e4c596ed21a50db0851fcc62e1a317c5fdc69955449b6e1",
+      "character": "ash",
+      "cells": {
+        "0": "surprised"
+      }
+    },
+    {
+      "file": "exec-1b4f2f2b-4d3b-4f07-bf18-d35c38dffe47.png",
+      "sha256": "ecc95d84d02180aae2f6cad3e23e43cdc878993b56c79d3f5cd6464822ed37ce",
+      "character": "noa",
+      "cells": {
+        "0": "smile",
+        "1": "serious"
+      }
+    },
+    {
+      "file": "exec-f367641d-9d7a-43df-b4d5-bcd12f7ce61a.png",
+      "sha256": "db3e24015a79fc9ab5dd2e17833b2ec491156c299ca645451dbd87de0079f6ec",
+      "character": "noa",
+      "cells": {
+        "0": "surprised",
+        "1": "troubled"
+      }
+    },
+    {
+      "file": "exec-6cb76950-3a95-4ae7-a7b5-c74a1449390b.png",
+      "sha256": "e97ca0d526c88bb689f3af5220f6e40edae7b9b9694fa352260887160d83c533",
+      "character": "finn",
+      "cells": {
+        "0": "smile",
+        "1": "serious"
+      }
+    },
+    {
+      "file": "exec-9dbd290c-d343-497d-8efd-3c36dce2f557.png",
+      "sha256": "0bdfc46c0146bae0202f70af274d20837b1576985b10a6896e35ca7839bb47d2",
+      "character": "finn",
+      "cells": {
+        "0": "surprised",
+        "1": "troubled"
+      }
+    },
+    {
+      "file": "exec-04f77514-be85-410a-b406-5a217ccdcc0f.png",
+      "sha256": "e3dcf3b685413fd4637c77b37cbcc515b64864cc07a2143b8f10932eef52ad52",
+      "character": "hugo",
+      "cells": {
+        "0": "smile",
+        "1": "serious"
+      }
+    },
+    {
+      "file": "exec-bd8ca579-1cb1-40d3-96cb-f6e662fa7a77.png",
+      "sha256": "9c458a2ca222c5901e076c771c0bfc35b530ae4c38e043f1a47429a76a54cf40",
+      "character": "hugo",
+      "cells": {
+        "0": "surprised",
+        "1": "troubled"
+      }
+    },
+    {
+      "file": "exec-30af6c68-828b-4287-9fa2-6caf7d50f830.png",
+      "sha256": "cfe012401e70bc20a57a289ae497ad9098bafc728defb4b8aecc5df1f2fe8e14",
+      "character": "noa",
+      "purpose": "Distinct neutral face and normal menu artwork"
+    }
+  ],
+  "acting": {
+    "rine": {
+      "neutral": "気を緩めた笑顔",
+      "smile": "目を合わせた愛想笑い",
+      "surprised": "高い報酬に驚く",
+      "troubled": "申し訳なさの出る困り顔",
+      "serious": "交渉相手を見据える"
+    },
+    "ash": {
+      "neutral": "いつもの笑顔",
+      "smile": "穏やかな親しみのある笑顔",
+      "surprised": "声に出る驚き",
+      "troubled": "口元に出る気まずさ",
+      "serious": "仲間を守る決意"
+    },
+    "noa": {
+      "neutral": "落ち着いて話す",
+      "smile": "片口角の余裕ある笑み",
+      "surprised": "静かに訝しむ",
+      "troubled": "眉と口元に出る呆れ",
+      "serious": "相手を見て確かめる"
+    },
+    "finn": {
+      "neutral": "穏やかに話す",
+      "smile": "目を合わせた控えめな微笑み",
+      "surprised": "静かな驚き",
+      "troubled": "言葉をのみ込む困り顔",
+      "serious": "落ち着いて説明する目"
+    },
+    "hugo": {
+      "neutral": "気さくに話す",
+      "smile": "頬と目尻で豪快に笑う",
+      "surprised": "眉を上げて声を荒らげる",
+      "troubled": "困り果てる",
+      "serious": "短く警告する",
+      "laugh": "大笑い"
+    }
+  },
+  "noa_identity": "Longer face and chin, straighter nose and brows, narrow jade eyes, cooler skin; Rine retains rounder cheeks and large amber eyes.",
+  "legacy": "assets/expressions contains retired v4/v5 heads only for compatibility. The current game never requests them."
+}

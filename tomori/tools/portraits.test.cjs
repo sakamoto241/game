@@ -2,7 +2,7 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
-const {expressionAt,LABELS}=require('../portraits.js');
+const {expressionAt,LABELS,View}=require('../portraits.js');
 const registry=require('../expressions.js');
 const D=require('../data.js');
 
@@ -30,8 +30,8 @@ test('every dialogue cue has a registered asset or an intentional original pose'
   assert.ok(registry[line.who].variants.includes(exp),`${id}:${i} registered`);
  }
  for(const [id,meta] of Object.entries(registry)){
-  assert.ok(meta.headHeight<meta.height&&meta.width>0);
-  for(const variant of [...meta.variants,'mask'])assert.ok(fs.statSync(path.join(__dirname,'../assets/expressions',`${id}-${variant}.webp`)).size>1000);
+  assert.ok(meta.height>=900&&meta.width>0);
+  for(const variant of meta.variants){assert.ok(meta.frames[variant].endsWith('-portrait.webp'));assert.ok(fs.statSync(path.join(__dirname,'..',meta.frames[variant])).size>1000);}
  }
 });
 
@@ -41,4 +41,30 @@ test('Ash loses his boastful grin when he realizes he disclosed the reward',()=>
  assert.equal(expressionAt(line,at-1),'smile');
  assert.equal(expressionAt(line,at),'troubled');
  assert.equal(expressionAt(line),'troubled');
+});
+
+function fakeImage(){return {dataset:{},hidden:true,src:'',alt:''};}
+test('a late portrait load cannot replace the next character',async()=>{
+ const base=fakeImage(),view=new View(base,registry);let finish;
+ view.load=src=>src.includes('finn-serious')?new Promise(r=>finish=r):Promise.resolve({});
+ const first=view.show('finn','serious','フィン');
+ await view.show('noa','smile','ノア');
+ finish({});await first;
+ assert.equal(base.dataset.character,'noa');assert.equal(base.dataset.expression,'smile');
+ assert.ok(base.src.includes('noa-smile-portrait.webp'));assert.equal(base.hidden,false);
+});
+test('an unavailable expression falls back to one complete neutral portrait',async()=>{
+ const base=fakeImage(),view=new View(base,registry);
+ view.load=async src=>src.includes('finn-surprised')?null:{};
+ await view.show('finn','surprised','フィン');
+ assert.equal(base.dataset.expression,'neutral');assert.ok(base.src.includes('finn-normal-portrait.webp'));
+ assert.equal(base.hidden,false);
+});
+test('leaving dialogue cancels a pending portrait and the same expression can be reopened',async()=>{
+ const base=fakeImage(),view=new View(base,registry);let finish;
+ view.load=()=>new Promise(r=>finish=r);
+ const pending=view.show('finn','serious','フィン');view.hide();finish({});await pending;
+ assert.equal(base.hidden,true);assert.equal(base.src,'');
+ view.load=async()=>({});await view.show('finn','serious','フィン');
+ assert.equal(base.hidden,false);assert.ok(base.src.includes('finn-serious-portrait.webp'));
 });
