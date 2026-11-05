@@ -1,0 +1,48 @@
+{
+  "purpose": "Normal-proportion art for dialogue, title, camp and menus. Battle keeps its separate SD art.",
+  "processing": "Technical alpha-bounding crop, resize and WebP encoding only.",
+  "sources": [
+    {
+      "id": "rine",
+      "file": "exec-a68336ee-726c-4cf0-a773-ff01bd78a537.png",
+      "sha256": "8334172d0e6bd2f5747e73c819ca9ec09a2df0367b2c9094ef0de7e2adcddeba"
+    },
+    {
+      "id": "ash",
+      "file": "exec-60650248-e0d2-403d-83f0-15521152d7f7.png",
+      "sha256": "6c749a4a84a41854e5306df0eb0ec11a27607b4a691340b6b655d12ecf721390"
+    },
+    {
+      "id": "noa",
+      "file": "exec-9ee68949-4e34-430c-88e7-6a3c4679fc8b.png",
+      "sha256": "49ec5225d7ba2f90d12bbb0e2da8b58b685ab28a5373864fa5ec0db8973fe732"
+    },
+    {
+      "id": "finn",
+      "file": "exec-06368bd0-a7ba-4505-b586-d737a53a6847.png",
+      "sha256": "7c19887115f80d1c9a4e57b1073c3bc103b76e37ddfb37e900458ae0efda5e12"
+    }
+  ],
+  "new_story_sources": [
+    {
+      "role": "hugo",
+      "file": "exec-baf4a191-6e9f-42b3-89f6-5548e0e6b15f.png",
+      "sha256": "ff2fa44fec586cdb44b8a670592cfa976029ef8f229ba9e662d3292fe4743f45"
+    },
+    {
+      "role": "golem",
+      "file": "exec-5aba88e4-8f4f-4c42-ab48-61c55db8c5a6.png",
+      "sha256": "5c21f043cf01ee4c90e7217626990b0ac318f43c9b214b0d5d03423e3ce37b8d"
+    },
+    {
+      "role": "props",
+      "file": "exec-ff686bf6-ffa4-45f3-bfa3-77b6a0d7f9b6.png",
+      "sha256": "06c8795031be3584131620a2a1e4dbbef2bf46b9e26663be3ef153c33a5d1f79"
+    },
+    {
+      "role": "scenes",
+      "file": "exec-0a88f46c-9065-49c3-941a-ae738a23a286.png",
+      "sha256": "172881d758706c82ca0385b638881c155ede89d2f0880cf22b1f97c314cbe9ff"
+    }
+  ]
+}
