@@ -130,11 +130,33 @@ function start(){
 function scene(name){if(!TRACKS[name])return;want=name;start();}
 
 // ---------- 再生の開始・停止 ----------
-function unlock(){if(!ensure())return;if(ac.state!=='running')ac.resume().then(start,()=>{});else start();}
-document.addEventListener('pointerdown',unlock,true);
-document.addEventListener('keydown',unlock,true);
+// iPhone はマナーモードだと Web Audio の音を消す。無音のメディアを再生し続けて
+// 「音楽を再生中」として扱わせると、マナーモードでも鳴る。
+let mediaEl=null;
+function silentWav(){
+  const n=4000,buf=new ArrayBuffer(44+n),v=new DataView(buf),str=(o,t)=>[...t].forEach((c,i)=>v.setUint8(o+i,c.charCodeAt(0)));
+  str(0,'RIFF');v.setUint32(4,36+n,true);str(8,'WAVE');str(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+  v.setUint32(24,8000,true);v.setUint32(28,8000,true);v.setUint16(32,1,true);v.setUint16(34,8,true);str(36,'data');v.setUint32(40,n,true);
+  for(let i=0;i<n;i++)v.setUint8(44+i,128);
+  return new Blob([buf],{type:'audio/wav'});
+}
+function holdMediaSession(){
+  try{if(navigator.audioSession)navigator.audioSession.type='playback';}catch{}
+  if(!prefs.se&&!prefs.bgm)return;
+  try{
+    if(!mediaEl){mediaEl=new Audio(URL.createObjectURL(silentWav()));mediaEl.loop=true;mediaEl.setAttribute('playsinline','');}
+    if(mediaEl.paused)mediaEl.play().catch(()=>{});
+  }catch{}
+}
+function unlock(e){
+  if(e&&!e.isTrusted)return;
+  if(!ensure())return;
+  holdMediaSession();
+  if(ac.state!=='running')ac.resume().then(start,()=>{});else start();
+}
+for(const type of ['pointerdown','touchend','click','keydown'])document.addEventListener(type,unlock,true);
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(b&&!b.disabled&&!b.classList.contains('skill-button'))sfx('tap');},true);
-document.addEventListener('visibilitychange',()=>{if(!ac)return;if(document.hidden)ac.suspend();else if(cur||want)ac.resume().then(start,()=>{});});
+document.addEventListener('visibilitychange',()=>{if(!ac)return;if(document.hidden){ac.suspend();mediaEl?.pause();}else if(cur||want)ac.resume().then(start,()=>{});});
 
 // ---------- 設定画面 ----------
 function bindToggle(id,key,bus,vol){
