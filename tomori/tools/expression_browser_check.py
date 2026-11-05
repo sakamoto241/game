@@ -5,12 +5,12 @@ import argparse,json,os
 from pathlib import Path
 from PIL import Image,ImageChops
 from playwright.sync_api import sync_playwright
-ap=argparse.ArgumentParser();ap.add_argument('--url',default='http://127.0.0.1:8006/tomori/?v=4');ap.add_argument('--out',default='/tmp/tomori-expression-check');args=ap.parse_args();out=Path(args.out);out.mkdir(parents=True,exist_ok=True)
+ap=argparse.ArgumentParser();ap.add_argument('--url',default='http://127.0.0.1:8006/tomori/?v=5');ap.add_argument('--out',default='/tmp/tomori-expression-check');args=ap.parse_args();out=Path(args.out);out.mkdir(parents=True,exist_ok=True)
 KEY='sword-sale-v1'
 
 def load_story(context,id,index,speed='instant'):
  p=context.new_page();p.goto(args.url)
- p.evaluate('''({id,index,speed})=>{const s=TomoriCore.fresh();s.story={id,index};s.view='story';if(id!=='intro'){s.next=6;s.route='help';if(id==='honest')s.deal='honest'}localStorage.setItem('sword-sale-v1',JSON.stringify(s));localStorage.setItem('tomori-preferences-v1',JSON.stringify({reduced:false,speed,guideSeen:true}))}''',{'id':id,'index':index,'speed':speed})
+ p.evaluate('''({id,index,speed})=>{const s=TomoriCore.fresh();s.story={id,index};s.view='story';if(id!=='intro'){s.next=6;s.route='help';if(['honest','barter'].includes(id))s.deal=id}localStorage.setItem('sword-sale-v1',JSON.stringify(s));localStorage.setItem('tomori-preferences-v1',JSON.stringify({reduced:false,speed,guideSeen:true}))}''',{'id':id,'index':index,'speed':speed})
  p.reload();p.locator('#continue').click();return p
 
 def expect_face(p,character,expression):
@@ -32,6 +32,10 @@ with sync_playwright() as pw:
  assert p.locator('#story-character').get_attribute('src')=='assets/rine-normal-portrait.webp'
  assert p.evaluate("JSON.parse(localStorage.getItem('sword-sale-v1')).story.index")==7
  p.close()
+ # Ash's unguarded boast ends in an awkward realization, not another round surprise.
+ p=load_story(c,'barter',2,'normal');expect_face(p,'ash','smile')
+ p.locator('#story-line').click();expect_face(p,'ash','troubled')
+ p.screenshot(path=str(out/'ash-realization.png'));p.close()
  # Real body remains fixed across every expression, including resize/evidence shifts.
  p=load_story(c,'intro',7)
  expect_face(p,'rine','surprised')
@@ -41,7 +45,7 @@ with sync_playwright() as pw:
   for exp in ['smile','surprised','troubled','serious']:
    p.evaluate('''({char,exp})=>window.preview.show(char,exp,char)''',{'char':char,'exp':exp});expect_face(p,char,exp)
    assert p.locator('#story-character').get_attribute('src')==f'assets/{char}-normal-portrait.webp'
-   assert p.locator('#story-face').get_attribute('src')==f'assets/expressions/{char}-{exp}.webp'
+   assert p.locator('#story-face').get_attribute('src')==f'assets/expressions/{char}-{exp}.webp?v=acting-v5'
    screenshots.append(p.screenshot(path=str(out/f'{char}-{exp}.png')))
   # Different faces must visibly differ; pixels below the layer must stay identical.
   import io
@@ -74,7 +78,7 @@ with sync_playwright() as pw:
  for id in ['intro','intro','trail','fork','ending']:
   p.locator('#journal-open').click() if not p.locator('#journal-dialog').is_visible() else None
   p.locator(f'[data-read={id}]').click();p.locator('#replay-story').click()
-  if id=='intro':expect_face(p,'rine','serious')
+  if id=='intro':expect_face(p,'rine','smile')
   assert p.locator('#story-place').inner_text().startswith('振り返り')
   for _ in range(20):
    assert p.locator('#story-choices').is_hidden()
@@ -84,7 +88,7 @@ with sync_playwright() as pw:
   p.locator('#story-next').click();assert p.locator('#journal-dialog').is_visible()
   assert p.locator('#app').get_attribute('data-screen')=='hub'
   assert p.evaluate('(k)=>localStorage.getItem(k)',KEY)==before
- p.locator('[data-read=intro]').click();p.locator('#replay-story').click();expect_face(p,'rine','serious');p.locator('#story-skip').click();assert p.locator('#journal-dialog').is_visible()
+ p.locator('[data-read=intro]').click();p.locator('#replay-story').click();expect_face(p,'rine','smile');p.locator('#story-skip').click();assert p.locator('#journal-dialog').is_visible()
  p.locator('[data-close=journal-dialog]').click();p.reload();p.locator('#continue').click()
  assert p.locator('#app').get_attribute('data-screen')=='hub'
  assert json.loads(p.evaluate('(k)=>localStorage.getItem(k)',KEY))==json.loads(before)

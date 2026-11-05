@@ -1,5 +1,5 @@
 {
-  "method": "Generated edits of four identical cropped head references, technically resized/cropped to original coordinates. Browser masks retain the original silhouette and blend the lower neck onto the unchanged body.",
+  "method": "Character-specific acting edits of original head references; each character has distinct brows, eyelids, gaze and mouth shapes. Technically resized/cropped to original coordinates. Browser masks retain the original silhouette and blend the lower neck onto the unchanged body.",
   "variants": [
     "smile",
     "surprised",
@@ -9,33 +9,72 @@
   "sources": [
     {
       "character": "rine",
-      "file": "exec-56f58db7-cbfe-47c3-9bb9-9e5c5895a89d.png",
-      "sha256": "3c3b0d2ec5667ff8b8e22c3e8f05460f51e1ab20efd0ba6405eb2f2068ceff21",
+      "file": "exec-03f08913-b33b-49f4-98a6-9d1ea06dfaf6.png",
+      "sha256": "3a5016bf2ea2582e8e4768fd9a83ea02512de6cd00cd0a53b14adbe35131b5e2",
       "baseSha256": "a36908b2717f514cc18cdda96298db874df0aa340e1d9a2715c70b964c6542e8"
     },
     {
       "character": "ash",
-      "file": "exec-1ebe5fdb-90d8-4a53-93d8-fcc2205e469e.png",
-      "sha256": "5fb0086fad83cfb763d756dec4529e48c5fcfad315cc525e8e0861fdd125d679",
+      "file": "exec-37abf2c8-27d9-48f7-8208-f81d3bcbab14.png",
+      "sha256": "03212a407fd1ac4f2a7da4c0cb11d866f015e89681735f825696af2d3a3b6991",
       "baseSha256": "cb4a150de52a24050a9f3b2ebe1f3ab50980ee0236ea74c431931330c648b189"
     },
     {
       "character": "noa",
-      "file": "exec-d984106e-8e6d-48e8-acba-1237f2ff0bf5.png",
-      "sha256": "9cf7675afa59ebcc702cd074603f5667b0894fcc3f5c0081c033a72db3b08422",
+      "file": "exec-8886f1b5-5736-4899-a17a-0ffcb0cf93fd.png",
+      "sha256": "52f4cfc63855ec1b05b2fa0653b61b03732132f2f26354117a0f023df42bb1ab",
       "baseSha256": "99d7d80250160a11d873d058ae91f0a9dc2320c90557964c6367b33053110b58"
     },
     {
       "character": "finn",
-      "file": "exec-e92b051e-eb0f-4d09-9978-dec99a2ea0b8.png",
-      "sha256": "41de2c4042f43ef0eb53b963b2afd6539608aded1aa84e4f1623802eee2310c6",
+      "file": "exec-32e59e8b-6842-4231-ad6a-a9f98744cc8e.png",
+      "sha256": "7e2c3a3dbeaa407b08a9d7155307284f88a7e03b182905410a1e52a0a6ca2fc1",
       "baseSha256": "b5204c6fa2c104afe380bbe2c9456b1da18e9340bbcfd90ac708bfe5f1e3bca2"
     },
     {
       "character": "hugo",
-      "file": "exec-496320e0-91d2-4fcc-9efe-5698842fe781.png",
-      "sha256": "449967a050c9683fc34e0194eb362676eb9d7ca536615eac1fb91512238bec95",
+      "file": "exec-44881255-f9a6-4cbf-a014-ef9069f57ef4.png",
+      "sha256": "96b134a71097c04532477c80e0d5acd586817653932c7cfefb7c23d039137650",
       "baseSha256": "41117ddb6c7b7a307057cf4532c45bf9910d972192b49efc2e8352bca7449c66"
     }
-  ]
+  ],
+  "revision": "acting-v5",
+  "acting": {
+    "rine": {
+      "neutral": "気を緩めた笑顔",
+      "smile": "商売用の愛想笑い",
+      "surprised": "驚きを抑えて固まる",
+      "troubled": "取り繕う気まずい笑み",
+      "serious": "交渉相手を見据える"
+    },
+    "ash": {
+      "neutral": "いつもの笑顔",
+      "smile": "歯を見せる大笑い",
+      "surprised": "声に出る大きな驚き",
+      "troubled": "目をそらして気まずがる",
+      "serious": "歯を食いしばる闘志"
+    },
+    "noa": {
+      "neutral": "仲間への素直な表情",
+      "smile": "片口角を上げてからかう",
+      "surprised": "片眉を上げて疑う",
+      "troubled": "呆れた横目",
+      "serious": "細い目で状況を読む"
+    },
+    "finn": {
+      "neutral": "穏やかに話す",
+      "smile": "口元だけの静かな微笑み",
+      "surprised": "眼鏡越しに静かに訝しむ",
+      "troubled": "半目で言葉をのみ込む",
+      "serious": "考えを整理する目"
+    },
+    "hugo": {
+      "neutral": "気さくに話す",
+      "smile": "頬と目尻で豪快に笑う",
+      "surprised": "眉を上げて声を荒らげる",
+      "troubled": "頬をしかめて困り果てる",
+      "serious": "片目を細めて警告する",
+      "laugh": "大笑い"
+    }
+  }
 }

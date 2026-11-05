@@ -34,3 +34,11 @@ test('every dialogue cue has a registered asset or an intentional original pose'
   for(const variant of [...meta.variants,'mask'])assert.ok(fs.statSync(path.join(__dirname,'../assets/expressions',`${id}-${variant}.webp`)).size>1000);
  }
 });
+
+test('Ash loses his boastful grin when he realizes he disclosed the reward',()=>{
+ const line=D.STORIES.barter.find(line=>line.who==='ash');
+ const at=line.text.indexOf(line.reaction.at)+line.reaction.at.length;
+ assert.equal(expressionAt(line,at-1),'smile');
+ assert.equal(expressionAt(line,at),'troubled');
+ assert.equal(expressionAt(line),'troubled');
+});

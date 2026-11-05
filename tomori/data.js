@@ -16,15 +16,15 @@ const NODES=[{id:0,name:'リネの古道具屋',type:'camp',scene:'shop'},
 {id:5,name:'暴走！荷役ゴーレム',type:'battle',scene:'yard',enemies:['golem'],gold:120,ore:5,xp:65,description:'荷を盾にして、留め具を何度も締め直す。崩しと大技で制御石を止めよう。'}];
 const STORIES={
 intro:[
- {who:'rine',expression:'serious',scene:'shop',place:'リネの古道具屋 · 昨日の夕方',prop:'sword',text:'錆びた剣一本、300G。刃こぼれ込みで、この値段よ。'},
+ {who:'rine',expression:'smile',scene:'shop',place:'リネの古道具屋 · 昨日の夕方',prop:'sword',text:'錆びた剣一本、300G。刃こぼれ込みで、この値段よ。'},
  {who:'hugo',expression:'smile',scene:'shop',place:'リネの古道具屋 · 売買成立',prop:'sold',text:'薪が割れりゃ十分だ。東の材木市へ行くついでに、いい買い物ができた。'},
  {who:'ash',expression:'smile',scene:'tavern',place:'その夜 · 四人の夕食',prop:'dinner',text:'売れた記念に肉だ！ 四人分、260G！ 剣は俺が荷台まで運んだから、遠慮なく食うぞ。'},
  {who:'noa',expression:'smile',scene:'tavern',place:'食堂 · お会計',prop:'dinner',text:'残り40Gね。私の情報料にも足りないけど……ごちそうさま。'},
  {who:'finn',expression:'serious',scene:'tavern',place:'食堂 · 話の途中',text:'ところで、あの剣の柄にあった王家の紋章について、少し説明を——'},
- {who:'rine',expression:'smile',scene:'tavern',place:'食堂 · 食事優先',text:'鑑定の話は明日。今は食べる。冷めちゃうでしょ。'},
- {who:'finn',expression:'serious',scene:'shop',place:'翌朝 · 届いた新聞',prop:'news',text:'おはよう。昨日の話の続きを、新聞の見出しが代わりに説明してくれたよ。'},
+ {who:'rine',expression:'neutral',scene:'tavern',place:'食堂 · 食事優先',text:'鑑定の話は明日。今は食べる。冷めちゃうでしょ。'},
+ {who:'finn',expression:'troubled',scene:'shop',place:'翌朝 · 届いた新聞',prop:'news',text:'おはよう。昨日の話の続きを、新聞の見出しが代わりに説明してくれたよ。'},
  {who:'rine',expression:'serious',reaction:{at:'1億G',expression:'surprised'},scene:'shop',place:'新聞の一面',prop:'news',text:'《王家の聖剣を探しています。発見者に1億G》……この剣、見覚えがありすぎる。'},
- {who:'ash',expression:'surprised',scene:'shop',place:'昨日の記憶',text:'……俺が荷台に積んだやつだ。昨日の夕飯、全部あれの代金だ。'},
+ {who:'ash',expression:'troubled',scene:'shop',place:'昨日の記憶',text:'……俺が荷台に積んだやつだ。昨日の夕飯、全部あれの代金だ。'},
  {who:'finn',expression:'troubled',scene:'shop',place:'最後まで聞いてほしかった',text:'聖剣だ、と最後まで言いたかったんだけど。'},
  {who:'noa',expression:'serious',scene:'shop',place:'買い手の行き先',text:'買ったおじさんは東の材木市へ。三日後の競売に間に合わせるって。出品される前に追いつこう。'},
  {who:'rine',expression:'serious',scene:'shop',place:'第一章 · 食べた300G',text:'買い戻す。昨日の300Gは、四人で食べたんだからね。全員、支度して。'}],
@@ -41,7 +41,7 @@ fork:[
  {who:'finn',expression:'serious',scene:'yard',place:'二つの作戦',text:'弁当は体力づくりに。整備図は、ヒューゴさんが使うゴーレムの留め具を調べるのに役立つね。'},
  {who:'rine',expression:'serious',scene:'yard',place:'使い道を決めよう',text:'お金の使い道、今度こそ考えて決めましょう。'}],
 help:[
- {who:'noa',expression:'smile',scene:'yard',place:'薬草弁当で作戦会議',text:'昨日の残り物を、四人分包んでおいた。薬草も入れたから、この先は少し無理がきくよ。'},
+ {who:'noa',expression:'neutral',scene:'yard',place:'薬草弁当で作戦会議',text:'昨日の残り物を、四人分包んでおいた。薬草も入れたから、この先は少し無理がきくよ。'},
  {who:'ash',expression:'smile',scene:'yard',place:'全員の最大HP +6',text:'助かる！ 明日の俺も頼む！'},
  {who:'noa',expression:'smile',scene:'yard',place:'仲間割引は本日限り',text:'明日は有料。昨日みたいな夕飯を食べたいなら、先に剣を取り戻してね。'}],
 trace:[
@@ -75,14 +75,14 @@ honest:[
  {who:'hugo',expression:'smile',scene:'yard',place:'紹介状を受け取った',text:'王都の鑑定所への紹介状も書こう。あっちに知り合いがいる。土産話は、あとで聞かせてくれ。'},
  {who:'noa',expression:'serious',scene:'yard',place:'取り分の相談はまだ早い',text:'まずは本物か、ちゃんと鑑定してもらおう。情報料の計算は、そのあと。'},
  {who:'finn',expression:'troubled',scene:'yard',place:'今度こそ、最後まで',text:'そうだね。僕の鑑定の説明も、今度こそ最後まで聞いてもらえるかな。'},
- {who:'rine',expression:'smile',scene:'yard',place:'第一章 · 聖剣を取り戻した',prop:'recovered',text:'最初から聞くわ。……今日の夕飯は、おにぎり。四人でね。'}],
+ {who:'rine',expression:'neutral',scene:'yard',place:'第一章 · 聖剣を取り戻した',prop:'recovered',text:'最初から聞くわ。……今日の夕飯は、おにぎり。四人でね。'}],
 barter:[
  {who:'rine',expression:'serious',scene:'yard',place:'修理代で買い戻す',text:'制御石の調整、留め具の交換、危険手当。追加の修理代300Gと、買い戻し代300Gで相殺を提案するわ。'},
  {who:'hugo',expression:'laugh',scene:'yard',place:'商談成立',text:'ははっ、昨日より商売上手だな！ いいぜ。受け取りの領収書だけ、ここに書いてくれ。'},
- {who:'ash',expression:'smile',scene:'yard',place:'秘密にできない剣士',text:'よし！ これで聖剣の発見報酬、一億Gに——あ。'},
+ {who:'ash',expression:'smile',reaction:{at:'——あ',expression:'troubled'},scene:'yard',place:'秘密にできない剣士',text:'よし！ これで聖剣の発見報酬、一億Gに——あ。'},
  {who:'hugo',expression:'surprised',scene:'yard',place:'言うのが遅い',text:'……一億？ それは先に言え！ ま、約束は約束だ。今度はその剣で薪を割るなよ。'},
  {who:'noa',expression:'smile',scene:'yard',place:'お土産も経費',text:'王都のお土産、ちゃんと持って戻ろうね。領収書も忘れずに。'},
- {who:'rine',expression:'smile',scene:'yard',place:'第一章 · 聖剣を取り戻した',prop:'recovered',text:'もちろん。……今日の夕飯は、おにぎり。四人でね。'}]
+ {who:'rine',expression:'neutral',scene:'yard',place:'第一章 · 聖剣を取り戻した',prop:'recovered',text:'もちろん。……今日の夕飯は、おにぎり。四人でね。'}]
 };
 const STORY_TITLES={intro:'300Gの剣と260Gの夕食',trail:'荷車のわだち',receipt:'伝票の住所',fork:'買い戻しの準備',help:'四人分のお弁当',trace:'30Gの整備図',market:'薪小屋への道',buyer:'聖剣で薪割り',deal:'交渉の前の仕事',yard:'動き出す木箱',beforeBoss:'荷役ゴーレムを止めろ',ending:'買い戻しの商談',honest:'正直に話した商談',barter:'修理代との相殺'};
 const BEFORE_NODE={1:'trail',3:'market',4:'deal',5:'beforeBoss'};
