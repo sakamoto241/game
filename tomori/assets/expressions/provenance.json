@@ -1,0 +1,41 @@
+{
+  "method": "Generated edits of four identical cropped head references, technically resized/cropped to original coordinates. Browser masks retain the original silhouette and blend the lower neck onto the unchanged body.",
+  "variants": [
+    "smile",
+    "surprised",
+    "troubled",
+    "serious"
+  ],
+  "sources": [
+    {
+      "character": "rine",
+      "file": "exec-56f58db7-cbfe-47c3-9bb9-9e5c5895a89d.png",
+      "sha256": "3c3b0d2ec5667ff8b8e22c3e8f05460f51e1ab20efd0ba6405eb2f2068ceff21",
+      "baseSha256": "a36908b2717f514cc18cdda96298db874df0aa340e1d9a2715c70b964c6542e8"
+    },
+    {
+      "character": "ash",
+      "file": "exec-1ebe5fdb-90d8-4a53-93d8-fcc2205e469e.png",
+      "sha256": "5fb0086fad83cfb763d756dec4529e48c5fcfad315cc525e8e0861fdd125d679",
+      "baseSha256": "cb4a150de52a24050a9f3b2ebe1f3ab50980ee0236ea74c431931330c648b189"
+    },
+    {
+      "character": "noa",
+      "file": "exec-d984106e-8e6d-48e8-acba-1237f2ff0bf5.png",
+      "sha256": "9cf7675afa59ebcc702cd074603f5667b0894fcc3f5c0081c033a72db3b08422",
+      "baseSha256": "99d7d80250160a11d873d058ae91f0a9dc2320c90557964c6367b33053110b58"
+    },
+    {
+      "character": "finn",
+      "file": "exec-e92b051e-eb0f-4d09-9978-dec99a2ea0b8.png",
+      "sha256": "41de2c4042f43ef0eb53b963b2afd6539608aded1aa84e4f1623802eee2310c6",
+      "baseSha256": "b5204c6fa2c104afe380bbe2c9456b1da18e9340bbcfd90ac708bfe5f1e3bca2"
+    },
+    {
+      "character": "hugo",
+      "file": "exec-496320e0-91d2-4fcc-9efe-5698842fe781.png",
+      "sha256": "449967a050c9683fc34e0194eb362676eb9d7ca536615eac1fb91512238bec95",
+      "baseSha256": "41117ddb6c7b7a307057cf4532c45bf9910d972192b49efc2e8352bca7449c66"
+    }
+  ]
+}
