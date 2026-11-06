@@ -1,5 +1,5 @@
 {
-  "revision": "portraits-v8",
+  "revision": "portraits-v10",
   "method": "Each cell is a complete generated character portrait. Technical bounding crop, proportional resize, transparent padding and high-quality WebP encoding only. No original head, face, hand or collar is layered beneath it.",
   "sources": [
     {
@@ -46,8 +46,8 @@
       }
     },
     {
-      "file": "exec-1b4f2f2b-4d3b-4f07-bf18-d35c38dffe47.png",
-      "sha256": "ecc95d84d02180aae2f6cad3e23e43cdc878993b56c79d3f5cd6464822ed37ce",
+      "file": "exec-22610fff-7378-4c55-9379-5270268e6499.png",
+      "sha256": "d7e2df90b6c8795587ac7b78238618f8fdbca2908e403b36fd91f770b2aaa37b",
       "character": "noa",
       "cells": {
         "0": "smile",
@@ -55,8 +55,8 @@
       }
     },
     {
-      "file": "exec-f367641d-9d7a-43df-b4d5-bcd12f7ce61a.png",
-      "sha256": "db3e24015a79fc9ab5dd2e17833b2ec491156c299ca645451dbd87de0079f6ec",
+      "file": "exec-b04a4675-0301-46eb-ac52-a74e6253fc5c.png",
+      "sha256": "3cfa4be301c001b13f872a38903a8e15184d1560c8f13f1c80a059ccc419a7d4",
       "character": "noa",
       "cells": {
         "0": "surprised",
@@ -100,8 +100,8 @@
       }
     },
     {
-      "file": "exec-30af6c68-828b-4287-9fa2-6caf7d50f830.png",
-      "sha256": "cfe012401e70bc20a57a289ae497ad9098bafc728defb4b8aecc5df1f2fe8e14",
+      "file": "exec-cb22d0e7-9f29-46ab-a85a-253b83bea34b.png",
+      "sha256": "5eef2adca6360e7884b197cc7a066d0418a0ed59f272f970f240cb6e7d6879f2",
       "character": "noa",
       "purpose": "Distinct neutral face and normal menu artwork"
     }
@@ -144,6 +144,6 @@
       "laugh": "大笑い"
     }
   },
-  "noa_identity": "Longer face and chin, straighter nose and brows, narrow jade eyes, cooler skin; Rine retains rounder cheeks and large amber eyes.",
+  "noa_identity": "Balanced smaller head and hair, softly tapered shorter chin, natural shorter nose, calm green almond eyes and straight brows. A composed cool beauty with a hint of playful wit; Rine retains rounder cheeks and large amber eyes.",
   "legacy": "assets/expressions contains retired v4/v5 heads only for compatibility. The current game never requests them."
 }

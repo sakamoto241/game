@@ -4,7 +4,7 @@ Run a static server first. Requires Playwright and Chromium, as browser_check.py
 import argparse,json,os
 from pathlib import Path
 from playwright.sync_api import sync_playwright
-ap=argparse.ArgumentParser();ap.add_argument('--url',default='http://127.0.0.1:8006/tomori/?v=8');ap.add_argument('--out',default='/tmp/tomori-expression-check');args=ap.parse_args();out=Path(args.out);out.mkdir(parents=True,exist_ok=True)
+ap=argparse.ArgumentParser();ap.add_argument('--url',default='http://127.0.0.1:8006/tomori/?v=10');ap.add_argument('--out',default='/tmp/tomori-expression-check');args=ap.parse_args();out=Path(args.out);out.mkdir(parents=True,exist_ok=True)
 KEY='sword-sale-v1'
 
 def load_story(context,id,index,speed='instant'):
@@ -46,8 +46,9 @@ with sync_playwright() as pw:
   for exp in ['neutral','smile','surprised','troubled','serious']:
    p.evaluate("({char,exp})=>window.preview.show(char,exp,char)",{'char':char,'exp':exp});expect_face(p,char,exp)
    src=p.locator('#story-character').get_attribute('src')
-   assert '-portrait.webp?v=portraits-v8' in src
-   if exp!='neutral':assert src==f'assets/portraits/{char}-{exp}-portrait.webp?v=portraits-v8'
+   revision=p.evaluate('(char)=>TomoriExpressions[char].revision',char)
+   assert '-portrait.webp?v='+revision in src
+   if exp!='neutral':assert src==f'assets/portraits/{char}-{exp}-portrait.webp?v={revision}'
    size=p.locator('#story-character').evaluate('(im)=>[im.naturalWidth,im.naturalHeight]')
    expected=p.evaluate('(char)=>[TomoriExpressions[char].width,TomoriExpressions[char].height]',char)
    assert size==expected,(char,exp,size,expected)
@@ -58,9 +59,10 @@ with sync_playwright() as pw:
   p.set_viewport_size({'width':width,'height':height})
   for evidence in ['true','false']:
    p.evaluate("e=>document.getElementById('story').dataset.evidence=e",evidence)
-   p.evaluate("()=>window.preview.show('finn','serious','フィン')");expect_face(p,'finn','serious')
-   assert p.locator('#story > img:visible').count()==1
-   p.screenshot(path=str(out/f'single-image-{width}-{evidence}.png'))
+   for char in ['finn','noa']:
+    p.evaluate("char=>window.preview.show(char,'serious',char)",char);expect_face(p,char,'serious')
+    assert p.locator('#story > img:visible').count()==1
+    p.screenshot(path=str(out/f'single-image-{char}-{width}-{evidence}.png'))
  p.close()
  # Existing Hugo's complete laughing pose remains available.
  p=load_story(c,'honest',1);p.wait_for_function("()=>document.getElementById('story-character').dataset.expression==='laugh'")
