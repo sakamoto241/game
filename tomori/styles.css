@@ -26,3 +26,20 @@ dialog{width:min(490px,calc(100vw - 26px));max-height:calc(100dvh - 26px);overfl
 @media(orientation:landscape) and (max-height:560px){#title .title-copy h1{font-size:36px;line-height:1.35}.title-character{right:37%;bottom:-1%;height:91%;max-width:35%}#hub-character{bottom:0;right:42%;height:83%;max-width:36%}#story-character{left:25%;height:94%;bottom:-1%;max-width:51%}#story[data-evidence=true] #story-character{left:27%;height:94%;max-width:43%}#story-evidence{left:9px;top:24%;width:19%;padding:6px;z-index:8}#story-evidence.object>img{height:98px}#story-evidence strong{font-size:11px}#story-evidence small{font-size:9px}#story-evidence.paper{height:175px}.paper-copy>strong{font-size:27px!important}.paper-copy>strong.address{font-size:15px!important}.paper-copy>span{font-size:11px}.bill{font-size:10px}.bill>span:last-child{font-size:12px}}
 /* Dialogue uses a single complete portrait, with no face overlay. */
 #story-character{z-index:1}
+/* Touch targets and controls found during the mobile play-through. */
+.story-controls{display:flex;align-items:center;gap:3px;flex-shrink:0}
+#story-place{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#story-settings{background:none;color:#fff5df;border-color:#b5c3a7}
+.hero-select{position:absolute;left:30%;top:0;bottom:0;width:40%;min-width:44px;min-height:44px;border:0;padding:0;background:none;pointer-events:auto;touch-action:manipulation;z-index:2}
+.hero-select:disabled{cursor:default}
+.hub-member{position:relative}
+.front-badge{position:absolute;top:-9px;left:5px;padding:0 4px;font-size:9px;line-height:16px;background:var(--green);color:#fff6df;font-weight:600}
+#party-status{color:var(--green);font-size:12px;min-height:24px}
+dialog{max-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 26px)}
+@media(max-width:350px) and (orientation:portrait){
+ .hub-member{display:grid;grid-template-columns:24px minmax(0,1fr);gap:0 4px;padding:5px 4px}
+ .hub-member img{width:24px;height:28px;grid-row:1;grid-column:1}
+ .hub-member>div{display:contents}
+ .hub-member b{font-size:10px;grid-row:1;grid-column:2}
+ .hub-member small{grid-column:1/-1;font-size:9px;white-space:nowrap}
+}

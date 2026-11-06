@@ -4,7 +4,7 @@ Run a static server first. Requires Playwright and Chromium, as browser_check.py
 import argparse,json,os
 from pathlib import Path
 from playwright.sync_api import sync_playwright
-ap=argparse.ArgumentParser();ap.add_argument('--url',default='http://127.0.0.1:8006/tomori/?v=10');ap.add_argument('--out',default='/tmp/tomori-expression-check');args=ap.parse_args();out=Path(args.out);out.mkdir(parents=True,exist_ok=True)
+ap=argparse.ArgumentParser();ap.add_argument('--url',default='http://127.0.0.1:8006/tomori/?v=11');ap.add_argument('--out',default='/tmp/tomori-expression-check');args=ap.parse_args();out=Path(args.out);out.mkdir(parents=True,exist_ok=True)
 KEY='sword-sale-v1'
 
 def load_story(context,id,index,speed='instant'):
@@ -83,11 +83,11 @@ with sync_playwright() as pw:
    p.locator('#story-next').click()
   p.screenshot(path=str(out/f'replay-{id}.png'))
   p.locator('#story-next').click();assert p.locator('#journal-dialog').is_visible()
-  assert p.locator('#app').get_attribute('data-screen')=='hub'
+  assert p.locator('#app').get_attribute('data-screen')=='hub', {'story':id,'screen':p.locator('#app').get_attribute('data-screen'),'save':p.evaluate('(k)=>localStorage.getItem(k)',KEY)}
   assert p.evaluate('(k)=>localStorage.getItem(k)',KEY)==before
  p.locator('[data-read=intro]').click();p.locator('#replay-story').click();expect_face(p,'rine','smile');p.locator('#story-skip').click();assert p.locator('#journal-dialog').is_visible()
  p.locator('[data-close=journal-dialog]').click();p.reload();p.locator('#continue').click()
- assert p.locator('#app').get_attribute('data-screen')=='hub'
+ assert p.locator('#app').get_attribute('data-screen')=='hub', {'story':id,'screen':p.locator('#app').get_attribute('data-screen'),'save':p.evaluate('(k)=>localStorage.getItem(k)',KEY)}
  assert json.loads(p.evaluate('(k)=>localStorage.getItem(k)',KEY))==json.loads(before)
  assert not errors,errors
  assert not bad,bad
