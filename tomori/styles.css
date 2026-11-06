@@ -34,6 +34,51 @@ dialog{width:min(490px,calc(100vw - 26px));max-height:calc(100dvh - 26px);overfl
 .hero-select:disabled{cursor:default}
 .hub-member{position:relative}
 .front-badge{position:absolute;top:-9px;left:5px;padding:0 4px;font-size:9px;line-height:16px;background:var(--green);color:#fff6df;font-weight:600}
+/* Chapter-one growth, requests and the golem's exposed control stone. */
+.hub-options button{flex:1;min-width:0;gap:4px;white-space:nowrap}
+#requests-open.available{font-weight:700;color:var(--green)}
+.relic-icon{width:46px;height:46px;flex-shrink:0;fill:#d6b87944;stroke:#866f46;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#story-evidence>.relic-icon{width:78px;height:78px;margin:9px auto;display:block}
+.request-card{border-top:1px solid var(--line);padding:20px 0}
+#requests-dialog .dialog-head,#gear-dialog .dialog-head{position:sticky;top:0;z-index:4;background:var(--paper)}
+.request-heading{display:flex;gap:12px;align-items:center;margin-bottom:10px}
+.request-heading img{width:42px;height:48px;object-fit:cover;object-position:top}
+.request-heading small{font-size:11px;color:#65735a}
+.request-card>p{font-size:12px;line-height:1.9}
+.request-card>.fine{font-size:11px;margin-top:10px}
+.request-reward,.relic-slot{display:flex;align-items:flex-start;gap:12px;padding:12px 0}
+.request-reward b{font-size:13px;display:block}
+.request-reward small,.relic-slot small{font-size:11px;line-height:1.8;display:block;color:#62715a}
+.relic-slot{border-top:1px solid var(--line);margin-top:14px}
+.relic-slot h3{font-size:13px}
+.relic-slot .secondary{font-size:12px;margin-top:10px;min-height:44px;padding:6px 10px}
+.resource-shortage{color:#94653f!important}
+.skill-details summary{min-height:44px;display:flex;align-items:center;font-size:11px;cursor:pointer;color:var(--green);text-decoration:none;font-weight:600}
+.skill-details summary::after{content:'＋';margin-left:auto}
+.skill-details[open] summary::after{content:'−'}
+.profile-skill{border-top:1px solid var(--line);padding:9px 0}
+.profile-skill b{font-size:12px;display:block}
+.profile-skill p{min-height:0;margin-top:3px}
+.profile-skill.locked{color:#75816b}
+#actions.has-new{height:156px;grid-template-rows:repeat(3,minmax(0,1fr))}
+.skill-button{padding-block:4px}
+.skill-button .forecast{font-size:9px;line-height:1.35;display:block;color:#3d6854;white-space:nowrap}
+.skill-button small{line-height:1.4}
+.skill-button.new-skill{grid-column:1/-1;border-right:0;border-top:1px solid var(--line)}
+.turn-queue{grid-column:1/-1;grid-row:1/-1;overflow:auto;padding:5px 9px}
+.turn-queue p{display:flex;justify-content:space-between;gap:9px;padding:4px 0;font-size:10px;line-height:1.6;border-bottom:1px solid #c3c9b2}
+.turn-queue p:last-child{border:0}
+.turn-queue b{font-weight:600}
+.turn-queue span{color:#53684c;text-align:right}
+#target-info.danger{border-color:#975c49;background:#f6eddf}
+#target-info.danger .target-bottom small{color:#974b38;font-weight:700}
+.target-bottom{flex-wrap:wrap;row-gap:2px}
+.actor.enemy.core-exposed>.body{filter:drop-shadow(0 0 5px #b3dde0)}
+.actor.enemy.core-exposed .enemy-status{background:#365b64;color:#f4f3dd}
+.learned{font-size:12px;line-height:1.8;border-left:3px solid #7195a0;padding:5px 9px;margin:7px 0;color:#365b64}
+.result-box{max-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 26px);overflow:auto}
+@media(max-width:350px){.hub-options button{font-size:9px}.hub-options svg{width:15px;height:15px}.skill-button .forecast{font-size:8px}.relic-slot{gap:8px}.relic-slot .relic-icon{width:30px;height:34px}}
+@media(max-height:710px) and (orientation:portrait){#actions.has-new{height:148px}.skill-button .forecast{font-size:8px}.actor.enemy.boss{max-height:43%}}
 #party-status{color:var(--green);font-size:12px;min-height:24px}
 dialog{max-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 26px)}
 @media(max-width:350px) and (orientation:portrait){
@@ -43,3 +88,6 @@ dialog{max-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-b
  .hub-member b{font-size:10px;grid-row:1;grid-column:2}
  .hub-member small{grid-column:1/-1;font-size:9px;white-space:nowrap}
 }
+
+.roster-detail>small{display:block}
+.roster-card{align-self:start}

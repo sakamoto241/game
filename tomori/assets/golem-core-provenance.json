@@ -1,0 +1,11 @@
+{
+  "source": "/workspace/generated_images/exec-a1500b9a-981f-4e09-adca-c637a6404aed.png",
+  "sha256": "373502f9ccc9f540e27e7034af05970636b5ba3ce74e05e6e93468b5eaaeda2e",
+  "reference": "assets/golem.webp",
+  "purpose": "The same cargo golem with the load removed and control crystal exposed in phase two.",
+  "processing": "Transparent bounding crop, proportional resize, padding and WebP encoding only.",
+  "size": [
+    700,
+    612
+  ]
+}

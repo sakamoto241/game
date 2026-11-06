@@ -88,5 +88,62 @@ const STORY_TITLES={intro:'300Gの剣と260Gの夕食',trail:'荷車のわだち
 const BEFORE_NODE={1:'trail',3:'market',4:'deal',5:'beforeBoss'};
 const AFTER_BATTLE={1:'receipt',3:'buyer',4:'yard',5:'ending'};
 const STORY_BATTLES=Object.fromEntries(Object.entries(BEFORE_NODE).map(([node,id])=>[id,Number(node)]));
-return{HEROES,NPCS,MONSTERS,NODES,STORIES,STORY_TITLES,BEFORE_NODE,AFTER_BATTLE,STORY_BATTLES,IDS:Object.keys(HEROES),XP:[0,35,85,160,260],TITLE:'勇者の剣、売りました。',CHAPTER:'第一章・食べた300G',INFO_COST:30};
+// Level skills and four short, optional character requests belong to this chapter.
+HEROES.rine.skills.push({id:'appraise',name:'真贋鑑定',unlockLevel:2,cost:2,kind:'hit',power:1.05,break:1,dispel:true,style:'light',text:'敵の強化を解除して攻撃。積み荷の追加の盾も外す。'});
+HEROES.ash.skills.push({id:'wardslash',name:'護りの一太刀',unlockLevel:2,cost:2,kind:'hit',power:1.1,break:1,guard:true,style:'slash',text:'攻撃し、この巡はまもる。先頭なら仲間をかばう。'});
+HEROES.noa.skills.push({id:'analyse',name:'弱点看破',unlockLevel:2,cost:2,kind:'hit',power:.65,break:1,expose:2,style:'arrow',text:'弱点を2回分発見。続く2ヒットは盾をさらに1削る。'});
+HEROES.finn.skills.push({id:'constellation',name:'星の連環',unlockLevel:2,cost:3,kind:'hit',power:.8,break:1,hits:3,style:'star',text:'3回攻撃。弱点をつき、途中で盾を崩せる。'});
+const RELICS={
+ loupe:{id:'loupe',owner:'rine',name:'職人の鑑定ルーペ',icon:'loupe',text:'応急手当の回復量が10増える。'},
+ bracer:{id:'bracer',owner:'ash',name:'荷運びの腕当て',icon:'bracer',text:'まもる・護りの一太刀中、受けるダメージをさらに軽減する。'},
+ sight:{id:'sight',owner:'noa',name:'真鍮の照準具',icon:'sight',text:'狙いの印を付けるとSP+1。1巡に1回。'},
+ lens:{id:'lens',owner:'finn',name:'星読みの試作レンズ',icon:'lens',text:'複数回攻撃の最後の一撃が1.25倍になる。'}
+};
+const REQUESTS={
+ rine:{id:'rine',node:101,title:'値札のつかない仕事',description:'荷運びが落とした古いルーペを探す。リネと、魔物のいる道へ戻ろう。',relic:'loupe',objective:'break',goal:1,goalText:'盾を1回崩す',intro:'request-rine',outro:'request-rine-end'},
+ ash:{id:'ash',node:102,title:'剣より先に差し出す手',description:'立ち往生した荷車を助ける。アッシュの「まもる」か「護りの一太刀」を使ってみよう。',relic:'bracer',objective:'guard',goal:1,goalText:'アッシュが1回まもる',intro:'request-ash',outro:'request-ash-end'},
+ noa:{id:'noa',node:103,title:'情報料は後払い',description:'落とした帳面を拾ったのは荷あさりスライム。ノアと帳面を取り戻す。',relic:'sight',objective:'mark',goal:1,goalText:'印を付けた敵へ攻撃する',intro:'request-noa',outro:'request-noa-end'},
+ finn:{id:'finn',node:104,title:'説明は三行まで',description:'職人の試作レンズを、木人たちから回収する。フィンの連弾で盾を崩そう。',relic:'lens',objective:'break',goal:2,goalText:'盾を2回崩す',intro:'request-finn',outro:'request-finn-end'}
+};
+const REQUEST_NODES={
+ 101:{id:101,type:'battle',scene:'forest',enemies:['wolf'],gold:24,ore:1,xp:16,request:'rine',fortified:true},
+ 102:{id:102,type:'battle',scene:'yard',enemies:['imp','wolf'],gold:28,ore:1,xp:16,request:'ash'},
+ 103:{id:103,type:'battle',scene:'forest',enemies:['gel','wolf'],gold:26,ore:1,xp:16,request:'noa'},
+ 104:{id:104,type:'battle',scene:'yard',enemies:['imp','imp'],gold:26,ore:1,xp:16,request:'finn'}
+};
+for(const q of Object.values(REQUESTS))REQUEST_NODES[q.node].name=q.title;
+const requestLines={
+ rine:[
+  ['rine','troubled','荷運びのおじさんが、古いルーペを道に落としたみたい。取りに行ってくるわ。'],
+  ['ash','surprised','剣の買い戻しより先に？ あれ、高い道具なのか？'],
+  ['rine','serious','安物よ。でも、あのおじさんは小さな荷札が読めない。値札がない仕事だって、あるでしょ。']],
+ ash:[
+  ['ash','serious','荷車が溝にはまってる。魔物を追い払って、押し出してやろう。'],
+  ['noa','smile','依頼書も報酬の約束もないけど。剣を抜くのは、そっちの方が早いね。'],
+  ['ash','neutral','待ってる間に誰かが怪我したら、嫌だろ。話は押し終わってから聞く。']],
+ noa:[
+  ['noa','troubled','帳面を落とした。小道のスライムが持っていったみたい。取り返すの、手伝って。'],
+  ['rine','smile','秘密の相場帳？ 情報料は先に決めておく？'],
+  ['noa','serious','……雨の日に安く泊めてくれる宿と、道に迷いやすい子の家。相場じゃない。早く行こう。']],
+ finn:[
+  ['finn','serious','職人さんの試作レンズが魔物に持ち去られた。説明すると、まず屈折率と——'],
+  ['ash','troubled','フィン。まず三行で頼む。'],
+  ['finn','smile','レンズを取り戻す。魔法の連弾を試す。帰ったら感想を聞く。……これなら、最後まで聞いてもらえるね。']]
+};
+const rewardLines={
+ rine:[['hugo','smile','持ち主には届けたぜ。お礼に職人が別のルーペを用意した。傷まで見えるよう、レンズを磨いたそうだ。'],['rine','smile','傷をよく見れば、手当ても変わる。これは売り物にしないで、私が使うわ。']],
+ ash:[['hugo','smile','荷車、無事に動いたってよ。持ち主から腕当てを預かった。剣を振る手も、荷車を押す手も大事にしろってよ。'],['ash','smile','ありがとな。次に守るときは、これで少し長く踏ん張れそうだ。']],
+ noa:[['rine','smile','帳面、乾いたわよ。修理屋が、ついでに照準具も直してくれた。道案内のお礼だって。'],['noa','troubled','帳面の中、読んだ？ ……そっか。じゃあ、今日の情報料は取れないね。']],
+ finn:[['hugo','neutral','試してくれ、と職人が預けていった。最後の光を集めるレンズだそうだ。報告は三行で来てたぜ。'],['finn','smile','最初の一撃で道を開いて、最後の一撃を届ける。説明と魔法、少し似ているのかもしれないね。']]
+};
+for(const q of Object.values(REQUESTS)){
+ const scene=REQUEST_NODES[q.node].scene;
+ STORIES[q.intro]=requestLines[q.id].map(([who,expression,text])=>({who,expression,text,scene,place:'仲間の依頼 · '+q.title}));
+ STORIES[q.outro]=rewardLines[q.id].map(([who,expression,text],i)=>({who,expression,text,scene:'yard',place:'依頼のお礼 · '+q.title,...(i===1?{prop:'relic-'+q.relic}:{})}));
+ STORY_TITLES[q.intro]=q.title;STORY_TITLES[q.outro]=q.title+' · お礼';
+}
+STORIES.beforeBoss[0].text='荷を積んで守りを強め、大技の前には力をためる。盾を崩せば止められるよ。半分まで傷めると制御石が露出し、障壁を張り直す。崩した隙には、攻撃がよく通るよ。';
+STORIES.trace[1].text='左の留め具が弱い。機械が積み荷で強化しても、リネの鑑定で外せるね。整備図があれば、盾も一枚崩しやすくなる。';
+function getNode(id){return NODES[id]||REQUEST_NODES[id]||null;}
+return{HEROES,NPCS,MONSTERS,NODES,STORIES,STORY_TITLES,BEFORE_NODE,AFTER_BATTLE,STORY_BATTLES,RELICS,REQUESTS,REQUEST_NODES,getNode,IDS:Object.keys(HEROES),XP:[0,35,85,160,260],TITLE:'勇者の剣、売りました。',CHAPTER:'第一章・食べた300G',INFO_COST:30};
 });
