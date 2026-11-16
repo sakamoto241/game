@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#26251f" />
+    <title>残墨 — その線が、最期の間合い。</title>
+    <meta
+      name="description"
+      content="抜刀で墨を引け。納刀で、群れを断て。雨の山寺で戦う、縦持ち一閃アクション『残墨』。インストール不要。"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="残墨（ざんぼく）" />
+    <meta
+      property="og:description"
+      content="抜刀で墨を引け。納刀で、群れを断て。スマホで遊べる剣戟アクション。"
+    />
+    <meta
+      property="og:image"
+      content="https://sakamoto241.github.io/game/zanboku/assets/share.jpg"
+    />
+    <meta
+      property="og:url"
+      content="https://sakamoto241.github.io/game/zanboku/"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="残墨（ざんぼく）" />
+    <meta
+      name="twitter:description"
+      content="斬ったのは、一度。倒れたのは、何人だ。"
+    />
+    <meta
+      name="twitter:image"
+      content="https://sakamoto241.github.io/game/zanboku/assets/share.jpg"
+    />
+    <link rel="icon" type="image/svg+xml" href="assets/icon.svg" />
+    <link rel="stylesheet" href="style.css" />
+    <link rel="preload" href="assets/temple-portrait.webp" as="image" />
+  </head>
+  <body>
+    <main id="stage" aria-label="残墨 剣戟アクションゲーム">
+      <canvas
+        id="game"
+        width="864"
+        height="1536"
+        aria-label="山寺の石舞台。WASDで移動、Jで斬る、Kで抜刀、Lで納刀。"
+      ></canvas>
+      <div id="vignette"></div>
+      <div id="hud" hidden>
+        <div class="hud-top">
+          <div>
+            <span id="wave">第一陣</span
+            ><span class="sub" id="waveSub">雨中の来客</span>
+          </div>
+          <div class="score">
+            <strong id="kills">0</strong><span>人斬り</span>
+          </div>
+        </div>
+        <div id="bossHud" hidden>
+          <div><span>鐘 守</span><span id="bossPhase">大薙刀</span></div>
+          <div class="boss-track"><i id="bossHealth"></i></div>
+        </div>
+        <div class="hud-tools">
+          <button id="pauseBtn" class="tiny" aria-label="一時停止">Ⅱ</button
+          ><button id="soundBtn" class="tiny" aria-label="音を切り替える">
+            音 入
+          </button>
+        </div>
+        <div id="tip" aria-live="polite"></div>
+        <div id="combo" aria-live="polite">
+          <strong></strong><span>人一閃</span>
+        </div>
+        <div id="health">
+          <span class="health-label">命</span>
+          <div id="healthPips"></div>
+        </div>
+        <div id="controls">
+          <div id="stick" role="group" aria-label="移動スティック">
+            <div id="stickRing"></div>
+            <div id="stickKnob"></div>
+            <span>移動</span>
+          </div>
+          <div class="actions">
+            <button id="dash" class="skill" aria-label="抜刀 K">
+              <span>抜刀</span><small id="dashTimer">墨を引く</small
+              ><i></i></button
+            ><button id="slash" class="skill main-skill" aria-label="斬る J">
+              <span>斬る</span><small>J</small><i></i></button
+            ><button id="seal" class="skill" aria-label="納刀 L" disabled>
+              <span>納刀</span><small id="lineCount">墨 なし</small><i></i>
+            </button>
+          </div>
+        </div>
+      </div>
+      <section id="title" class="screen">
+        <div class="title-top">
+          <span>雨中一閃</span><span>剣 戟 活 劇</span>
+        </div>
+        <div class="title-word">
+          <h1>残墨</h1>
+          <span class="reading">ざ ん ぼ く</span
+          ><span class="seal-stamp">一閃</span>
+        </div>
+        <p class="tagline">その線が、<br />最期の間合い。</p>
+        <img
+          class="title-ronin"
+          src="assets/ronin.webp"
+          alt="笠と黒い雨蓑の浪人"
+          width="441"
+          height="463"
+        />
+        <div class="title-bottom">
+          <p class="intro">抜刀で墨を引け。<br />納刀で、群れを断て。</p>
+          <button id="start" class="paper-button">
+            戦いを始める <span>→</span>
+          </button>
+          <div class="title-links">
+            <button id="howBtn">遊び方</button><span>縦持ち・約90秒</span
+            ><button id="titleSound">音 入</button>
+          </div>
+          <p class="load-note" id="loadNote" role="status"></p>
+        </div>
+      </section>
+      <section id="bossIntro" class="screen overlay" hidden>
+        <div class="boss-illustration"></div>
+        <div class="boss-intro-copy">
+          <span>第三陣</span>
+          <h2>鐘守</h2>
+          <p>鐘が二度鳴るとき、<br />間合いを捨てよ。</p>
+          <button id="bossStart" class="paper-button">
+            刀を構える <span>→</span>
+          </button>
+        </div>
+      </section>
+      <section id="result" class="screen overlay" hidden>
+        <div class="result-content">
+          <span class="eyebrow" id="resultEyebrow">雨が、止んだ。</span>
+          <h2 id="resultTitle">残心</h2>
+          <p id="resultCopy"></p>
+          <div class="result-stats">
+            <div>
+              <span>総撃破</span
+              ><strong id="resultKills">0<small>人</small></strong>
+            </div>
+            <div>
+              <span>最多一閃</span
+              ><strong id="resultBest">0<small>人</small></strong>
+            </div>
+          </div>
+          <p class="result-time" id="resultTime"></p>
+          <button id="retry" class="paper-button">
+            もう一度、斬る <span>→</span>
+          </button>
+          <div class="result-links">
+            <button id="share">戦果をXへ</button
+            ><button id="returnTitle">表題へ</button>
+          </div>
+          <p id="shareStatus" role="status"></p>
+        </div>
+      </section>
+      <section id="pause" class="screen overlay modal" hidden>
+        <div class="sheet">
+          <span class="eyebrow">刀を休める</span>
+          <h2>一服</h2>
+          <p>墨も、敵も、雨も。<br />この間は進みません。</p>
+          <button id="resume" class="paper-button">
+            戦いに戻る <span>→</span></button
+          ><button id="pauseHelp" class="text-button">技を確かめる</button
+          ><button id="pauseTitle" class="text-button">表題へ戻る</button>
+        </div>
+      </section>
+      <section id="help" class="screen overlay modal" hidden>
+        <div class="sheet help-sheet">
+          <span class="eyebrow">三つの所作</span>
+          <h2>墨を引き、断つ。</h2>
+          <ol>
+            <li>
+              <b>斬る</b><span>前方を薙ぐ。<br />近くの敵をまとめて斬る。</span>
+            </li>
+            <li>
+              <b>抜刀</b
+              ><span>移動方向へすり抜ける。<br />墨は２本まで、雨で４秒。</span>
+            </li>
+            <li>
+              <b>納刀</b
+              ><span
+                >墨に足が重なる敵を一掃。<br />鐘守は２本の交差で崩せる。</span
+              >
+            </li>
+          </ol>
+          <div class="help-sketch">
+            <i></i><i></i><span>朱の予告は、避ける。</span>
+          </div>
+          <p class="pc-help">
+            左手で移動、右手で技。<br />PC：WASD / 矢印・J / K / L
+          </p>
+          <button id="helpClose" class="paper-button">
+            心得た <span>→</span>
+          </button>
+        </div>
+      </section>
+      <noscript>このゲームにはJavaScriptが必要です。</noscript>
+    </main>
+    <script type="module" src="game.js"></script>
+  </body>
+</html>

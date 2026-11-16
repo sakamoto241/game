@@ -1,0 +1,18 @@
+{
+  "title": "残墨",
+  "source_images": {
+    "temple.jpg": "User-supplied empty stone platform, used as background fallback and source for portrait adaptation.",
+    "battle-reference.jpg": "User-supplied soldier battle illustration. Art direction for army density, ronin, ink lines and attacks.",
+    "bellkeeper-reference.jpg": "User-supplied bellkeeper illustration. Used for boss introduction and character art direction."
+  },
+  "generated": {
+    "temple-portrait.webp": "Portrait adaptation generated from supplied empty background with image generation, 2026-11-16.",
+    "ronin.webp": "Extracted individual transparent cell from original generated sumi-e character atlas, 2026-11-16.",
+    "soldier.webp": "Extracted individual transparent cell from same atlas.",
+    "spearman.webp": "Extracted individual transparent cell from same atlas.",
+    "bellkeeper.webp": "Extracted individual transparent cell from same atlas."
+  },
+  "sound": "Original local Web Audio synthesis: rain, steel, scabbard, bell. No API, no recordings, no third-party music.",
+  "layers": "Independent background, actors, procedural paint, telegraphs, weather, sound, and HTML HUD. Sprite paths live in art.js ASSETS.",
+  "share.jpg": "Rendered title composition using supplied empty temple, generated ronin and original typography. No invented gameplay score."
+}

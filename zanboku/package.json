@@ -1,0 +1,10 @@
+{
+  "name": "zanboku",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "python3 -m http.server 8017 --bind 0.0.0.0",
+    "test": "node --test tests/core.test.mjs",
+    "build": "node tools/build.mjs"
+  }
+}
