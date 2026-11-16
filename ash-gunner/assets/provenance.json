@@ -1,9 +1,0 @@
-{
-  "background": "/workspace/generated_images/exec-70ad81ab-6906-4861-ba84-7f2f2b68a047.png",
-  "sprites": "/workspace/generated_images/exec-a9e9e8b7-5368-4773-9dd9-0760388fb383.png",
-  "processing": "Grid split, transparent bounding crop, proportional resize, WebP encoding only.",
-  "hashes": {
-    "exec-70ad81ab-6906-4861-ba84-7f2f2b68a047.png": "4ab018c94fa2280225f2a1d825a866f8223ceb59a04b454ce186092f4f82bfc7",
-    "exec-a9e9e8b7-5368-4773-9dd9-0760388fb383.png": "025653d29742dc3e67f09866f66e1892289f89622c5b9292e2afc8899c206e63"
-  }
-}
