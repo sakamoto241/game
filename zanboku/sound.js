@@ -38,8 +38,9 @@ export class Sound {
         filter.connect(this.rainGain);
         src.start();
       }
-      if (this.ctx.state === "suspended") await this.ctx.resume();
-      this.suspended = false;
+      if (this.ctx.state !== "running" && this.ctx.state !== "closed")
+        await this.ctx.resume();
+      this.suspended = this.ctx.state !== "running";
     } catch {
       /* Audio is optional. Gameplay continues. */
     }

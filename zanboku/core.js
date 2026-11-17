@@ -72,6 +72,9 @@ export class Battle {
       maxHp: 5,
       radius: 12,
       slashCD: 0,
+      pendingSlash: null,
+      attackStep: null,
+      sealRecovery: 0,
       dashCD: 0,
       sealCD: 0,
       invincible: 0,
@@ -156,14 +159,27 @@ export class Battle {
   slash() {
     if (this.mode !== "playing") return false;
     const p = this.player;
-    if (p.slashCD > 0 || p.dashTime > 0) return false;
+    if (p.slashCD > 0 || p.dashTime > 0 || p.sealRecovery > 0) return false;
     const d = this.direction();
     p.dx = d.x;
     p.dy = d.y;
-    p.slashCD = 0.36;
-    p.pose = 0.32;
+    p.slashCD = 0.39;
+    p.pose = 0.39;
     p.action = "slash";
+    p.pendingSlash = { time: 0.055, dx: d.x, dy: d.y };
+    return true;
+  }
+  resolveSlash() {
+    const p = this.player,
+      d = p.pendingSlash;
+    if (!d) return;
+    p.pendingSlash = null;
+    p.x += d.dx * 5;
+    p.y += d.dy * 5;
+    this.keepIn(p);
+    p.attackStep = { left: 0.095, dx: d.dx, dy: d.dy };
     let count = 0;
+    const hits = [];
     for (const e of this.enemies) {
       if (e.dead) continue;
       const dx = e.x - p.x,
@@ -171,24 +187,33 @@ export class Battle {
         l = Math.hypot(dx, dy);
       if (
         l < 76 + e.radius &&
-        (l < 25 || (dx * d.x + dy * d.y) / (l || 1) > -0.12)
+        (l < 25 || (dx * d.dx + dy * d.dy) / (l || 1) > -0.12)
       ) {
         this.damageEnemy(
           e,
           e.kind === "boss" ? (e.action === "recover" ? 18 : 5) : 1,
           "slash",
         );
+        hits.push({ x: e.x, y: e.y, boss: e.kind === "boss" });
         count++;
       }
     }
-    this.event("slash", { x: p.x, y: p.y, dx: d.x, dy: d.y, count });
+    this.event("slash", {
+      x: p.x,
+      y: p.y,
+      dx: d.dx,
+      dy: d.dy,
+      count,
+      targets: hits,
+    });
     if (count) this.hitstop = count >= 3 ? 0.055 : 0.035;
-    return true;
   }
   dash() {
     if (this.mode !== "playing") return false;
     const p = this.player;
-    if (p.dashCD > 0 || p.dashTime > 0) return false;
+    if (p.dashCD > 0 || p.dashTime > 0 || p.sealRecovery > 0) return false;
+    p.pendingSlash = null;
+    p.attackStep = null;
     const d = this.direction();
     p.dx = d.x;
     p.dy = d.y;
@@ -251,8 +276,11 @@ export class Battle {
     }
     this.lines = [];
     p.activeLine = null;
-    p.pose = 0.5;
+    p.pose = 0.62;
     p.action = "seal";
+    p.pendingSlash = null;
+    p.attackStep = null;
+    p.sealRecovery = 0.22;
     p.sealCD = 2.2;
     p.invincible = Math.max(p.invincible, 0.17);
     this.bestSeal = Math.max(this.bestSeal, count);
@@ -313,9 +341,39 @@ export class Battle {
     e.x = clamp(e.x, a.left, a.right);
     e.y = clamp(e.y, a.top, a.bottom);
   }
+  advanceCooldowns(dt) {
+    const p = this.player;
+    for (const k of [
+      "slashCD",
+      "dashCD",
+      "sealCD",
+      "invincible",
+      "pose",
+      "chainWindow",
+      "sealRecovery",
+    ])
+      p[k] = Math.max(0, p[k] - dt);
+    if (p.pose === 0) p.action = "idle";
+  }
+  advanceStep(dt) {
+    const p = this.player;
+    if (p.attackStep && p.dashTime <= 0) {
+      const a = p.attackStep,
+        step = Math.min(dt, a.left);
+      p.x += a.dx * 145 * step;
+      p.y += a.dy * 145 * step;
+      a.left -= step;
+      this.keepIn(p);
+      if (a.left <= 0) p.attackStep = null;
+    }
+  }
   update(dt, input = { x: 0, y: 0 }) {
     dt = Math.min(dt, 0.04);
     if (this.mode === "victory" || this.mode === "defeat") {
+      if (this.mode === "victory") {
+        this.advanceCooldowns(dt);
+        this.advanceStep(dt);
+      }
       for (const e of this.enemies)
         if (e.dead) {
           e.fall -= dt;
@@ -331,6 +389,8 @@ export class Battle {
       return;
     this.input = { x: input.x || 0, y: input.y || 0 };
     if (this.mode === "interlude") {
+      this.advanceCooldowns(dt);
+      this.advanceStep(dt);
       for (const e of this.enemies)
         if (e.dead) {
           e.fall -= dt;
@@ -355,15 +415,11 @@ export class Battle {
     }
     this.time += dt;
     const p = this.player;
-    for (const k of [
-      "slashCD",
-      "dashCD",
-      "sealCD",
-      "invincible",
-      "pose",
-      "chainWindow",
-    ])
-      p[k] = Math.max(0, p[k] - dt);
+    this.advanceCooldowns(dt);
+    if (p.pendingSlash) {
+      p.pendingSlash.time -= dt;
+      if (p.pendingSlash.time <= 0) this.resolveSlash();
+    }
     if (p.pose === 0) p.action = "idle";
     for (const l of this.lines) {
       l.life -= dt;
@@ -397,13 +453,16 @@ export class Battle {
       if (n > 0.07) {
         x /= Math.max(1, n);
         y /= Math.max(1, n);
-        p.dx = x / (Math.hypot(x, y) || 1);
-        p.dy = y / (Math.hypot(x, y) || 1);
+        if (p.action !== "slash" || p.pose < 0.17) {
+          p.dx = x / (Math.hypot(x, y) || 1);
+          p.dy = y / (Math.hypot(x, y) || 1);
+        }
         p.x += x * 139 * dt;
         p.y += y * 139 * dt;
         this.keepIn(p);
       }
     }
+    this.advanceStep(dt);
     if (
       this.queue > 0 &&
       this.enemies.filter((e) => !e.dead && e.kind !== "boss").length < 19

@@ -28,7 +28,7 @@ with sync_playwright() as p:
   r=page.locator('#start').bounding_box();check(f'start visible in {width}x{height}',r['x']>=0 and r['y']>=0 and r['x']+r['width']<=width+1 and r['y']+r['height']<=height+1)
  page.set_viewport_size({'width':390,'height':740});page.locator('#start').tap();page.wait_for_timeout(1000)
  check('one tap starts first wave and audio',page.evaluate('__zanboku.game.mode==="playing"&&__zanboku.game.wave===1&&__zanboku.sound.ctx.state==="running"'))
- check('all original character and background assets loaded',page.evaluate('Object.keys(__zanboku.paint.images).length===10'))
+ check('all original character and background assets loaded',page.evaluate('Object.keys(__zanboku.paint.images).length===18'))
  for width,height in [(390,740),(393,659),(360,580),(430,932),(1280,900)]:
   page.set_viewport_size({'width':width,'height':height})
   for id in ['stick','slash','dash','seal','pauseBtn','soundBtn']:
@@ -51,7 +51,7 @@ with sync_playwright() as p:
  page.locator('#pauseBtn').tap();life=page.evaluate('__zanboku.game.lines[0].life');page.wait_for_timeout(500)
  check('pause freezes paint lifetime',page.evaluate('__zanboku.game.lines[0].life')==life)
  page.locator('#pauseHelp').tap();page.locator('#helpClose').tap();page.locator('#resume').tap();check('pause help resumes correct screen',page.evaluate('__zanboku.game.mode==="playing"'))
- page.keyboard.down('w');page.evaluate('window.dispatchEvent(new Event("blur"))');check('blur clears held key and pauses',page.evaluate('__zanboku.game.mode==="paused"&&__zanboku.input().y===0'));page.locator('#resume').tap()
+ page.keyboard.down('w');page.evaluate('window.dispatchEvent(new Event("blur"))');check('visible blur clears keyboard without opening pause',page.evaluate('__zanboku.game.mode==="playing"&&__zanboku.input().y===0&&document.querySelector("#pause").hidden'))
  # Retry from a real defeat, without setting HP or killing enemies in test code.
  page.locator('#pauseBtn').tap();page.locator('#pauseTitle').tap();page.locator('#start').tap()
  deadline=time.monotonic()+35

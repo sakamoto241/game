@@ -1,9 +1,17 @@
-import { W, H, INK_RADIUS, seeded, clamp } from "./core.js?v=2";
+import { W, H, INK_RADIUS, seeded, clamp } from "./core.js?v=3";
 export const ASSETS = {
   background: "assets/temple-portrait.webp",
   original: "assets/temple.jpg",
   ronin: "assets/ronin.webp",
+  backIdle: "assets/back-idle.webp",
+  backStep0: "assets/back-step-0.webp",
+  backStep1: "assets/back-step-1.webp",
+  backCut: "assets/back-cut.webp",
   run: "assets/ronin-run.webp",
+  walk0: "assets/ronin-walk-0.webp",
+  walk1: "assets/ronin-walk-1.webp",
+  walk2: "assets/ronin-walk-2.webp",
+  walk3: "assets/ronin-walk-3.webp",
   cut: "assets/ronin-cut.webp",
   follow: "assets/ronin-follow.webp",
   sheath: "assets/ronin-sheath.webp",
@@ -38,9 +46,21 @@ export function inkOutline(line) {
 }
 export function poseFor(actor, moving = false) {
   if (actor.action === "dash") return "run";
-  if (actor.action === "slash") return actor.pose > 0.17 ? "cut" : "follow";
+  if (actor.action === "slash")
+    return actor.pose > 0.335 ? "ronin" : actor.pose > 0.17 ? "cut" : "follow";
   if (actor.action === "seal") return "sheath";
   return moving ? "run" : "ronin";
+}
+export function directionPose(actor, moving = false, stride = 0) {
+  const base = poseFor(actor, moving);
+  if (actor.dy < -0.35) {
+    if (actor.action === "slash")
+      return actor.pose > 0.335 ? "backIdle" : "backCut";
+    if (actor.action === "dash") return "backStep0";
+    if (moving) return "backStep" + (Math.floor(stride / 24) % 2);
+    return "backIdle";
+  }
+  return moving ? "walk" + (Math.floor(stride / 16) % 4) : base;
 }
 export class Painter {
   constructor(canvas) {
@@ -56,6 +76,9 @@ export class Painter {
     this.echoes = [];
     this.echoTimer = 0;
     this.impact = 0;
+    this.finish = null;
+    this.walkDistance = 0;
+    this.lastFoot = null;
     this.reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
     this.resize();
     this.ready = Promise.allSettled(
@@ -101,15 +124,39 @@ export class Painter {
       this.fx.push({ ...e, age: 0, life: 0.94 });
       this.rainPause = 0.23;
       this.shake = e.count > 3 ? 4 : 1.5;
-      if (e.targets.length)
-        this.impact = Math.max(this.impact, Math.min(1, 0.45 + e.count * 0.04));
+      if (e.targets.length) {
+        this.finish = {
+          age: 0,
+          x: clamp(
+            e.targets.reduce((n, t) => n + t.x, 0) / e.targets.length,
+            150,
+            282,
+          ),
+          y: clamp(
+            e.targets.reduce((n, t) => n + t.y, 0) / e.targets.length,
+            350,
+            525,
+          ),
+        };
+        this.impact = Math.max(this.impact, 0.3);
+      }
       for (const t of e.targets) this.splatter(t.x, t.y, t.boss ? 16 : 6, 0.12);
     }
     if (e.type === "slash") {
       this.fx.push({ ...e, age: 0, life: 0.34 });
+      for (const t of e.targets || [])
+        this.fx.push({
+          type: "contact",
+          x: t.x,
+          y: t.y,
+          dx: e.dx,
+          dy: e.dy,
+          age: 0,
+          life: 0.2,
+        });
       if (e.count) {
         this.shake = 1.8;
-        this.impact = Math.max(this.impact, 0.18);
+        this.impact = Math.max(this.impact, 0.12);
       }
     }
     if (e.type === "dash") {
@@ -156,6 +203,27 @@ export class Painter {
   }
   draw(game, dt) {
     this.clock += dt;
+    if (this.finish) {
+      this.finish.age += dt;
+      if (this.finish.age > 0.9) this.finish = null;
+    }
+    const p = game.player;
+    if (dt > 0) {
+      const moving =
+        game.mode === "playing" &&
+        p.action === "idle" &&
+        Math.hypot(game.input.x, game.input.y) > 0.1;
+      const moved = this.lastFoot
+        ? Math.hypot(p.x - this.lastFoot.x, p.y - this.lastFoot.y)
+        : 0;
+      if (moving && moved < 12) {
+        const old = Math.floor(this.walkDistance / 32);
+        this.walkDistance += moved;
+        if (Math.floor(this.walkDistance / 32) !== old)
+          this.fx.push({ type: "step", x: p.x, y: p.y, age: 0, life: 0.34 });
+      }
+      this.lastFoot = { x: p.x, y: p.y };
+    }
     this.impact = Math.max(0, this.impact - dt * 2.1);
     this.echoTimer -= dt;
     if (
@@ -168,6 +236,7 @@ export class Painter {
         x: game.player.x,
         y: game.player.y,
         dx: game.player.dx,
+        dy: game.player.dy,
         age: 0,
       });
       this.echoTimer = 0.035;
@@ -181,10 +250,21 @@ export class Painter {
     c.save();
     c.clearRect(0, 0, W, H);
     if (!this.reduced) {
-      const zoom = 1 + Math.sin((this.impact * Math.PI) / 2) * 0.045;
-      c.translate(W / 2, 425);
+      const f = this.finish,
+        t = f?.age || 0;
+      const beat = !f
+        ? 0
+        : t < 0.12
+          ? (t / 0.12) * 0.008
+          : t < 0.24
+            ? 0.008 + ((t - 0.12) / 0.12) * 0.045
+            : 0.053 * Math.pow(Math.max(0, 1 - (t - 0.24) / 0.66), 1.6);
+      const zoom = 1 + Math.sin((this.impact * Math.PI) / 2) * 0.02 + beat,
+        fx = f?.x || W / 2,
+        fy = f?.y || 425;
+      c.translate(fx, fy);
       c.scale(zoom, zoom);
-      c.translate(-W / 2, -425);
+      c.translate(-fx, -fy);
       c.translate(
         Math.sin(this.clock * 93) * this.shake,
         Math.cos(this.clock * 87) * this.shake * 0.5,
@@ -218,16 +298,32 @@ export class Painter {
     fog.addColorStop(1, "#e8ddc300");
     c.fillStyle = fog;
     c.fillRect(0, 160, W, 180);
+    // Low drifting cloud at the distant edge. Keep the fighting floor clear.
+    c.save();
+    c.globalAlpha = 0.05;
+    c.fillStyle = "#f4ead6";
+    const drift = Math.sin(this.clock * 0.19) * 22;
+    c.beginPath();
+    c.moveTo(-20, 274);
+    c.bezierCurveTo(80 + drift, 253, 180, 298, 290 + drift, 268);
+    c.bezierCurveTo(350, 254, 420, 258, 460, 268);
+    c.lineTo(460, 288);
+    c.bezierCurveTo(300, 274, 160, 312, -20, 290);
+    c.closePath();
+    c.fill();
+    c.restore();
     for (const l of game.lines) this.paintLine(c, l, clamp(l.life / 0.8, 0, 1));
     for (const e of game.enemies) if (!e.dead) this.telegraph(c, e);
     for (const e of this.echoes) {
-      const im = this.images.run;
+      const im = e.dy < -0.35 ? this.images.backStep0 : this.images.run;
       if (!im) continue;
       c.save();
       c.globalAlpha = (1 - e.age / 0.23) * 0.16;
       c.translate(e.x, e.y);
       if (e.dx < -0.12) c.scale(-1, 1);
-      c.drawImage(im, -43, -77, 86, 77);
+      const h = e.dy < -0.35 ? 80 : 77,
+        w = (h * im.width) / im.height;
+      c.drawImage(im, -w * 0.54, -h, w, h);
       c.restore();
     }
     const actors = [
@@ -384,12 +480,25 @@ export class Painter {
     const moving = player
       ? Math.hypot(game.input.x, game.input.y) > 0.1 && a.action === "idle"
       : a.action === "walk";
-    const key = player ? poseFor(a, moving) : a.kind;
+    const key = player ? directionPose(a, moving, this.walkDistance) : a.kind;
     const im = this.images[key] || this.images[a.kind];
     const h = boss
       ? 126
       : player
-        ? { run: 76, cut: 71, follow: 77, sheath: 86 }[key] || 83
+        ? {
+            backIdle: 85,
+            backStep0: 80,
+            backStep1: 80,
+            backCut: 74,
+            run: 76,
+            walk0: 76,
+            walk1: 76,
+            walk2: 76,
+            walk3: 76,
+            cut: 71,
+            follow: 77,
+            sheath: 86,
+          }[key] || 83
         : a.kind === "spear"
           ? 76
           : 60;
@@ -401,7 +510,7 @@ export class Painter {
       oy = 0,
       tilt = 0;
     if (player && a.action === "slash") {
-      const t = clamp(1 - a.pose / 0.32, 0, 1),
+      const t = clamp(1 - a.pose / 0.39, 0, 1),
         weight = Math.sin(t * Math.PI);
       ox = a.dx * weight * 10;
       oy = a.dy * weight * 7;
@@ -426,6 +535,14 @@ export class Painter {
     if (a.action === "recover" && a.hitFlash > 0) tilt = -a.dx * 0.19;
     c.save();
     c.globalAlpha = alpha;
+    if (!dead && im) {
+      c.save();
+      c.globalAlpha = alpha * 0.1;
+      c.translate(a.x, a.y + 3);
+      c.scale(1, -0.12);
+      c.drawImage(im, -w * 0.54, -h, w, h);
+      c.restore();
+    }
     // Small broken contact mark, instead of an opaque oval under every actor.
     c.fillStyle = "#1f291d30";
     c.beginPath();
@@ -543,6 +660,29 @@ export class Painter {
       c.fill();
       c.globalAlpha = 1;
       return;
+    }
+    if (f.type === "step") {
+      c.save();
+      c.globalAlpha = (1 - t) * 0.35;
+      c.strokeStyle = "#f4ead6";
+      c.lineWidth = 0.6;
+      c.beginPath();
+      c.ellipse(f.x, f.y, 4 + t * 10, 1 + t * 3, 0, 0.1, 5.8);
+      c.stroke();
+      c.restore();
+    }
+    if (f.type === "contact") {
+      const a = Math.atan2(f.dy, f.dx) + 0.8,
+        reach = 22 * (1 - t);
+      c.save();
+      c.globalAlpha = 1 - t;
+      c.strokeStyle = "#fff8e5";
+      c.lineWidth = 2;
+      c.beginPath();
+      c.moveTo(f.x - Math.cos(a) * reach, f.y - Math.sin(a) * reach - 12);
+      c.lineTo(f.x + Math.cos(a) * reach, f.y + Math.sin(a) * reach - 12);
+      c.stroke();
+      c.restore();
     }
     if (f.type === "wake") {
       c.save();
@@ -683,5 +823,8 @@ export class Painter {
     this.echoes = [];
     this.echoTimer = 0;
     this.impact = 0;
+    this.finish = null;
+    this.walkDistance = 0;
+    this.lastFoot = null;
   }
 }

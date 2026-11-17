@@ -55,6 +55,8 @@ test("normal directional slash kills several enemies, but not enemies behind or 
     [90, -30],
   ].forEach(([x, y]) => enemy(g, p.x + x, p.y + y));
   g.slash();
+  assert.equal(g.kills, 0, "damage waits for the blade contact");
+  advance(g, 0.075);
   assert.equal(g.kills, 3);
   assert.equal(g.enemies.filter((e) => !e.dead).length, 2);
   assert.equal(g.slash(), false);
@@ -251,4 +253,42 @@ test("rough ink artwork stays within its hit segment, including the brush ends",
     for (const p of points)
       assert.ok(pointSegment(p, a, b) <= INK_RADIUS + 0.001);
   }
+});
+
+test("dash cancels the sword windup without a phantom hit", () => {
+  const g = field();
+  enemy(g, 216, 505);
+  g.slash();
+  g.input = { x: 1, y: 0 };
+  assert.ok(g.dash());
+  advance(g, 0.2);
+  assert.equal(g.kills, 0);
+  assert.equal(g.player.pendingSlash, null);
+});
+test("a cut steps into its locked attack direction and resolves exactly once", () => {
+  const g = field();
+  enemy(g, 216, 500);
+  const y = g.player.y;
+  g.slash();
+  advance(g, 0.03);
+  assert.equal(g.kills, 0);
+  advance(g, 0.2);
+  assert.equal(g.kills, 1);
+  assert.ok(g.player.y < y - 10);
+  assert.equal(g.events.filter((e) => e.type === "slash").length, 1);
+});
+
+test("movement and attack use rear poses when facing up the stairs", async () => {
+  const { directionPose } = await import("../art.js");
+  assert.equal(directionPose({ action: "idle", dy: -1 }), "backIdle");
+  assert.equal(directionPose({ action: "idle", dy: -1 }, true, 0), "backStep0");
+  assert.equal(
+    directionPose({ action: "idle", dy: -1 }, true, 25),
+    "backStep1",
+  );
+  assert.equal(
+    directionPose({ action: "slash", dy: -1, pose: 0.2 }),
+    "backCut",
+  );
+  assert.equal(directionPose({ action: "idle", dy: 1 }, true, 0), "walk0");
 });

@@ -11,7 +11,7 @@ with sync_playwright() as p:
  page.clock.install(time=datetime(2026,11,17,tzinfo=timezone.utc));page.clock.pause_at(datetime(2026,11,17,0,0,1,tzinfo=timezone.utc));page.goto(url,wait_until='networkidle');page.evaluate('document.fonts.ready')
  assert page.evaluate('document.fonts.check(\'24px "Yuji Boku"\',"残墨斬抜刀")')
  page.locator('#start').tap()
- page.keyboard.press('j');page.clock.run_for(40)
+ page.keyboard.press('j');page.clock.run_for(100)
  assert page.evaluate('__zanboku.game.player.action==="slash"&&__zanboku.game.player.pose>.17')
  page.screenshot(path=str(out/'cut-windup.png'))
  page.clock.run_for(160)

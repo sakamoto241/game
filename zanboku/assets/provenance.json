@@ -14,7 +14,15 @@
     "ronin-run.webp": "Individual dash/run action pose from generated 2x2 atlas based on existing ronin, 2026-11-17.",
     "ronin-cut.webp": "Horizontal lunge/cut pose from same atlas.",
     "ronin-follow.webp": "Low follow-through pose from same atlas.",
-    "ronin-sheath.webp": "Still sheathing pose from same atlas."
+    "ronin-sheath.webp": "Still sheathing pose from same atlas.",
+    "ronin-walk-0.webp": "First of four run-cycle frames generated from the existing ronin, 2026-11-17. Common atlas bounds preserve pose scale.",
+    "ronin-walk-1.webp": "Next run-cycle frame from the same atlas.",
+    "ronin-walk-2.webp": "Next run-cycle frame from the same atlas.",
+    "ronin-walk-3.webp": "Next run-cycle frame from the same atlas.",
+    "back-idle.webp": "Rear-view pose generated from the original ronin and supplied battle reference, 2026-11-17.",
+    "back-step-0.webp": "Rear-view pose generated from the original ronin and supplied battle reference, 2026-11-17.",
+    "back-step-1.webp": "Rear-view pose generated from the original ronin and supplied battle reference, 2026-11-17.",
+    "back-cut.webp": "Rear-view pose generated from the original ronin and supplied battle reference, 2026-11-17."
   },
   "sound": "Original local Web Audio synthesis: rain, steel, scabbard, bell. No API, no recordings, no third-party music.",
   "layers": "Independent background, actors, procedural paint, telegraphs, weather, sound, and HTML HUD. Sprite paths live in art.js ASSETS.",

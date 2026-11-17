@@ -1,6 +1,6 @@
-import { Battle, W, H, clamp } from "./core.js?v=2";
-import { Painter } from "./art.js?v=2";
-import { Sound } from "./sound.js?v=2";
+import { Battle, W, H, clamp } from "./core.js?v=3";
+import { Painter } from "./art.js?v=3";
+import { Sound } from "./sound.js?v=3";
 const $ = (id) => document.getElementById(id),
   game = new Battle(),
   paint = new Painter($("game")),
@@ -8,7 +8,9 @@ const $ = (id) => document.getElementById(id),
 const keys = new Set(),
   stickInput = { x: 0, y: 0 },
   pointers = new Map();
-let stickId = null,
+let backgrounded = document.hidden,
+  lastViewportWidth = 0,
+  stickId = null,
   slashHeld = false,
   pausedFrom = null,
   helpFrom = "title",
@@ -36,7 +38,10 @@ function fit() {
     game.arena.bottom = clamp(((r.top - s.top - 10) / s.height) * H, 535, 599);
     game.keepIn(game.player);
   }
-  resetInput();
+  const width = window.innerWidth;
+  if (lastViewportWidth && Math.abs(width - lastViewportWidth) > 2)
+    resetInput();
+  lastViewportWidth = width;
 }
 function resetInput() {
   keys.clear();
@@ -62,7 +67,17 @@ function input() {
   }
   return { x, y };
 }
+function activateAudio() {
+  if (
+    sound.ctx &&
+    (sound.suspended || sound.ctx.state !== "running") &&
+    !backgrounded &&
+    game.mode !== "paused"
+  )
+    sound.start();
+}
 function act(what) {
+  activateAudio();
   game.input = input();
   game[what]();
 }
@@ -236,7 +251,7 @@ function hud() {
   $("dash").querySelector("i").style.transform =
     `scaleX(${clamp(p.dashCD / (p.dashCD > 0.57 ? 1.55 : 0.57), 0, 1)})`;
   $("slash").querySelector("i").style.transform =
-    `scaleX(${clamp(p.slashCD / 0.36, 0, 1)})`;
+    `scaleX(${clamp(p.slashCD / 0.39, 0, 1)})`;
   $("dash").setAttribute("aria-disabled", String(p.dashCD > 0));
 }
 $("start").addEventListener("click", start);
@@ -284,6 +299,7 @@ function moveStick(e) {
 stick.addEventListener("pointerdown", (e) => {
   if (game.mode !== "playing" || stickId !== null) return;
   e.preventDefault();
+  activateAudio();
   stickId = e.pointerId;
   stick.setPointerCapture(e.pointerId);
   moveStick(e);
@@ -325,6 +341,7 @@ window.addEventListener("keydown", (e) => {
   if (["arrowup", "arrowdown", "arrowleft", "arrowright", " "].includes(k))
     e.preventDefault();
   if (k === "escape") {
+    if (e.repeat) return;
     if (game.mode === "paused") resume();
     else pause();
     return;
@@ -337,28 +354,44 @@ window.addEventListener("keydown", (e) => {
   if (k === "l") act("seal");
 });
 window.addEventListener("keyup", (e) => keys.delete(e.key.toLowerCase()));
-window.addEventListener("blur", () => {
+// Focus changes are common inside mobile webviews. Only an explicit action
+// opens the pause menu. A hidden document freezes silently and resumes itself.
+function suspendInBackground() {
+  backgrounded = true;
   resetInput();
-  pause();
+  sound.pause();
+  lastTime = 0;
+}
+function returnToGame() {
+  if (document.hidden || !backgrounded) return;
+  backgrounded = false;
+  resetInput();
+  lastTime = performance.now();
+  if (sound.ctx && game.mode !== "paused") sound.start();
+}
+window.addEventListener("blur", () => {
+  keys.clear();
+  if (document.hidden) suspendInBackground();
+  else if (stickId === null && pointers.size === 0) resetInput();
+});
+window.addEventListener("focus", () => {
+  if (backgrounded) returnToGame();
 });
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden) {
-    resetInput();
-    pause();
-    sound.pause();
-  }
+  if (document.hidden) suspendInBackground();
+  else returnToGame();
 });
 window.addEventListener("resize", fit);
 window.visualViewport?.addEventListener("resize", fit);
 window.addEventListener("contextmenu", (e) => e.preventDefault());
-window.addEventListener("pagehide", () => {
-  resetInput();
-  sound.pause();
+window.addEventListener("pagehide", suspendInBackground);
+window.addEventListener("pageshow", () => {
+  if (backgrounded) returnToGame();
 });
 function frame(ms) {
   const dt = Math.min(0.04, (ms - lastTime) / 1000 || 0.016);
   lastTime = ms;
-  const frozen = game.mode === "paused";
+  const frozen = game.mode === "paused" || backgrounded;
   if (!frozen) {
     if ((slashHeld || keys.has("j")) && game.mode === "playing") act("slash");
     game.update(dt, input());
@@ -402,4 +435,7 @@ if (new URLSearchParams(location.search).has("test"))
     resume,
     act,
     sound,
+    get backgrounded() {
+      return backgrounded;
+    },
   };
