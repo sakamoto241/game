@@ -1,4 +1,4 @@
-import { W, H, INK_RADIUS, seeded, clamp } from "./core.js?v=3";
+import { W, H, INK_RADIUS, seeded, clamp } from "./core.js?v=4";
 export const ASSETS = {
   background: "assets/temple-portrait.webp",
   original: "assets/temple.jpg",

@@ -1,16 +1,19 @@
-import { Battle, W, H, clamp } from "./core.js?v=3";
-import { Painter } from "./art.js?v=3";
-import { Sound } from "./sound.js?v=3";
+import { Battle, W, H, clamp } from "./core.js?v=4";
+import { Painter } from "./art.js?v=4";
+import { ActionBuffer, stickVector, attackDirection } from "./controls.js?v=4";
+import { Sound } from "./sound.js?v=4";
 const $ = (id) => document.getElementById(id),
   game = new Battle(),
   paint = new Painter($("game")),
   sound = new Sound();
 const keys = new Set(),
   stickInput = { x: 0, y: 0 },
-  pointers = new Map();
+  pointers = new Map(),
+  actionBuffer = new ActionBuffer();
 let backgrounded = document.hidden,
   lastViewportWidth = 0,
   stickId = null,
+  stickAnchor = null,
   slashHeld = false,
   pausedFrom = null,
   helpFrom = "title",
@@ -47,6 +50,13 @@ function resetInput() {
   keys.clear();
   pointers.clear();
   stickId = null;
+  stickAnchor = null;
+  actionBuffer.clear();
+  stick.classList.remove("active");
+  stick.style.removeProperty("--stick-x");
+  stick.style.removeProperty("--stick-y");
+  for (const b of document.querySelectorAll(".skill"))
+    b.classList.remove("is-held", "queued");
   stickInput.x = 0;
   stickInput.y = 0;
   slashHeld = false;
@@ -76,10 +86,36 @@ function activateAudio() {
   )
     sound.start();
 }
+function executeAction(what, direction) {
+  const original = game.input;
+  game.input = direction;
+  const success = game[what]();
+  game.input = original;
+  return success;
+}
 function act(what) {
   activateAudio();
-  game.input = input();
-  game[what]();
+  actionBuffer.clear();
+  const move = input(),
+    p = game.player;
+  const direction =
+    what === "slash"
+      ? attackDirection(p, move, game.enemies)
+      : Math.hypot(move.x, move.y) > 0.08
+        ? move
+        : { x: p.dx, y: p.dy };
+  if (executeAction(what, direction)) {
+    actionBuffer.clear();
+    return;
+  }
+  const cooldown =
+    what === "slash" ? p.slashCD : what === "dash" ? p.dashCD : p.sealCD;
+  if (
+    game.mode === "playing" &&
+    (what !== "seal" || game.lines.length) &&
+    Math.max(cooldown, p.dashTime, p.sealRecovery) + game.hitstop <= 0.18
+  )
+    actionBuffer.push(what, direction);
 }
 function tip(text, seconds = 4) {
   $("tip").textContent = text;
@@ -237,7 +273,10 @@ function hud() {
   }
   const n = game.lines.length,
     can = n > 0;
-  $("seal").disabled = !can || p.sealCD > 0;
+  $("seal").disabled = !can;
+  $("seal").setAttribute("aria-disabled", String(!can || p.sealCD > 0));
+  for (const id of ["slash", "dash", "seal"])
+    $(id).classList.toggle("queued", actionBuffer.pending?.action === id);
   $("seal").classList.toggle("ready", can);
   $("seal").classList.toggle(
     "expiring",
@@ -284,23 +323,39 @@ $("share").addEventListener("click", () => {
 });
 const stick = $("stick");
 function moveStick(e) {
+  if (!stickAnchor) return;
   const r = stick.getBoundingClientRect(),
-    cx = r.left + r.width / 2,
-    cy = r.top + r.height / 2,
-    dx = e.clientX - cx,
-    dy = e.clientY - cy,
-    max = r.width * 0.33,
-    n = Math.hypot(dx, dy),
-    scale = n > max ? max / n : 1;
-  stickInput.x = (dx * scale) / max;
-  stickInput.y = (dy * scale) / max;
-  $("stickKnob").style.transform = `translate(${dx * scale}px,${dy * scale}px)`;
+    radius = Math.min(r.width, r.height) * 0.33;
+  let dx = e.clientX - stickAnchor.x,
+    dy = e.clientY - stickAnchor.y;
+  const n = Math.hypot(dx, dy),
+    limit = radius * 1.65;
+  if (n > limit) {
+    stickAnchor.x += (dx / n) * (n - limit);
+    stickAnchor.y += (dy / n) * (n - limit);
+    dx = e.clientX - stickAnchor.x;
+    dy = e.clientY - stickAnchor.y;
+  }
+  const v = stickVector(dx, dy, radius, 5);
+  stickInput.x = v.x;
+  stickInput.y = v.y;
+  stick.style.setProperty(
+    "--stick-x",
+    `${stickAnchor.x - r.left - r.width / 2}px`,
+  );
+  stick.style.setProperty(
+    "--stick-y",
+    `${stickAnchor.y - r.top - r.height / 2}px`,
+  );
+  $("stickKnob").style.transform = `translate(${v.knobX}px,${v.knobY}px)`;
 }
 stick.addEventListener("pointerdown", (e) => {
   if (game.mode !== "playing" || stickId !== null) return;
   e.preventDefault();
   activateAudio();
   stickId = e.pointerId;
+  stickAnchor = { x: e.clientX, y: e.clientY };
+  stick.classList.add("active");
   stick.setPointerCapture(e.pointerId);
   moveStick(e);
 });
@@ -310,32 +365,56 @@ stick.addEventListener("pointermove", (e) => {
     moveStick(e);
   }
 });
+function updateHeld() {
+  slashHeld = [...pointers.values()].includes("slash");
+  for (const id of ["slash", "dash", "seal"])
+    $(id).classList.toggle("is-held", [...pointers.values()].includes(id));
+}
 function release(e) {
   if (e.pointerId === stickId) {
     stickId = null;
+    stickAnchor = null;
     stickInput.x = 0;
     stickInput.y = 0;
+    stick.classList.remove("active");
+    stick.style.removeProperty("--stick-x");
+    stick.style.removeProperty("--stick-y");
     $("stickKnob").style.transform = "";
   }
-  if (pointers.get(e.pointerId) === "slash") slashHeld = false;
+  if (e.type === "pointercancel") actionBuffer.clear();
   pointers.delete(e.pointerId);
+  updateHeld();
 }
 for (const k of ["pointerup", "pointercancel", "lostpointercapture"])
   window.addEventListener(k, release);
-for (const [id, action] of [
-  ["slash", "slash"],
-  ["dash", "dash"],
-  ["seal", "seal"],
-]) {
+for (const id of ["slash", "dash", "seal"])
   $(id).addEventListener("pointerdown", (e) => {
     e.preventDefault();
     if (game.mode !== "playing") return;
     $(id).setPointerCapture(e.pointerId);
-    pointers.set(e.pointerId, action);
-    if (action === "slash") slashHeld = true;
-    act(action);
+    pointers.set(e.pointerId, id);
+    updateHeld();
+    act(id);
   });
-}
+window.addEventListener("pointermove", (e) => {
+  if (!pointers.has(e.pointerId) || game.mode !== "playing") return;
+  const current = pointers.get(e.pointerId);
+  const inside = (id, margin) => {
+    const r = $(id).getBoundingClientRect();
+    return (
+      e.clientX >= r.left - margin &&
+      e.clientX <= r.right + margin &&
+      e.clientY >= r.top - margin &&
+      e.clientY <= r.bottom + margin
+    );
+  };
+  if (current && inside(current, 7)) return;
+  const next = ["slash", "dash", "seal"].find((id) => inside(id, 2)) || "";
+  if (next === current) return;
+  pointers.set(e.pointerId, next);
+  updateHeld();
+  if (next) act(next);
+});
 window.addEventListener("keydown", (e) => {
   const k = e.key.toLowerCase();
   if (["arrowup", "arrowdown", "arrowleft", "arrowright", " "].includes(k))
@@ -372,7 +451,7 @@ function returnToGame() {
 window.addEventListener("blur", () => {
   keys.clear();
   if (document.hidden) suspendInBackground();
-  else if (stickId === null && pointers.size === 0) resetInput();
+  else game.input = input();
 });
 window.addEventListener("focus", () => {
   if (backgrounded) returnToGame();
@@ -393,7 +472,16 @@ function frame(ms) {
   lastTime = ms;
   const frozen = game.mode === "paused" || backgrounded;
   if (!frozen) {
-    if ((slashHeld || keys.has("j")) && game.mode === "playing") act("slash");
+    if (game.mode === "playing") {
+      actionBuffer.tick(dt, executeAction);
+      if (!actionBuffer.pending && (slashHeld || keys.has("j"))) {
+        const move = input();
+        executeAction(
+          "slash",
+          attackDirection(game.player, move, game.enemies),
+        );
+      }
+    } else actionBuffer.clear();
     game.update(dt, input());
     let e;
     while ((e = game.events.shift())) handle(e);
@@ -435,6 +523,7 @@ if (new URLSearchParams(location.search).has("test"))
     resume,
     act,
     sound,
+    actionBuffer,
     get backgrounded() {
       return backgrounded;
     },

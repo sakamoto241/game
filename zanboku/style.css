@@ -259,8 +259,9 @@ canvas {
   justify-content: space-between;
 }
 #stick {
-  width: 116px;
-  height: 116px;
+  width: 132px;
+  height: 132px;
+  flex-shrink: 0;
   position: relative;
   pointer-events: auto;
   touch-action: none;
@@ -269,7 +270,10 @@ canvas {
 }
 #stickRing {
   position: absolute;
-  inset: 9px;
+  width: 98px;
+  height: 98px;
+  left: calc(50% - 49px + var(--stick-x, 0px));
+  top: calc(50% - 49px + var(--stick-y, 0px));
   border: 1px solid #30372d30;
   border-radius: 50%;
   box-shadow: none;
@@ -278,8 +282,8 @@ canvas {
   position: absolute;
   width: 38px;
   height: 38px;
-  left: 39px;
-  top: 39px;
+  left: calc(50% - 19px + var(--stick-x, 0px));
+  top: calc(50% - 19px + var(--stick-y, 0px));
   background: #e8dcc54a;
   border: 1px solid #30372d55;
   border-radius: 50%;
@@ -815,4 +819,20 @@ canvas {
     bottom: 20px;
     font-size: 9px;
   }
+}
+
+#stick.active #stickRing {
+  border-color: #30372d66;
+}
+#stick.active #stickKnob {
+  background: #eee1c88c;
+  border-color: #30372d88;
+}
+.skill.is-held::before,
+.skill.queued::before {
+  opacity: 1;
+  transform: scaleX(1.06);
+}
+.skill.is-held span {
+  transform: translateY(1px);
 }

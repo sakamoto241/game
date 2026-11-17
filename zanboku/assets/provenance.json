@@ -24,7 +24,7 @@
     "back-step-1.webp": "Rear-view pose generated from the original ronin and supplied battle reference, 2026-11-17.",
     "back-cut.webp": "Rear-view pose generated from the original ronin and supplied battle reference, 2026-11-17."
   },
-  "sound": "Original local Web Audio synthesis: rain, steel, scabbard, bell. No API, no recordings, no third-party music.",
+  "sound": "Original local Web Audio synthesis: filtered-noise wind, rain, cloth, steel, scabbard and bell. No recordings, paid APIs, runtime audio services or third-party music.",
   "layers": "Independent background, actors, procedural paint, telegraphs, weather, sound, and HTML HUD. Sprite paths live in art.js ASSETS.",
   "share.jpg": "Rendered title composition using supplied empty temple, generated ronin and original typography. No invented gameplay score.",
   "fonts": "Locally hosted display subset of Yuji Boku, Copyright 2021 The Yuji Project Authors. SIL Open Font License 1.1 in assets/fonts/OFL.txt. No runtime font services."
