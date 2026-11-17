@@ -233,3 +233,22 @@ test("last group falls during the intermission, rather than freezing until the n
   assert.equal(g.mode, "interlude");
   assert.ok(e.deathAge > 0.1);
 });
+
+test("rough ink artwork stays within its hit segment, including the brush ends", async () => {
+  const { inkOutline } = await import("../art.js");
+  for (const [a, b] of [
+    [
+      { x: 70, y: 360 },
+      { x: 300, y: 550 },
+    ],
+    [
+      { x: 220, y: 410 },
+      { x: 220, y: 410 },
+    ],
+  ]) {
+    const points = inkOutline({ a, b, seed: 19 });
+    assert.ok(points.length > 40);
+    for (const p of points)
+      assert.ok(pointSegment(p, a, b) <= INK_RADIUS + 0.001);
+  }
+});

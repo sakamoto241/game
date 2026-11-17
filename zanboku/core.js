@@ -161,7 +161,7 @@ export class Battle {
     p.dx = d.x;
     p.dy = d.y;
     p.slashCD = 0.36;
-    p.pose = 0.26;
+    p.pose = 0.32;
     p.action = "slash";
     let count = 0;
     for (const e of this.enemies) {
@@ -182,7 +182,7 @@ export class Battle {
       }
     }
     this.event("slash", { x: p.x, y: p.y, dx: d.x, dy: d.y, count });
-    if (count) this.hitstop = 0.035;
+    if (count) this.hitstop = count >= 3 ? 0.055 : 0.035;
     return true;
   }
   dash() {
@@ -257,7 +257,7 @@ export class Battle {
     p.invincible = Math.max(p.invincible, 0.17);
     this.bestSeal = Math.max(this.bestSeal, count);
     this.totalSeal += count;
-    this.hitstop = targets.length ? 0.065 : 0.025;
+    this.hitstop = targets.length ? (count >= 5 ? 0.095 : 0.065) : 0.025;
     this.event("seal", {
       lines,
       count,
@@ -279,6 +279,9 @@ export class Battle {
       e.fall = delay;
       e.deathAge = 0;
       e.cause = cause;
+      const n = this.directionTo(this.player, e);
+      e.deathDx = n.x;
+      e.deathDy = n.y;
       this.kills++;
       this.event("kill", {
         x: e.x,
@@ -370,8 +373,8 @@ export class Battle {
     if (p.dashTime > 0) {
       const dashStep = Math.min(dt, p.dashTime);
       p.dashTime = Math.max(0, p.dashTime - dt);
-      p.x += p.dx * 920 * dashStep;
-      p.y += p.dy * 920 * dashStep;
+      p.x += p.dx * 1080 * dashStep;
+      p.y += p.dy * 1080 * dashStep;
       this.keepIn(p);
       if (p.activeLine) {
         p.activeLine.b = { x: p.x, y: p.y };
@@ -450,8 +453,8 @@ export class Battle {
           dx = a.x - b.x,
           dy = a.y - b.y,
           l = Math.hypot(dx, dy);
-        if (l > 0 && l < 19) {
-          const m = ((19 - l) * 0.8 * dt) / l;
+        if (l > 0 && l < 24) {
+          const m = ((24 - l) * 4 * dt) / l;
           a.x += dx * m;
           a.y += dy * m;
           b.x -= dx * m;

@@ -1,3 +1,10 @@
+@font-face {
+  font-family: "Yuji Boku";
+  src: url("assets/fonts/yuji-boku.woff") format("woff");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
 :root {
   color-scheme: light;
   --paper: #e8dcc8;
@@ -92,28 +99,26 @@ canvas {
     0 1px 3px #e5d8c3;
 }
 #wave {
-  font-size: clamp(17px, 4.7vw, 24px);
-  font-weight: bold;
-  letter-spacing: 0.13em;
+  font:
+    24px/1.1 "Yuji Boku",
+    serif;
+  letter-spacing: 0.08em;
 }
 .sub {
-  display: block;
-  font-size: 10px;
-  letter-spacing: 0.18em;
-  margin-top: 5px;
+  display: none;
 }
 .score {
   text-align: right;
   padding-top: 1px;
 }
 .score strong {
-  font-size: 29px;
-  font-weight: normal;
-  line-height: 1;
+  font:
+    32px/1 "Yuji Boku",
+    serif;
 }
 .score span {
-  font-size: 12px;
-  margin-left: 4px;
+  font-size: 10px;
+  margin-left: 3px;
 }
 .hud-tools {
   position: absolute;
@@ -124,22 +129,24 @@ canvas {
   pointer-events: auto;
 }
 .tiny {
-  min-width: 38px;
+  min-width: 36px;
   height: 36px;
-  background: #e4d7beaa;
-  border: 1px solid #413d3566;
-  font-size: 12px;
+  background: transparent;
+  border: 0;
+  font-size: 14px;
+  color: #35382d;
+  font-family: "Yuji Boku", serif;
 }
 .tiny:first-child {
-  font-size: 19px;
+  font-size: 20px;
 }
 #bossHud {
   position: absolute;
-  top: 8%;
-  left: 6%;
-  right: 6%;
-  padding: 5px 8px;
-  background: #e8dcc5b0;
+  top: calc(max(17px, env(safe-area-inset-top)) + 75px);
+  left: 8%;
+  right: 8%;
+  padding: 0;
+  background: none;
 }
 #bossHud > div:first-child {
   display: flex;
@@ -148,14 +155,14 @@ canvas {
   letter-spacing: 0.2em;
 }
 .boss-track {
-  height: 5px;
-  background: #1f24233a;
+  height: 3px;
+  background: #30372d23;
   margin-top: 5px;
 }
 .boss-track i {
   display: block;
   height: 100%;
-  background: var(--red);
+  background: #30372d;
   width: 100%;
   transition: width 0.15s;
 }
@@ -166,13 +173,11 @@ canvas {
   right: 4%;
   text-align: center;
   white-space: pre-line;
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.8;
-  letter-spacing: 0.06em;
-  color: #2b302a;
-  text-shadow:
-    0 1px 6px #f2e5d1,
-    0 0 5px #f2e5d1;
+  letter-spacing: 0.15em;
+  color: #30372d;
+  text-shadow: 0 1px 6px #f2e5d1;
   transition: opacity 0.4s;
 }
 #tip:empty {
@@ -181,57 +186,63 @@ canvas {
 #combo {
   position: absolute;
   right: 6%;
-  top: 30%;
-  transform: rotate(-4deg) translateY(8px);
+  top: 29%;
+  transform: translateY(6px);
   opacity: 0;
   transition:
-    opacity 0.15s,
+    opacity 0.14s,
     transform 0.18s;
-  color: #f5e9d4;
-  background: #262622ee;
-  padding: 4px 11px 8px;
-  clip-path: polygon(1% 8%, 96% 0, 100% 89%, 0 100%);
+  color: #30372d;
+  background: none;
+  padding: 0;
+  clip-path: none;
+  text-shadow: 0 1px 6px #f4ead4;
 }
 #combo.show {
   opacity: 1;
-  transform: rotate(-4deg) translateY(0);
+  transform: translateY(0);
 }
 #combo strong {
-  font-size: 44px;
-  line-height: 1;
-  font-weight: normal;
+  font:
+    64px/1 "Yuji Boku",
+    serif;
 }
 #combo span {
-  font-size: 16px;
-  letter-spacing: 0.05em;
-  margin-left: 5px;
+  font:
+    17px "Yuji Boku",
+    serif;
+  margin-left: 2px;
 }
 #health {
   position: absolute;
   left: 6%;
-  bottom: 22.8%;
+  top: calc(max(17px, env(safe-area-inset-top)) + 35px);
+  bottom: auto;
   display: flex;
   align-items: center;
   gap: 7px;
 }
 .health-label {
-  font-size: 12px;
-  text-shadow: 0 1px 5px #eadac4;
+  font:
+    12px "Yuji Boku",
+    serif;
 }
 #healthPips {
   display: flex;
   gap: 4px;
 }
 #healthPips i {
-  width: 15px;
-  height: 9px;
-  background: #ece0c7;
-  box-shadow: 0 0 0 1px #2e3029;
-  transform: skewX(-15deg);
+  width: 16px;
+  height: 8px;
+  background: #f6ead1;
+  filter: drop-shadow(0 1px 1px #20271e);
+  box-shadow: none;
+  transform: rotate(-27deg);
+  clip-path: polygon(0 55%, 90% 0, 100% 23%, 13% 100%, 3% 89%, 48% 53%);
 }
 #healthPips i.empty {
-  background: #32342d30;
-  box-shadow: 0 0 0 1px #55534a90;
+  background: #30372d22;
+  box-shadow: none;
 }
 #healthPips i.low {
   background: #a04b38;
@@ -254,38 +265,28 @@ canvas {
   pointer-events: auto;
   touch-action: none;
   border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    #ded6c51f 0 50%,
-    #272a2522 72%,
-    transparent 74%
-  );
+  background: none;
 }
 #stickRing {
   position: absolute;
-  inset: 6px;
-  border: 1px solid #f6ebd581;
+  inset: 9px;
+  border: 1px solid #30372d30;
   border-radius: 50%;
-  box-shadow: 0 0 0 1px #292c283b;
+  box-shadow: none;
 }
 #stickKnob {
   position: absolute;
-  width: 42px;
-  height: 42px;
-  left: 37px;
-  top: 37px;
-  background: #eee4d091;
-  border: 1px solid #f8efdcba;
+  width: 38px;
+  height: 38px;
+  left: 39px;
+  top: 39px;
+  background: #e8dcc54a;
+  border: 1px solid #30372d55;
   border-radius: 50%;
-  box-shadow: 0 2px 5px #191b1728;
+  box-shadow: none;
 }
 #stick > span {
-  position: absolute;
-  bottom: -1px;
-  width: 100%;
-  text-align: center;
-  font-size: 10px;
-  color: #393c34;
+  display: none;
 }
 .actions {
   width: 205px;
@@ -295,37 +296,45 @@ canvas {
 }
 .skill {
   position: absolute;
-  width: 68px;
-  height: 68px;
-  border-radius: 50%;
-  background: #e7dcc7d9;
-  border: 1.5px solid #2f332c;
-  box-shadow:
-    inset 0 0 0 3px #e8dcc6,
-    inset 0 0 0 4px #2d312a55;
+  width: 72px;
+  height: 72px;
+  border-radius: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
   pointer-events: auto;
-  overflow: hidden;
+  overflow: visible;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  line-height: 1.25;
+  line-height: 1.1;
   touch-action: none;
+  text-shadow: 0 1px 7px #f4e7d0;
 }
 .skill span {
-  font-size: 22px;
+  font:
+    27px/1.2 "Yuji Boku",
+    serif;
   z-index: 1;
 }
 .skill small {
-  font-size: 9px;
+  font-size: 10px;
   z-index: 1;
-  margin-top: 1px;
+  margin-top: 3px;
+  min-height: 11px;
+  opacity: 0.6;
 }
 .skill i {
   position: absolute;
-  inset: 0;
-  background: #262b2560;
-  clip-path: inset(100% 0 0);
+  left: 16px;
+  right: 16px;
+  bottom: 3px;
+  height: 2px;
+  inset-inline: 16px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
   pointer-events: none;
 }
 #dash {
@@ -337,27 +346,25 @@ canvas {
   bottom: 0;
 }
 #seal:disabled {
-  opacity: 0.5;
+  opacity: 0.35;
 }
 #seal.ready {
-  background: #272d26e8;
-  color: #eee1ca;
-  border-color: #e3d7bf;
-  box-shadow:
-    inset 0 0 0 3px #272d26,
-    inset 0 0 0 4px #e5dbc484;
+  background: none;
+  color: #8f3526;
+  border-color: transparent;
+  box-shadow: none;
 }
 #seal.expiring {
-  animation: inkPulse 0.65s ease-in-out infinite;
+  animation: inkPulse 0.85s ease-in-out infinite;
 }
 #slash {
-  left: 67px;
-  bottom: 70px;
-  width: 75px;
-  height: 75px;
+  left: 59px;
+  bottom: 64px;
+  width: 88px;
+  height: 83px;
 }
 .main-skill span {
-  font-size: 27px;
+  font-size: 51px;
 }
 .screen {
   z-index: 3;
@@ -392,11 +399,11 @@ canvas {
 }
 .title-word h1 {
   writing-mode: vertical-rl;
-  font-size: clamp(68px, 22vw, 105px);
-  line-height: 1.14;
-  letter-spacing: 0.06em;
+  font:
+    clamp(80px, 24vw, 115px) / 1.07 "Yuji Boku",
+    serif;
+  letter-spacing: 0.03em;
   margin: 0;
-  font-weight: 500;
   text-shadow: 0 0 14px #efdfc66b;
 }
 .reading {
@@ -451,19 +458,21 @@ canvas {
   margin: 0 0 17px;
 }
 .paper-button {
+  position: relative;
   width: 100%;
-  min-height: 54px;
-  padding: 14px 21px;
+  min-height: 57px;
+  padding: 14px 2px;
   text-align: left;
-  background: #e8ddc7;
-  color: #282e28;
-  border-top: 1px solid #bbaa8e;
-  border-bottom: 2px solid #504e3c;
-  letter-spacing: 0.13em;
+  background: none;
+  color: inherit;
+  border: 0;
+  border-bottom: 1px solid #a2907055;
+  letter-spacing: 0.15em;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 16px;
+  font-family: "Yuji Boku", serif;
+  font-size: 23px;
 }
 .paper-button span {
   font-family: serif;
@@ -513,8 +522,9 @@ canvas {
   font-size: 12px;
 }
 .boss-intro-copy h2 {
-  font-size: 70px;
-  font-weight: normal;
+  font:
+    80px "Yuji Boku",
+    serif;
   letter-spacing: 0.2em;
   margin: 15px 0;
 }
@@ -536,9 +546,10 @@ canvas {
   letter-spacing: 0.2em;
 }
 .result-content h2 {
-  font-size: 79px;
-  font-weight: normal;
-  letter-spacing: 0.2em;
+  font:
+    89px "Yuji Boku",
+    serif;
+  letter-spacing: 0.15em;
   margin: 12px 0 15px;
 }
 .result-content > p {
@@ -566,9 +577,9 @@ canvas {
   letter-spacing: 0.15em;
 }
 .result-stats strong {
-  font-size: 47px;
-  font-weight: normal;
-  line-height: 1;
+  font:
+    51px/1 "Yuji Boku",
+    serif;
 }
 .result-stats small {
   font-size: 14px;
@@ -603,13 +614,14 @@ canvas {
   overflow: auto;
   background: #e7dcc5;
   padding: 28px 23px;
-  border: 1px solid #b3a183;
-  box-shadow: 6px 6px 0 #161f1866;
+  border: 0;
+  box-shadow: none;
 }
 .sheet h2 {
-  font-size: 40px;
-  font-weight: normal;
-  letter-spacing: 0.12em;
+  font:
+    40px "Yuji Boku",
+    serif;
+  letter-spacing: 0.1em;
   margin: 16px 0;
 }
 .sheet p {
@@ -751,9 +763,56 @@ canvas {
 }
 
 /* Keep status, boss health and utility buttons below a notched status area. */
-#bossHud {
-  top: calc(max(17px, env(safe-area-inset-top)) + 44px);
-}
+
 .hud-tools {
-  top: calc(max(17px, env(safe-area-inset-top)) + 84px);
+  top: calc(max(17px, env(safe-area-inset-top)) + 32px);
+  gap: 0;
+}
+
+.skill::before {
+  content: "";
+  position: absolute;
+  left: 9px;
+  right: 9px;
+  bottom: 14px;
+  height: 6px;
+  background: currentColor;
+  opacity: 0.45;
+  mask: url(assets/brush-rule.svg) center/100% 100% no-repeat;
+  -webkit-mask: url(assets/brush-rule.svg) center/100% 100% no-repeat;
+  pointer-events: none;
+}
+#slash::before {
+  bottom: 9px;
+  left: 10px;
+  right: 10px;
+  opacity: 0.65;
+}
+#slash small {
+  display: none;
+}
+#seal.ready::before {
+  opacity: 1;
+  height: 7px;
+}
+#soundBtn[aria-pressed="false"] {
+  text-decoration: line-through;
+  text-decoration-color: #8f3526;
+}
+#bossHud > div:first-child > span:first-child {
+  font-family: "Yuji Boku", serif;
+  font-size: 17px;
+}
+.sheet .paper-button {
+  border: 0;
+  border-bottom: 1px solid #8679616b;
+}
+@media (hover: hover) {
+  #slash small {
+    display: block;
+    position: absolute;
+    right: 3px;
+    bottom: 20px;
+    font-size: 9px;
+  }
 }

@@ -1,6 +1,6 @@
-import { Battle, W, H, clamp } from "./core.js";
-import { Painter } from "./art.js";
-import { Sound } from "./sound.js";
+import { Battle, W, H, clamp } from "./core.js?v=2";
+import { Painter } from "./art.js?v=2";
+import { Sound } from "./sound.js?v=2";
 const $ = (id) => document.getElementById(id),
   game = new Battle(),
   paint = new Painter($("game")),
@@ -71,9 +71,9 @@ function tip(text, seconds = 4) {
   tipLeft = seconds;
 }
 function soundLabels() {
-  const t = sound.enabled ? "音 入" : "音 切";
+  const t = "音";
   $("soundBtn").textContent = t;
-  $("titleSound").textContent = t;
+  $("titleSound").textContent = sound.enabled ? "音 入" : "音 切";
   $("soundBtn").setAttribute("aria-pressed", String(sound.enabled));
   $("titleSound").setAttribute("aria-pressed", String(sound.enabled));
 }
@@ -102,7 +102,7 @@ function start() {
   $("combo").classList.remove("show");
   pausedFrom = null;
   sound.start();
-  tip("抜刀で墨を引く → 納刀で一掃\n左手で移動、右手で技。", 6);
+  tip("抜刀で墨を引き、納刀で断つ。", 6);
 }
 function title() {
   pausedFrom = null;
@@ -171,11 +171,11 @@ function handle(e) {
     const sub = ["", "雨中の来客", "四方の刃", "鐘、鳴り止まず"];
     $("wave").textContent = ["", "第一陣", "第二陣", "第三陣"][e.wave];
     $("waveSub").textContent = sub[e.wave];
-    if (e.wave === 2) tip("槍の間合いに注意。\n朱の予告から、横へ抜ける。", 4);
-    if (e.wave === 3) tip("鐘守の構えを見ろ。\n交差する二本の墨で、崩す。", 4);
+    if (e.wave === 2) tip("槍は、横へ避ける。", 4);
+    if (e.wave === 3) tip("二本の墨を、鐘守へ。", 4);
   }
   if (e.type === "dash" && game.wave === 1 && game.totalSeal === 0)
-    tip("墨に足が重なったら、納刀。\n２本を交差させて、群れを誘え。", 3.5);
+    tip("墨の上に誘い、納刀。", 3.5);
   if (e.type === "seal") {
     if (e.count > 0) {
       $("combo").querySelector("strong").textContent = e.count;
@@ -229,15 +229,14 @@ function hud() {
     can && game.lines.some((l) => l.life < 1),
   );
   $("lineCount").textContent =
-    p.sealCD > 0.01 ? `${p.sealCD.toFixed(1)}秒` : n ? `墨 ${n}本` : "墨 なし";
-  $("seal").querySelector("i").style.clipPath =
-    `inset(${100 - clamp(p.sealCD / 2.2, 0, 1) * 100}% 0 0)`;
-  $("dashTimer").textContent =
-    p.dashCD > 0.01 ? `${p.dashCD.toFixed(1)}秒` : "墨を引く";
-  $("dash").querySelector("i").style.clipPath =
-    `inset(${100 - clamp(p.dashCD / (p.dashCD > 0.57 ? 1.55 : 0.57), 0, 1) * 100}% 0 0)`;
-  $("slash").querySelector("i").style.clipPath =
-    `inset(${100 - clamp(p.slashCD / 0.36, 0, 1) * 100}% 0 0)`;
+    p.sealCD > 0.01 ? `${p.sealCD.toFixed(1)}` : n ? ["", "一", "二"][n] : "";
+  $("seal").querySelector("i").style.transform =
+    `scaleX(${clamp(p.sealCD / 2.2, 0, 1)})`;
+  $("dashTimer").textContent = p.dashCD > 0.01 ? `${p.dashCD.toFixed(1)}` : "";
+  $("dash").querySelector("i").style.transform =
+    `scaleX(${clamp(p.dashCD / (p.dashCD > 0.57 ? 1.55 : 0.57), 0, 1)})`;
+  $("slash").querySelector("i").style.transform =
+    `scaleX(${clamp(p.slashCD / 0.36, 0, 1)})`;
   $("dash").setAttribute("aria-disabled", String(p.dashCD > 0));
 }
 $("start").addEventListener("click", start);

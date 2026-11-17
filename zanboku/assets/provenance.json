@@ -10,9 +10,14 @@
     "ronin.webp": "Extracted individual transparent cell from original generated sumi-e character atlas, 2026-11-16.",
     "soldier.webp": "Extracted individual transparent cell from same atlas.",
     "spearman.webp": "Extracted individual transparent cell from same atlas.",
-    "bellkeeper.webp": "Extracted individual transparent cell from same atlas."
+    "bellkeeper.webp": "Extracted individual transparent cell from same atlas.",
+    "ronin-run.webp": "Individual dash/run action pose from generated 2x2 atlas based on existing ronin, 2026-11-17.",
+    "ronin-cut.webp": "Horizontal lunge/cut pose from same atlas.",
+    "ronin-follow.webp": "Low follow-through pose from same atlas.",
+    "ronin-sheath.webp": "Still sheathing pose from same atlas."
   },
   "sound": "Original local Web Audio synthesis: rain, steel, scabbard, bell. No API, no recordings, no third-party music.",
   "layers": "Independent background, actors, procedural paint, telegraphs, weather, sound, and HTML HUD. Sprite paths live in art.js ASSETS.",
-  "share.jpg": "Rendered title composition using supplied empty temple, generated ronin and original typography. No invented gameplay score."
+  "share.jpg": "Rendered title composition using supplied empty temple, generated ronin and original typography. No invented gameplay score.",
+  "fonts": "Locally hosted display subset of Yuji Boku, Copyright 2021 The Yuji Project Authors. SIL Open Font License 1.1 in assets/fonts/OFL.txt. No runtime font services."
 }

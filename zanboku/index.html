@@ -36,8 +36,15 @@
       name="twitter:image"
       content="https://sakamoto241.github.io/game/zanboku/assets/share.jpg"
     />
+    <link
+      rel="preload"
+      href="assets/fonts/yuji-boku.woff"
+      as="font"
+      type="font/woff"
+      crossorigin
+    />
     <link rel="icon" type="image/svg+xml" href="assets/icon.svg" />
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="style.css?v=2" />
     <link rel="preload" href="assets/temple-portrait.webp" as="image" />
   </head>
   <body>
@@ -64,7 +71,7 @@
           <div class="boss-track"><i id="bossHealth"></i></div>
         </div>
         <div class="hud-tools">
-          <button id="pauseBtn" class="tiny" aria-label="一時停止">Ⅱ</button
+          <button id="pauseBtn" class="tiny" aria-label="一時停止">休</button
           ><button id="soundBtn" class="tiny" aria-label="音を切り替える">
             音 入
           </button>
@@ -88,7 +95,7 @@
               <span>抜刀</span><small id="dashTimer">墨を引く</small
               ><i></i></button
             ><button id="slash" class="skill main-skill" aria-label="斬る J">
-              <span>斬る</span><small>J</small><i></i></button
+              <span>斬</span><small>J</small><i></i></button
             ><button id="seal" class="skill" aria-label="納刀 L" disabled>
               <span>納刀</span><small id="lineCount">墨 なし</small><i></i>
             </button>
@@ -118,7 +125,7 @@
             戦いを始める <span>→</span>
           </button>
           <div class="title-links">
-            <button id="howBtn">遊び方</button><span>縦持ち・約90秒</span
+            <button id="howBtn">遊び方</button><span>三陣勝負</span
             ><button id="titleSound">音 入</button>
           </div>
           <p class="load-note" id="loadNote" role="status"></p>
@@ -204,6 +211,6 @@
       </section>
       <noscript>このゲームにはJavaScriptが必要です。</noscript>
     </main>
-    <script type="module" src="game.js"></script>
+    <script type="module" src="game.js?v=2"></script>
   </body>
 </html>

@@ -28,7 +28,7 @@ with sync_playwright() as p:
   r=page.locator('#start').bounding_box();check(f'start visible in {width}x{height}',r['x']>=0 and r['y']>=0 and r['x']+r['width']<=width+1 and r['y']+r['height']<=height+1)
  page.set_viewport_size({'width':390,'height':740});page.locator('#start').tap();page.wait_for_timeout(1000)
  check('one tap starts first wave and audio',page.evaluate('__zanboku.game.mode==="playing"&&__zanboku.game.wave===1&&__zanboku.sound.ctx.state==="running"'))
- check('all original character and background assets loaded',page.evaluate('Object.keys(__zanboku.paint.images).length===6'))
+ check('all original character and background assets loaded',page.evaluate('Object.keys(__zanboku.paint.images).length===10'))
  for width,height in [(390,740),(393,659),(360,580),(430,932),(1280,900)]:
   page.set_viewport_size({'width':width,'height':height})
   for id in ['stick','slash','dash','seal','pauseBtn','soundBtn']:

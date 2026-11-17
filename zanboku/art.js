@@ -1,12 +1,47 @@
-import { W, H, INK_RADIUS, seeded, clamp } from "./core.js";
+import { W, H, INK_RADIUS, seeded, clamp } from "./core.js?v=2";
 export const ASSETS = {
   background: "assets/temple-portrait.webp",
   original: "assets/temple.jpg",
   ronin: "assets/ronin.webp",
+  run: "assets/ronin-run.webp",
+  cut: "assets/ronin-cut.webp",
+  follow: "assets/ronin-follow.webp",
+  sheath: "assets/ronin-sheath.webp",
   soldier: "assets/soldier.webp",
   spear: "assets/spearman.webp",
   boss: "assets/bellkeeper.webp",
 };
+// Dry-brush contour stays inside the same round segment used for damage.
+export function inkOutline(line) {
+  const { a, b } = line,
+    r = INK_RADIUS,
+    angle = Math.atan2(b.y - a.y, b.x - a.x),
+    rng = seeded(line.seed || 42),
+    out = [];
+  const add = (x, y, t) => {
+    const radius = r * (0.91 + rng() * 0.09);
+    out.push({ x: x + Math.cos(t) * radius, y: y + Math.sin(t) * radius });
+  };
+  for (let i = 0; i <= 16; i++)
+    add(b.x, b.y, angle - Math.PI / 2 + (i * Math.PI) / 16);
+  for (let i = 1; i < 12; i++) {
+    const q = i / 12;
+    add(b.x + (a.x - b.x) * q, b.y + (a.y - b.y) * q, angle + Math.PI / 2);
+  }
+  for (let i = 0; i <= 16; i++)
+    add(a.x, a.y, angle + Math.PI / 2 + (i * Math.PI) / 16);
+  for (let i = 1; i < 12; i++) {
+    const q = i / 12;
+    add(a.x + (b.x - a.x) * q, a.y + (b.y - a.y) * q, angle - Math.PI / 2);
+  }
+  return out;
+}
+export function poseFor(actor, moving = false) {
+  if (actor.action === "dash") return "run";
+  if (actor.action === "slash") return actor.pose > 0.17 ? "cut" : "follow";
+  if (actor.action === "seal") return "sheath";
+  return moving ? "run" : "ronin";
+}
 export class Painter {
   constructor(canvas) {
     this.canvas = canvas;
@@ -18,6 +53,9 @@ export class Painter {
     this.clock = 0;
     this.rainPause = 0;
     this.lastPlayer = null;
+    this.echoes = [];
+    this.echoTimer = 0;
+    this.impact = 0;
     this.reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
     this.resize();
     this.ready = Promise.allSettled(
@@ -60,14 +98,19 @@ export class Painter {
   }
   event(e) {
     if (e.type === "seal") {
-      this.fx.push({ ...e, age: 0, life: 0.72 });
-      this.rainPause = 0.18;
-      this.shake = e.count > 3 ? 5 : 2;
+      this.fx.push({ ...e, age: 0, life: 0.94 });
+      this.rainPause = 0.23;
+      this.shake = e.count > 3 ? 4 : 1.5;
+      if (e.targets.length)
+        this.impact = Math.max(this.impact, Math.min(1, 0.45 + e.count * 0.04));
       for (const t of e.targets) this.splatter(t.x, t.y, t.boss ? 16 : 6, 0.12);
     }
     if (e.type === "slash") {
-      this.fx.push({ ...e, age: 0, life: 0.26 });
-      if (e.count) this.shake = 2;
+      this.fx.push({ ...e, age: 0, life: 0.34 });
+      if (e.count) {
+        this.shake = 1.8;
+        this.impact = Math.max(this.impact, 0.18);
+      }
     }
     if (e.type === "dash") {
       this.fx.push({ ...e, age: 0, life: 0.23 });
@@ -81,7 +124,8 @@ export class Painter {
       this.shake = 7;
     }
     if (e.type === "kill") {
-      this.splatter(e.x, e.y, e.boss ? 30 : 8, e.delay);
+      this.splatter(e.x, e.y, e.boss ? 30 : 10, e.delay);
+      this.fx.push({ type: "wake", x: e.x, y: e.y, age: -e.delay, life: 0.55 });
     }
     if (e.type === "cross") this.fx.push({ ...e, age: 0, life: 0.24 });
     if (e.type === "stagger") {
@@ -112,12 +156,40 @@ export class Painter {
   }
   draw(game, dt) {
     this.clock += dt;
+    this.impact = Math.max(0, this.impact - dt * 2.1);
+    this.echoTimer -= dt;
+    if (
+      dt > 0 &&
+      game.player.dashTime > 0 &&
+      this.echoTimer <= 0 &&
+      !this.reduced
+    ) {
+      this.echoes.push({
+        x: game.player.x,
+        y: game.player.y,
+        dx: game.player.dx,
+        age: 0,
+      });
+      this.echoTimer = 0.035;
+    }
+    for (const e of this.echoes) e.age += dt;
+    this.echoes = this.echoes.filter((e) => e.age < 0.23).slice(-7);
     this.shake = Math.max(0, this.shake - dt * 30);
     this.flash = Math.max(0, this.flash - dt);
     this.rainPause = Math.max(0, this.rainPause - dt);
     const c = this.ctx;
     c.save();
     c.clearRect(0, 0, W, H);
+    if (!this.reduced) {
+      const zoom = 1 + Math.sin((this.impact * Math.PI) / 2) * 0.045;
+      c.translate(W / 2, 425);
+      c.scale(zoom, zoom);
+      c.translate(-W / 2, -425);
+      c.translate(
+        Math.sin(this.clock * 93) * this.shake,
+        Math.cos(this.clock * 87) * this.shake * 0.5,
+      );
+    }
     const bg = this.images.background || this.images.original;
     if (bg) {
       const scale = Math.max(W / bg.width, H / bg.height);
@@ -139,11 +211,6 @@ export class Painter {
       c.fillRect(0, 0, W, H);
       this.fallbackFloor(c);
     }
-    if (!this.reduced && this.shake > 0)
-      c.translate(
-        Math.sin(this.clock * 100) * this.shake,
-        Math.cos(this.clock * 91) * this.shake * 0.6,
-      );
     // Layer order: wet floor, paint, telegraphs, feet shadows, actors, cuts, weather.
     const fog = c.createLinearGradient(0, 160, 0, 340);
     fog.addColorStop(0, "#ede1cd00");
@@ -153,6 +220,16 @@ export class Painter {
     c.fillRect(0, 160, W, 180);
     for (const l of game.lines) this.paintLine(c, l, clamp(l.life / 0.8, 0, 1));
     for (const e of game.enemies) if (!e.dead) this.telegraph(c, e);
+    for (const e of this.echoes) {
+      const im = this.images.run;
+      if (!im) continue;
+      c.save();
+      c.globalAlpha = (1 - e.age / 0.23) * 0.16;
+      c.translate(e.x, e.y);
+      if (e.dx < -0.12) c.scale(-1, 1);
+      c.drawImage(im, -43, -77, 86, 77);
+      c.restore();
+    }
     const actors = [
       ...game.enemies,
       { ...game.player, kind: "ronin", isPlayer: true },
@@ -219,37 +296,30 @@ export class Painter {
     c.globalAlpha = alpha;
     const { a, b } = l;
     const len = Math.hypot(b.x - a.x, b.y - a.y);
+    const outline = inkOutline(l);
+    c.fillStyle = "#24231fef";
+    c.beginPath();
+    outline.forEach((p, i) => (i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y)));
+    c.closePath();
+    c.fill();
     if (len < 1) {
-      c.fillStyle = "#20251eea";
-      c.beginPath();
-      c.arc(a.x, a.y, INK_RADIUS, 0, Math.PI * 2);
-      c.fill();
       c.restore();
       return;
     }
-    c.lineCap = "round";
-    c.strokeStyle = "#20251eea";
-    c.lineWidth = INK_RADIUS * 2;
-    c.beginPath();
-    c.moveTo(a.x, a.y);
-    c.lineTo(b.x, b.y);
-    c.stroke();
-    c.strokeStyle = "#10170f65";
-    c.lineWidth = INK_RADIUS * 2 + 3;
-    c.stroke();
+    c.lineCap = "butt";
     const rand = seeded(l.seed || 42),
       dx = (b.x - a.x) / len,
       dy = (b.y - a.y) / len;
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 30; i++) {
       const t = rand(),
         off = (rand() - 0.5) * (INK_RADIUS * 2 + 5),
         x = a.x + (b.x - a.x) * t - dy * off,
         y = a.y + (b.y - a.y) * t + dx * off;
-      c.strokeStyle = i % 4 === 0 ? "#e3d4b85c" : "#1d241b";
+      c.strokeStyle = i % 4 === 0 ? "#e7d9bd6b" : "#1e1d19";
       c.lineWidth = 0.4 + rand() * 1.5;
       c.beginPath();
       c.moveTo(x, y);
-      c.lineTo(x + dx * (3 + rand() * 13), y + dy * 9);
+      c.lineTo(x + dx * (8 + rand() * 24), y + dy * (8 + rand() * 24));
       c.stroke();
     }
     for (let i = 0; i < 12; i++) {
@@ -308,80 +378,95 @@ export class Painter {
     const player = a.isPlayer,
       boss = a.kind === "boss",
       dead = a.dead && a.fall <= 0;
-    let alpha = 1,
-      fall = 0;
-    if (dead) {
-      fall = clamp(a.deathAge / 0.45, 0, 1);
-      alpha = 1 - clamp((a.deathAge - 0.15) / 0.55, 0, 1);
-    }
+    const fall = dead ? clamp(a.deathAge / 0.5, 0, 1) : 0;
+    const alpha = dead ? 1 - clamp((a.deathAge - 0.18) / 0.55, 0, 1) : 1;
     if (alpha <= 0) return;
-    const im = this.images[a.kind];
-    let h = boss ? 113 : player ? 77 : a.kind === "spear" ? 76 : 58,
-      w = im ? (h * im.width) / im.height : h * 0.78;
-    const move =
-      a.action === "walk" ||
-      (player && Math.hypot(game.input.x, game.input.y) > 0.1);
-    const bob = move
-      ? Math.sin(this.clock * (boss ? 7 : 12) + (a.seed || 0)) * 1.4
+    const moving = player
+      ? Math.hypot(game.input.x, game.input.y) > 0.1 && a.action === "idle"
+      : a.action === "walk";
+    const key = player ? poseFor(a, moving) : a.kind;
+    const im = this.images[key] || this.images[a.kind];
+    const h = boss
+      ? 126
+      : player
+        ? { run: 76, cut: 71, follow: 77, sheath: 86 }[key] || 83
+        : a.kind === "spear"
+          ? 76
+          : 60;
+    const w = im ? (h * im.width) / im.height : h * 0.78;
+    const gait = moving
+      ? Math.sin(this.clock * (boss ? 7 : 13) + (a.seed || 0))
       : 0;
-    let tilt = 0,
-      offsetX = 0,
-      offsetY = 0;
+    let ox = 0,
+      oy = 0,
+      tilt = 0;
     if (player && a.action === "slash") {
-      tilt = Math.sin((a.pose / 0.26) * Math.PI) * -0.13;
-      offsetX = a.dx * 4;
-      offsetY = a.dy * 4;
+      const t = clamp(1 - a.pose / 0.32, 0, 1),
+        weight = Math.sin(t * Math.PI);
+      ox = a.dx * weight * 10;
+      oy = a.dy * weight * 7;
+      tilt = a.dx * weight * 0.05;
     }
     if (player && a.action === "dash") {
-      tilt = a.dx * 0.2;
-      offsetX = a.dx * 6;
-      offsetY = a.dy * 6;
+      ox = a.dx * 7;
+      oy = a.dy * 6;
+      tilt = a.dx * 0.1;
     }
     if (!player && a.action === "windup") {
-      tilt = -a.dx * 0.12;
-      offsetY = -3;
+      const t = 1 - a.timer / a.windup;
+      ox = -a.dx * 6 * t;
+      oy = -2 - t * 4;
+      tilt = -a.dx * (boss ? 0.19 : 0.08) * t;
     }
     if (a.action === "strike") {
-      offsetX = a.dx * 6;
-      offsetY = a.dy * 6;
-      tilt = a.dx * 0.18;
+      ox = a.dx * (boss ? 13 : 7);
+      oy = a.dy * 8;
+      tilt = a.dx * (boss ? 0.25 : 0.15);
     }
-    if (a.action === "recover" && a.hitFlash > 0) tilt = 0.16;
+    if (a.action === "recover" && a.hitFlash > 0) tilt = -a.dx * 0.19;
     c.save();
     c.globalAlpha = alpha;
-    c.fillStyle = player ? "#151e164f" : "#252b2240";
+    // Small broken contact mark, instead of an opaque oval under every actor.
+    c.fillStyle = "#1f291d30";
     c.beginPath();
-    c.ellipse(a.x, a.y + 2, boss ? 30 : player ? 20 : 14, 5, 0, 0, 7);
+    c.ellipse(a.x, a.y + 2, boss ? 29 : player ? 17 : 11, 3.5, 0, 0, 7);
     c.fill();
+    if (player) {
+      c.strokeStyle = "#f7ecd1a0";
+      c.lineWidth = 0.8;
+      c.beginPath();
+      c.ellipse(a.x, a.y + 1, 13, 3.5, 0, 0.3, 2.8);
+      c.stroke();
+    }
     if (
       player &&
       a.invincible > 0 &&
       a.dashTime <= 0 &&
+      a.action !== "seal" &&
       Math.sin(this.clock * 35) > 0
     )
-      c.globalAlpha *= 0.55;
-    if (player) {
-      c.strokeStyle = "#faf0d4b0";
-      c.lineWidth = 1;
-      c.beginPath();
-      c.ellipse(a.x, a.y + 1, 17, 5, 0, 0, 7);
-      c.stroke();
-    }
-    c.translate(a.x + offsetX, a.y + bob + offsetY);
+      c.globalAlpha *= 0.65;
+    c.translate(
+      a.x + ox + (a.deathDx || 0) * fall * 24,
+      a.y + oy + Math.abs(gait) * -2.1 + (a.deathDy || 0) * fall * 20,
+    );
     if (dead) {
-      c.rotate(fall * (a.dx < 0 ? -1 : 1) * 1.3);
-      c.scale(1, 1 - fall * 0.35);
-    } else c.rotate(tilt);
+      c.rotate((a.deathDx || 1) * fall * 0.5);
+      c.scale(1 + fall * 0.12, 1 - fall * 0.68);
+    } else {
+      c.rotate(tilt);
+      if (moving) c.scale(1 + gait * 0.015, 1 - Math.abs(gait) * 0.025);
+    }
     if (a.dx < -0.12) c.scale(-1, 1);
-    if (im) c.drawImage(im, -w * 0.5, -h, w, h);
+    if (im) c.drawImage(im, -w * 0.54, -h, w, h);
     else this.silhouette(c, a, w, h);
     if (a.hitFlash > 0 && !player) {
-      c.globalAlpha = alpha * a.hitFlash * 2.5;
-      c.strokeStyle = "#f5eed8";
-      c.lineWidth = 2;
+      c.globalAlpha = alpha * a.hitFlash * 3;
+      c.strokeStyle = "#fff5dc";
+      c.lineWidth = 1.8;
       c.beginPath();
-      c.moveTo(-w * 0.25, -h * 0.2);
-      c.lineTo(w * 0.3, -h * 0.8);
+      c.moveTo(-w * 0.3, -h * 0.2);
+      c.lineTo(w * 0.26, -h * 0.8);
       c.stroke();
     }
     c.restore();
@@ -404,6 +489,42 @@ export class Painter {
     c.fillRect(-w * 0.2, -h * 0.08, 6, h * 0.08);
     c.fillRect(w * 0.1, -h * 0.08, 6, h * 0.08);
   }
+  ribbon(c, x, y, a, r, alpha, red = false) {
+    c.save();
+    c.translate(x, y);
+    c.rotate(a);
+    c.globalAlpha = alpha;
+    c.fillStyle = red ? "#983d2e" : "#262522";
+    c.beginPath();
+    for (let i = 0; i <= 24; i++) {
+      const q = i / 24,
+        theta = -1.45 + q * 2.9,
+        rr = r + ((i % 3) - 1) * 1.1;
+      const x = Math.cos(theta) * rr,
+        y = Math.sin(theta) * rr;
+      if (!i) c.moveTo(x, y);
+      else c.lineTo(x, y);
+    }
+    for (let i = 24; i >= 0; i--) {
+      const q = i / 24,
+        theta = -1.45 + q * 2.9,
+        rr = r - 2 - Math.sin(q * Math.PI) * 11;
+      c.lineTo(Math.cos(theta) * rr, Math.sin(theta) * rr);
+    }
+    c.closePath();
+    c.fill();
+    c.strokeStyle = red ? "#d8b5a1" : "#fff8e5";
+    c.lineWidth = 2;
+    c.beginPath();
+    c.arc(0, 0, r - 2, -1.3, 1.25);
+    c.stroke();
+    c.strokeStyle = red ? "#90392a88" : "#323a2999";
+    c.lineWidth = 0.65;
+    c.beginPath();
+    c.arc(0, 0, r + 6, -1.05, 1.0);
+    c.stroke();
+    c.restore();
+  }
   effect(c, f, dt) {
     const t = f.age / f.life;
     if (f.type === "drop") {
@@ -423,83 +544,118 @@ export class Painter {
       c.globalAlpha = 1;
       return;
     }
+    if (f.type === "wake") {
+      c.save();
+      c.globalAlpha = (1 - t) * 0.65;
+      c.strokeStyle = "#f5e8cc";
+      c.lineWidth = 0.7;
+      for (let i = 0; i < 2; i++) {
+        c.beginPath();
+        c.ellipse(
+          f.x,
+          f.y,
+          7 + t * 26 + i * 4,
+          2 + t * 7 + i * 1.4,
+          0,
+          0.2,
+          5.5,
+        );
+        c.stroke();
+      }
+      c.restore();
+    }
     if (f.type === "seal") {
-      const q = clamp((f.age - 0.08) / 0.2, 0, 1);
-      if (f.age > 0.07) {
+      const q = 1 - Math.pow(1 - clamp((f.age - 0.1) / 0.22, 0, 1), 3);
+      if (f.age > 0.09) {
         for (const l of f.lines) {
+          this.paintLine(c, l, Math.max(0, 1 - t) * 0.55);
+          const x = l.a.x + (l.b.x - l.a.x) * q,
+            y = l.a.y + (l.b.y - l.a.y) * q;
           c.save();
-          c.globalAlpha = (1 - t) * 0.65;
-          this.paintLine(c, l, 1);
-          c.restore();
-          c.strokeStyle = `rgba(255,251,233,${(1 - t) * 1.4})`;
-          c.lineWidth = 3;
-          c.lineCap = "round";
+          c.globalAlpha = Math.max(0, 1 - t * 1.1);
+          c.lineCap = "butt";
+          c.strokeStyle = "#fbf3dd88";
+          c.lineWidth = 11;
           c.beginPath();
           c.moveTo(l.a.x, l.a.y);
-          c.lineTo(l.a.x + (l.b.x - l.a.x) * q, l.a.y + (l.b.y - l.a.y) * q);
+          c.lineTo(x, y);
           c.stroke();
-          if (q < 1)
-            this.star(
-              c,
-              l.a.x + (l.b.x - l.a.x) * q,
-              l.a.y + (l.b.y - l.a.y) * q,
-              13,
-              1 - t,
-            );
+          c.strokeStyle = "#fffbea";
+          c.lineWidth = 2.4;
+          c.stroke();
+          c.strokeStyle = "#141e12aa";
+          c.lineWidth = 0.7;
+          c.beginPath();
+          c.moveTo(l.a.x + 3, l.a.y + 3);
+          c.lineTo(x + 3, y + 3);
+          c.stroke();
+          c.restore();
+          if (q < 1) this.star(c, x, y, 19, 1 - t);
         }
-        if (f.cross && f.age < 0.4)
-          this.star(c, f.cross.x, f.cross.y, 24 * (1 - t), 1 - t);
+        if (f.cross && f.age < 0.45)
+          this.star(c, f.cross.x, f.cross.y, 34 * (1 - t), 1 - t);
+        // The sweep is confined to the confirmed paint. No full-screen damage flash.
       }
     }
     if (f.type === "slash") {
-      const a = Math.atan2(f.dy, f.dx),
-        r = 64 + Math.sin(t * Math.PI) * 8;
-      c.save();
-      c.translate(f.x, f.y - 9);
-      c.strokeStyle = `rgba(29,38,27,${1 - t})`;
-      c.lineWidth = 9 * (1 - t);
-      c.beginPath();
-      c.arc(0, 0, r, a - 1.3 + t * 0.6, a + 1.3 + t * 0.6);
-      c.stroke();
-      c.strokeStyle = `rgba(255,250,230,${1 - t})`;
-      c.lineWidth = 2;
-      c.beginPath();
-      c.arc(0, 0, r + 2, a - 1.15 + t * 0.6, a + 1.1 + t * 0.6);
-      c.stroke();
-      c.restore();
+      const angle = Math.atan2(f.dy, f.dx),
+        q = 1 - Math.pow(1 - t, 2);
+      this.ribbon(
+        c,
+        f.x,
+        f.y - 7,
+        angle - 0.25 + q * 0.65,
+        68 + q * 8,
+        Math.pow(1 - t, 0.7),
+      );
+      if (f.count && t < 0.45)
+        this.star(
+          c,
+          f.x + f.dx * 56,
+          f.y + f.dy * 56,
+          10 * (1 - t),
+          0.8 * (1 - t),
+        );
     }
     if (f.type === "dash") {
       c.save();
-      c.globalAlpha = (1 - t) * 0.3;
-      c.strokeStyle = "#faf1dc";
+      c.globalAlpha = (1 - t) * 0.6;
+      c.strokeStyle = "#f7edd4";
       c.lineWidth = 1;
-      for (let i = -1; i <= 1; i++) {
+      for (let i = -2; i <= 2; i++) {
+        const off = i * 8;
         c.beginPath();
-        c.moveTo(f.x - f.dy * i * 11, f.y + f.dx * i * 11);
+        c.moveTo(f.x - f.dy * off, f.y + f.dx * off);
         c.lineTo(
-          f.x + f.dx * 45 - f.dy * i * 11,
-          f.y + f.dy * 45 + f.dx * i * 11,
+          f.x - f.dx * (30 + t * 45) - f.dy * off,
+          f.y - f.dy * (30 + t * 45) + f.dx * off,
         );
         c.stroke();
       }
       c.restore();
     }
     if (f.type === "enemystrike") {
-      const a = Math.atan2(f.dy, f.dx);
-      c.strokeStyle = `rgba(145,47,31,${1 - t})`;
-      c.lineWidth = f.boss ? 5 : 2;
-      c.beginPath();
-      c.arc(f.x, f.y, f.boss ? 109 : 54, a - 0.8, a + 0.8);
-      c.stroke();
+      const angle = Math.atan2(f.dy, f.dx);
+      this.ribbon(
+        c,
+        f.x,
+        f.y,
+        angle - 0.4 + t * 0.8,
+        f.boss ? 112 : 53,
+        1 - t,
+        true,
+      );
     }
-    if (f.type === "cross") this.star(c, f.x, f.y, 15 * (1 - t), 1 - t);
-    if (f.type === "stagger") this.star(c, f.x, f.y - 58, 25 * (1 - t), 1 - t);
+    if (f.type === "cross") this.star(c, f.x, f.y, 20 * (1 - t), 1 - t);
+    if (f.type === "stagger") this.star(c, f.x, f.y - 65, 30 * (1 - t), 1 - t);
     if (f.type === "ripple") {
       c.strokeStyle = `rgba(244,233,211,${(1 - t) * 0.6})`;
       c.lineWidth = 1;
-      c.beginPath();
-      c.ellipse(f.x, f.y, 20 + t * 160, 8 + t * 40, 0, 0, 7);
-      c.stroke();
+      for (let i = 0; i < 2; i++) {
+        c.beginPath();
+        c.ellipse(f.x, f.y, 20 + t * 170 + i * 12, 8 + t * 45 + i * 3, 0, 0, 7);
+        c.stroke();
+      }
     }
   }
   star(c, x, y, r, a) {
@@ -524,5 +680,8 @@ export class Painter {
     this.shake = 0;
     this.flash = 0;
     this.rainPause = 0;
+    this.echoes = [];
+    this.echoTimer = 0;
+    this.impact = 0;
   }
 }
